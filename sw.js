@@ -1,9 +1,9 @@
 const CACHE = 'bobinas-v1';
 const FILES = [
-  '/conferencia-bobinas/',
-  '/conferencia-bobinas/index.html',
-  '/conferencia-bobinas/camera.html',
-  '/conferencia-bobinas/manifest.json',
+  '/Conferencia_Bobinas/',
+  '/Conferencia_Bobinas/index.html',
+  '/Conferencia_Bobinas/camera.html',
+  '/Conferencia_Bobinas/manifest.json',
   'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js'
 ];
 
