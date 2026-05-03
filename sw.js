@@ -1,21 +1,24 @@
-const CACHE = 'bobinas-v2';
+const CACHE = 'bobinas-v3';
+const BASE = '/Conferencia_bobinas';
+
 const FILES = [
-  '/Conferencia_bobinas/',
-  '/Conferencia_bobinas/index.html',
-  '/Conferencia_bobinas/camera.html',
-  '/Conferencia_bobinas/manifest.json',
-  'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js'
+  `${BASE}/`,
+  `${BASE}/index.html`,
+  `${BASE}/camera.html`,
+  `${BASE}/manifest.json`,
+  `${BASE}/icon-192.png`,
+  `${BASE}/icon-512.png`
 ];
 
-self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(FILES))
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE).then(cache => cache.addAll(FILES))
   );
   self.skipWaiting();
 });
 
-self.addEventListener('activate', e => {
-  e.waitUntil(
+self.addEventListener('activate', event => {
+  event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
     )
@@ -23,8 +26,25 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
-self.addEventListener('fetch', e => {
-  e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
+self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
+
+  // navegação do app
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(`${BASE}/index.html`))
+    );
+    return;
+  }
+
+  // só cache local
+  if (url.origin !== location.origin) {
+    return;
+  }
+
+  event.respondWith(
+    caches.match(event.request, { ignoreSearch: true }).then(cached => {
+      return cached || fetch(event.request);
+    })
   );
 });
