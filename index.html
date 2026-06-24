@@ -1673,12 +1673,22 @@
               margin: 10px 0;
               font-size: 0.9em;
               color: var(--text-secondary);
+              display: grid;
+              gap: 4px;
             "
           >
-            👤 Conferente:
-            <strong id="rCheckerName" style="color: var(--text-primary)"
-              >—</strong
-            >
+            <div>
+              👤 Conferente:
+              <strong id="rCheckerName" style="color: var(--text-primary)"
+                >—</strong
+              >
+            </div>
+            <div>
+              📋 Tipo de conferência:
+              <strong id="rConferenceType" style="color: var(--text-primary)"
+                >—</strong
+              >
+            </div>
           </div>
           <div class="stats" style="margin-top: 10px">
             <div class="stat blue">
@@ -1738,6 +1748,7 @@
                 <tr>
                   <th>#</th>
                   <th>Código</th>
+                  <th>OP</th>
                   <th>Status</th>
                   <th>Hora</th>
                   <th>Local</th>
@@ -2043,6 +2054,8 @@
         sep: "newline",
         fileData: null,
         fileLayout: null,
+        meta: {},
+        confType: "",
         filter: "all",
         rptSearch: "",
         checkerName: "",
@@ -2064,6 +2077,8 @@
             S.scanned = s.scanned || [];
             S.checked = new Set(s.checked || []);
             S.extras = s.extras || [];
+            S.meta = s.meta || {};
+            S.confType = s.confType || "";
             S.checkerName = s.checkerName || "";
           }
         } catch (e) {}
@@ -2077,6 +2092,8 @@
               scanned: S.scanned,
               checked: Array.from(S.checked),
               extras: S.extras,
+              meta: S.meta,
+              confType: S.confType,
               checkerName: S.checkerName,
             }),
           );
@@ -2242,6 +2259,8 @@
         if (modal) modal.classList.remove("show");
         S.fileData = null;
         S.fileLayout = null;
+        S.meta = {};
+        S.confType = "";
         S.db = [];
         S.scanned = [];
         S.checked = new Set();
@@ -2388,7 +2407,8 @@
         }
         const bIdx = S.fileLayout.idx.BARRAS_ORIGEM,
           eIdx = S.fileLayout.idx.ETAPA,
-          mIdx = S.fileLayout.idx.MATERIAL;
+          mIdx = S.fileLayout.idx.MATERIAL,
+          opIdx = S.fileLayout.idx.OP;
         const etapas = new Set(cfg.etapas.map(Number));
         const terms = (cfg.materialTerms || []).map((t) =>
           String(t).toUpperCase(),
@@ -2407,7 +2427,14 @@
           }
           matched++;
           const code = String(r[bIdx] || "").trim();
-          if (code) codes.push(code);
+          if (code) {
+            codes.push(code);
+            S.meta[code] = {
+              op: String(r[opIdx] || "").trim(),
+              etapa: String(r[eIdx] || "").trim(),
+              material: String(r[mIdx] || "").trim(),
+            };
+          }
         });
         const uniq = [...new Set(codes)];
         if (!uniq.length) {
@@ -2415,6 +2442,7 @@
           return;
         }
         S.db = [...new Set([...S.db, ...uniq])];
+        S.confType = cfg.label;
         save();
         updateDBUI();
         closeConferenceTypeModal();
@@ -2454,6 +2482,7 @@
           .map((c) => c.trim());
         const uniq = [...new Set(codes)];
         S.db = [...new Set([...S.db, ...uniq])];
+        S.confType = S.confType || "Importação por arquivo";
         save();
         updateDBUI();
         document.getElementById("colSel").style.display = "none";
@@ -2522,6 +2551,8 @@
             S.scanned = [];
             S.checked = new Set();
             S.extras = [];
+            S.meta = {};
+            S.confType = "";
             S.checkerName = "";
             Object.keys(localStorage)
               .filter((k) => k.startsWith("photo_"))
@@ -2646,10 +2677,30 @@
         document.getElementById("rFill").style.width = pct + "%";
         document.getElementById("rCheckerName").textContent =
           S.checkerName || "—";
+        document.getElementById("rConferenceType").textContent =
+          S.confType || "—";
         renderRpt();
+      }
+      function getOP(code) {
+        return S.meta && S.meta[code] && S.meta[code].op
+          ? S.meta[code].op
+          : "-";
       }
       function getReportItems() {
         let items = [];
+        [...new Set(S.extras)].forEach((code) => {
+          const scan = S.scanned.find(
+            (s) => s.code === code && s.status === "not-found",
+          );
+          items.push({
+            code,
+            op: "-",
+            status: "extra",
+            time: scan ? scan.time : "-",
+            location: scan?.location || "-",
+            hasPhoto: scan?.hasPhoto || false,
+          });
+        });
         S.db.forEach((code) => {
           const chk = S.checked.has(code),
             scan = S.scanned.find(
@@ -2657,22 +2708,11 @@
             );
           items.push({
             code,
+            op: getOP(code),
             status: chk ? "checked" : "pending",
             time: scan ? scan.time : "-",
             location: "",
             hasPhoto: false,
-          });
-        });
-        [...new Set(S.extras)].forEach((code) => {
-          const scan = S.scanned.find(
-            (s) => s.code === code && s.status === "not-found",
-          );
-          items.push({
-            code,
-            status: "extra",
-            time: scan ? scan.time : "-",
-            location: scan?.location || "-",
-            hasPhoto: scan?.hasPhoto || false,
           });
         });
         return items;
@@ -2683,8 +2723,12 @@
         if (S.filter !== "all")
           items = items.filter((i) => i.status === S.filter);
         if (S.rptSearch)
-          items = items.filter((i) =>
-            i.code.toLowerCase().includes(S.rptSearch.toLowerCase()),
+          items = items.filter(
+            (i) =>
+              i.code.toLowerCase().includes(S.rptSearch.toLowerCase()) ||
+              String(i.op || "")
+                .toLowerCase()
+                .includes(S.rptSearch.toLowerCase()),
           );
         const d = items.slice(0, 500);
         tbody.innerHTML = d
@@ -2695,13 +2739,13 @@
                 : it.status === "pending"
                   ? "⏳"
                   : "⚠️";
-            return `<tr><td>${i + 1}</td><td>${esc(it.code)}</td><td>${bt}</td><td>${esc(it.time)}</td><td>${it.status === "extra" ? "📌 " + esc(it.location) : "—"}</td><td>${it.hasPhoto ? `<button class="icon-btn" onclick="showPhotoModal('${esc(it.code).replace(/'/g, "&#39;")}')">📸</button>` : "—"}</td></tr>`;
+            return `<tr><td>${i + 1}</td><td>${esc(it.code)}</td><td>${esc(it.op || "-")}</td><td>${bt}</td><td>${esc(it.time)}</td><td>${it.status === "extra" ? "📌 " + esc(it.location) : "—"}</td><td>${it.hasPhoto ? `<button class="icon-btn" onclick="showPhotoModal('${esc(it.code).replace(/'/g, "&#39;")}')">📸</button>` : "—"}</td></tr>`;
           })
           .join("");
         if (items.length > 500)
-          tbody.innerHTML += `<tr><td colspan="6">... +${items.length - 500}</td></tr>`;
+          tbody.innerHTML += `<tr><td colspan="7">... +${items.length - 500}</td></tr>`;
         if (!items.length)
-          tbody.innerHTML = '<tr><td colspan="6">Nenhum item</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="7">Nenhum item</td></tr>';
       }
       function filterRpt(f, btn) {
         S.filter = f;
@@ -2718,6 +2762,7 @@
       function exportRpt(fmt) {
         const items = getReportItems().map((i) => ({
           code: i.code,
+          op: i.op || "-",
           status:
             i.status === "checked"
               ? "Conferido"
@@ -2731,27 +2776,29 @@
         const total = S.db.length,
           chk = S.checked.size,
           pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0,
-          date = new Date();
+          date = new Date(),
+          tipo = S.confType || "-",
+          conferente = S.checkerName || "-",
+          extras = [...new Set(S.extras)].length;
         if (fmt === "csv") {
-          let csv = "Código;Status;Hora;Localização;Foto\n";
+          let csv = `RELATÓRIO DE CONFERÊNCIA\nData;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente;${conferente}\nTipo de Conferência;${tipo}\n\nRESUMO\nTotal;${total}\nConferidos;${chk}\nPendentes;${total - chk}\nNão Previstas;${extras}\nPercentual;${pct}%\n\nBOBINAS\nCódigo;OP;Status;Hora;Localização;Foto\n`;
           csv += items
             .map(
               (i) =>
-                `${i.code};${i.status};${i.time};${i.location};${i.hasPhoto ? "Sim" : "Não"}`,
+                `${i.code};${i.op};${i.status};${i.time};${i.location};${i.hasPhoto ? "Sim" : "Não"}`,
             )
             .join("\n");
-          csv += `\n\n;RESUMO;\n;Conferente;${S.checkerName || ""}\n;Total;${total}\n;Conferidos;${chk}\n;Pendentes;${total - chk}\n;Não Previstas;${S.extras.length}\n;Percentual;${pct}%`;
           download(
             csv,
             `conferencia_${date.toISOString().slice(0, 10)}.csv`,
             "text/csv",
           );
         } else {
-          let txt = `RELATÓRIO DE CONFERÊNCIA\nData: ${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente: ${S.checkerName || "-"}\n${"=".repeat(75)}\n\nTotal: ${total}\nConferidos: ${chk}\nPendentes: ${total - chk}\nNão Previstas: ${S.extras.length}\nPercentual: ${pct}%\n\n${"=".repeat(75)}\n\n`;
+          let txt = `RELATÓRIO DE CONFERÊNCIA\nData: ${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente: ${conferente}\nTipo de Conferência: ${tipo}\n${"=".repeat(95)}\n\nTotal: ${total}\nConferidos: ${chk}\nPendentes: ${total - chk}\nNão Previstas: ${extras}\nPercentual: ${pct}%\n\n${"=".repeat(95)}\nBOBINAS\n${"=".repeat(95)}\n\n`;
           txt += items
             .map(
               (i) =>
-                `${i.code.padEnd(25)} | ${i.status.padEnd(15)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | ${i.hasPhoto ? "📸 Sim" : "—"}`,
+                `${i.code.padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | ${i.status.padEnd(15)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | ${i.hasPhoto ? "📸 Sim" : "—"}`,
             )
             .join("\n");
           download(
@@ -2800,9 +2847,9 @@
           const total = S.db.length,
             chk = S.checked.size,
             pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0;
-          csv += `\n;RESUMO;\n;Conferente;${S.checkerName || ""}\n;Total no sistema;${total}\n;Conferidos;${chk}\n;Pendentes;${total - chk}\n;Não Previstas;${extrasUniq.length}\n;Fotos anexadas;${countFotos}\n;Percentual conferido;${pct}%\n;Data;${dateStr} ${timeStr}`;
+          csv += `\n;RESUMO;\n;Conferente;${S.checkerName || ""}\n;Tipo de Conferência;${S.confType || ""}\n;Total no sistema;${total}\n;Conferidos;${chk}\n;Pendentes;${total - chk}\n;Não Previstas;${extrasUniq.length}\n;Fotos anexadas;${countFotos}\n;Percentual conferido;${pct}%\n;Data;${dateStr} ${timeStr}`;
           zip.file(`nao_previstas_${dateStr}.csv`, "\uFEFF" + csv);
-          let txt = `RELATÓRIO DE BOBINAS NÃO PREVISTAS\nData: ${new Date().toLocaleDateString("pt-BR")} ${timeStr}\nConferente: ${S.checkerName || "-"}\n${"=".repeat(70)}\n\nTotal não previstas: ${extrasUniq.length}\nFotos anexadas: ${countFotos}\n\n${"=".repeat(70)}\n\n`;
+          let txt = `RELATÓRIO DE BOBINAS NÃO PREVISTAS\nData: ${new Date().toLocaleDateString("pt-BR")} ${timeStr}\nConferente: ${S.checkerName || "-"}\nTipo de Conferência: ${S.confType || "-"}\n${"=".repeat(70)}\n\nTotal não previstas: ${extrasUniq.length}\nFotos anexadas: ${countFotos}\n\n${"=".repeat(70)}\n\n`;
           extrasUniq.forEach((code) => {
             const scan = S.scanned.find(
               (s) => s.code === code && s.status === "not-found",
@@ -2923,7 +2970,7 @@
           await camScanner.start(
             camId,
             {
-              fps: 15,
+              fps: 25,
               qrbox: { width: 280, height: 100 },
               disableFlip: true,
               formatsToSupport: [
@@ -2945,7 +2992,7 @@
               camCooldown = true;
               camProcessScan(String(text).trim());
               if (!camPendingExtra)
-                setTimeout(() => (camCooldown = false), 2000);
+                setTimeout(() => (camCooldown = false), 800);
             },
             () => {},
           );
@@ -3000,10 +3047,10 @@
         const time = new Date().toLocaleTimeString("pt-BR"),
           err = document.getElementById("camErrorOverlay"),
           warn = document.getElementById("camWarnOverlay");
-        if (!/^(500|700)\d{8}$/.test(code)) {
+        if (!/^(500|700)\d{8,9}$/.test(code)) {
           camFlash("red");
           err.classList.add("show");
-          setTimeout(() => err.classList.remove("show"), 2000);
+          setTimeout(() => err.classList.remove("show"), 900);
           camVibrate("notfound");
           camBeep("notfound");
           return;
@@ -3248,7 +3295,7 @@
           if (b) {
             var d = b.createElement("script");
             d.innerHTML =
-              "window.__CF$cv$params={r:'a10dc25fbe18876d',t:'MTc4MjMyNTM2MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
+              "window.__CF$cv$params={r:'a10de7f3bd39c5f6',t:'MTc4MjMyNjg5OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
             b.getElementsByTagName("head")[0].appendChild(d);
           }
         }
