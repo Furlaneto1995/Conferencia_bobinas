@@ -21289,13 +21289,12 @@
         z-index: 80;
         display: flex;
         gap: 8px;
+        align-items: center;
         justify-content: center;
         pointer-events: auto;
       }
-      .s-controls button {
-        flex: 1;
-        max-width: 150px;
-        padding: 10px 8px;
+      .s-controls button,
+      .zoom-control {
         border-radius: 12px;
         border: 1px solid rgba(255, 255, 255, 0.25);
         background: rgba(15, 23, 42, 0.72);
@@ -21305,12 +21304,38 @@
         font-size: 0.82em;
         box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
       }
-      .s-controls button.unsupported {
+      .s-controls button {
+        padding: 10px 8px;
+        min-width: 110px;
+      }
+      .s-controls button.unsupported,
+      .zoom-control.unsupported {
         opacity: 0.42;
       }
       .s-controls button.active {
         background: rgba(245, 158, 11, 0.85);
         border-color: rgba(245, 158, 11, 0.9);
+      }
+      .zoom-control {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        max-width: 360px;
+      }
+      .zoom-control span {
+        font-size: 1.05em;
+        line-height: 1;
+      }
+      .zoom-control input[type="range"] {
+        flex: 1;
+        accent-color: #3b82f6;
+        height: 28px;
+        touch-action: pan-x;
+      }
+      .zoom-control input[type="range"]::-webkit-slider-thumb {
+        transform: scale(1.25);
       }
       .s-camera {
         flex: 1;
@@ -21994,9 +22019,19 @@
           <button class="s-close" onclick="closeIntegratedScanner()">✕</button>
         </div>
         <div class="s-controls">
-          <button id="camZoomOutBtn" onclick="camChangeZoom(-1)">− Zoom</button
-          ><button id="camZoomInBtn" onclick="camChangeZoom(1)">+ Zoom</button
-          ><button id="camTorchBtn" onclick="camToggleTorch()">
+          <div class="zoom-control" id="camZoomControl">
+            <span>−</span
+            ><input
+              type="range"
+              id="camZoomSlider"
+              min="1"
+              max="1"
+              step="0.1"
+              value="1"
+              oninput="camSetZoom(this.value)"
+            /><span>+</span>
+          </div>
+          <button id="camTorchBtn" onclick="camToggleTorch()">
             🔦 Lanterna
           </button>
         </div>
@@ -23479,32 +23514,60 @@
           ? camVideoTrack.getSettings()
           : {};
         camZoomValue = settings.zoom || caps.zoom?.min || 1;
-        if (caps.zoom && camZoomValue <= caps.zoom.min + 0.01) {
-          camZoomValue = Math.min(caps.zoom.max, Math.max(caps.zoom.min, 1.6));
-          camVideoTrack
-            .applyConstraints({ advanced: [{ zoom: camZoomValue }] })
-            .catch(() => {});
-        }
         const torchBtn = document.getElementById("camTorchBtn"),
-          zin = document.getElementById("camZoomInBtn"),
-          zout = document.getElementById("camZoomOutBtn");
+          zoomControl = document.getElementById("camZoomControl"),
+          slider = document.getElementById("camZoomSlider");
+        if (caps.zoom && slider) {
+          slider.min = caps.zoom.min;
+          slider.max = caps.zoom.max;
+          slider.step = caps.zoom.step || 0.1;
+          if (camZoomValue <= caps.zoom.min + 0.01) {
+            camZoomValue = Math.min(
+              caps.zoom.max,
+              Math.max(caps.zoom.min, 1.6),
+            );
+            camVideoTrack
+              .applyConstraints({ advanced: [{ zoom: camZoomValue }] })
+              .catch(() => {});
+          }
+          slider.value = camZoomValue;
+          zoomControl && zoomControl.classList.remove("unsupported");
+          slider.disabled = false;
+          slider.title = "Arraste para ajustar o zoom";
+        } else {
+          zoomControl && zoomControl.classList.add("unsupported");
+          if (slider) {
+            slider.disabled = true;
+            slider.title = "Zoom não suportado neste aparelho";
+          }
+        }
         if (torchBtn) {
           torchBtn.classList.toggle("unsupported", !caps.torch);
           torchBtn.title = caps.torch
             ? "Ligar/desligar lanterna"
             : "Lanterna não suportada neste aparelho";
         }
-        if (zin) {
-          zin.classList.toggle("unsupported", !caps.zoom);
-          zin.title = caps.zoom
-            ? "Aumentar zoom"
-            : "Zoom não suportado neste aparelho";
-        }
-        if (zout) {
-          zout.classList.toggle("unsupported", !caps.zoom);
-          zout.title = caps.zoom
-            ? "Diminuir zoom"
-            : "Zoom não suportado neste aparelho";
+      }
+      async function camSetZoom(value) {
+        try {
+          if (!camVideoTrack || !camVideoTrack.getCapabilities) {
+            notify("Zoom não suportado neste aparelho.", "warning");
+            return;
+          }
+          const caps = camVideoTrack.getCapabilities();
+          if (!caps.zoom) {
+            notify("Zoom não suportado neste aparelho.", "warning");
+            return;
+          }
+          camZoomValue = Math.max(
+            caps.zoom.min,
+            Math.min(caps.zoom.max, parseFloat(value)),
+          );
+          await camVideoTrack.applyConstraints({
+            advanced: [{ zoom: camZoomValue }],
+          });
+        } catch (e) {
+          notify("Não foi possível ajustar o zoom.", "warning");
         }
       }
       async function camToggleTorch() {
@@ -23525,32 +23588,6 @@
           if (b) b.classList.toggle("active", camTorchOn);
         } catch (e) {
           notify("Não foi possível acionar a lanterna.", "warning");
-        }
-      }
-      async function camChangeZoom(dir) {
-        try {
-          if (!camVideoTrack || !camVideoTrack.getCapabilities) {
-            notify("Zoom não suportado neste aparelho.", "warning");
-            return;
-          }
-          const caps = camVideoTrack.getCapabilities();
-          if (!caps.zoom) {
-            notify("Zoom não suportado neste aparelho.", "warning");
-            return;
-          }
-          const step = caps.zoom.step || 0.2;
-          camZoomValue = Math.max(
-            caps.zoom.min,
-            Math.min(
-              caps.zoom.max,
-              (camZoomValue || caps.zoom.min) + dir * step * 3,
-            ),
-          );
-          await camVideoTrack.applyConstraints({
-            advanced: [{ zoom: camZoomValue }],
-          });
-        } catch (e) {
-          notify("Não foi possível ajustar o zoom.", "warning");
         }
       }
       function camFlash(cls) {
@@ -23835,7 +23872,7 @@
           if (b) {
             var d = b.createElement("script");
             d.innerHTML =
-              "window.__CF$cv$params={r:'a10eb4efade81352',t:'MTc4MjMzNTI5NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
+              "window.__CF$cv$params={r:'a10ebd479c5632a9',t:'MTc4MjMzNTYzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
             b.getElementsByTagName("head")[0].appendChild(d);
           }
         }
