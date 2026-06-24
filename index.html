@@ -21306,7 +21306,7 @@
       }
       .s-controls button {
         padding: 10px 8px;
-        min-width: 110px;
+        min-width: 92px;
       }
       .s-controls button.unsupported,
       .zoom-control.unsupported {
@@ -22032,7 +22032,9 @@
             /><span>+</span>
           </div>
           <button id="camTorchBtn" onclick="camToggleTorch()">
-            🔦 Lanterna
+            🔦 Lanterna</button
+          ><button id="camManualBtn" onclick="camOpenManualModal()">
+            📸 Manual
           </button>
         </div>
         <div class="s-camera">
@@ -22048,9 +22050,13 @@
         </div>
         <div class="cam-loc-modal" id="camLocModal">
           <div class="cam-loc-box">
-            <div class="cam-loc-header">⚠️ BOBINA NÃO PREVISTA</div>
+            <div class="cam-loc-header" id="camLocHeader">
+              ⚠️ BOBINA NÃO PREVISTA
+            </div>
             <div class="cam-loc-code" id="camLocCode"></div>
-            <div class="cam-loc-label">📌 Informe a localização:</div>
+            <div class="cam-loc-label" id="camLocLabel">
+              📌 Informe a localização:
+            </div>
             <input
               type="text"
               class="cam-loc-input"
@@ -22136,6 +22142,66 @@
                 onclick="camCancelLocation()"
               >
                 ❌ Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="cam-loc-modal" id="camManualModal">
+          <div
+            class="cam-loc-box"
+            style="max-width: 520px; border-color: #3b82f6"
+          >
+            <div class="cam-loc-header" style="color: #3b82f6">
+              📸 Conferência Manual
+            </div>
+            <div class="cam-loc-label">Busque e selecione a OP pendente:</div>
+            <input
+              type="text"
+              class="cam-loc-input"
+              id="camManualSearch"
+              placeholder="Buscar OP..."
+              oninput="camRenderManualOps(this.value)"
+              autocomplete="off"
+            />
+            <div
+              id="camManualOps"
+              style="
+                max-height: 42vh;
+                overflow: auto;
+                margin-top: 10px;
+                display: grid;
+                gap: 6px;
+              "
+            ></div>
+            <div id="camManualBobinas" style="display: none; margin-top: 10px">
+              <button
+                class="cam-loc-btn cam-cancel"
+                style="width: 100%; margin-bottom: 8px"
+                onclick="camBackManualOps()"
+              >
+                ← Voltar para OPs
+              </button>
+              <div
+                id="camManualBobinasList"
+                style="
+                  max-height: 42vh;
+                  overflow: auto;
+                  display: grid;
+                  gap: 6px;
+                "
+              ></div>
+            </div>
+            <div class="cam-loc-buttons">
+              <button
+                class="cam-loc-btn cam-cancel"
+                onclick="camManualNotExpected()"
+              >
+                ⚠️ Não prevista</button
+              ><button
+                class="cam-loc-btn cam-cancel"
+                onclick="camCloseManualModal()"
+              >
+                Cancelar
               </button>
             </div>
           </div>
@@ -23115,6 +23181,7 @@
             code,
             op: "-",
             status: "extra",
+            manual: false,
             time: scan ? scan.time : "-",
             location: scan?.location || "-",
             hasPhoto: scan?.hasPhoto || false,
@@ -23129,9 +23196,10 @@
             code,
             op: getOP(code),
             status: chk ? "checked" : "pending",
+            manual: !!scan?.manual,
             time: scan ? scan.time : "-",
-            location: "",
-            hasPhoto: false,
+            location: scan?.location || "",
+            hasPhoto: !!scan?.hasPhoto,
           });
         });
         return items;
@@ -23154,7 +23222,9 @@
           .map((it, i) => {
             let bt =
               it.status === "checked"
-                ? "✅"
+                ? it.manual
+                  ? "📸 Manual"
+                  : "✅"
                 : it.status === "pending"
                   ? "⏳"
                   : "⚠️";
@@ -23184,7 +23254,9 @@
           op: i.op || "-",
           status:
             i.status === "checked"
-              ? "Conferido"
+              ? i.manual
+                ? "Conferido Manual"
+                : "Conferido"
               : i.status === "pending"
                 ? "Pendente"
                 : "Não Prevista",
@@ -23307,6 +23379,8 @@
         camZoomValue = null,
         camCooldown = false,
         camPendingExtra = null,
+        camManualMode = "extra",
+        camManualSelectedCode = null,
         camCurrentPhotoEtiqueta = null,
         camCurrentPhotoBobina = null,
         camActx = null;
@@ -23655,13 +23729,111 @@
           camShowLocationModal(code);
         }
       }
-      function camShowLocationModal(code) {
+      function camOpenManualModal() {
+        camCooldown = true;
+        document.getElementById("camManualModal").classList.add("show");
+        document.getElementById("camManualSearch").value = "";
+        document.getElementById("camManualBobinas").style.display = "none";
+        document.getElementById("camManualOps").style.display = "grid";
+        camRenderManualOps("");
+        setTimeout(
+          () => document.getElementById("camManualSearch").focus(),
+          200,
+        );
+      }
+      function camCloseManualModal() {
+        document.getElementById("camManualModal").classList.remove("show");
+        setTimeout(() => (camCooldown = false), 300);
+      }
+      function camPendingByOp() {
+        const map = {};
+        S.db.forEach((code) => {
+          if (S.checked.has(code)) return;
+          const op = getOP(code) || "-";
+          if (!map[op]) map[op] = [];
+          map[op].push(code);
+        });
+        return map;
+      }
+      function camRenderManualOps(q = "") {
+        const box = document.getElementById("camManualOps"),
+          map = camPendingByOp();
+        const ops = Object.keys(map)
+          .filter((op) => op.toLowerCase().includes(String(q).toLowerCase()))
+          .sort();
+        if (!ops.length) {
+          box.innerHTML =
+            '<div style="color:#94a3b8;text-align:center;padding:14px">Nenhuma OP pendente encontrada</div>';
+          return;
+        }
+        box.innerHTML = ops
+          .map(
+            (op) =>
+              `<button class="cam-loc-btn cam-confirm" style="justify-content:space-between" onclick="camShowManualBobinas('${esc(op).replace(/'/g, "&#39;")}')"><span>OP ${esc(op)}</span><span>${map[op].length} bobina(s)</span></button>`,
+          )
+          .join("");
+      }
+      function camShowManualBobinas(op) {
+        const list = document.getElementById("camManualBobinasList");
+        const codes = camPendingByOp()[op] || [];
+        document.getElementById("camManualOps").style.display = "none";
+        document.getElementById("camManualBobinas").style.display = "block";
+        list.innerHTML =
+          codes
+            .map((code) => {
+              const m = S.meta && S.meta[code] ? S.meta[code] : {};
+              return `<button class="cam-loc-btn cam-confirm" style="display:block;text-align:left;line-height:1.35" onclick="camSelectManualBobina('${esc(code).replace(/'/g, "&#39;")}')"><strong>${esc(code)}</strong><br><small>OP: ${esc(op)} ${m.material ? " • Material: " + esc(m.material) : ""} ${m.etapa ? " • Etapa: " + esc(m.etapa) : ""}</small></button>`;
+            })
+            .join("") ||
+          '<div style="color:#94a3b8;text-align:center;padding:14px">Nenhuma bobina pendente nesta OP</div>';
+      }
+      function camBackManualOps() {
+        document.getElementById("camManualBobinas").style.display = "none";
+        document.getElementById("camManualOps").style.display = "grid";
+      }
+      function camSelectManualBobina(code) {
+        camCloseManualModal();
+        camManualSelectedCode = code;
+        camPendingExtra = null;
+        camShowLocationModal(code, "manualFound");
+        camCooldown = true;
+      }
+      function camManualNotExpected() {
+        camCloseManualModal();
+        const code =
+          "MANUAL-NP-" +
+          new Date()
+            .toISOString()
+            .replace(/[-:.TZ]/g, "")
+            .slice(0, 14);
+        camPendingExtra = {
+          code,
+          time: new Date().toLocaleTimeString("pt-BR"),
+        };
+        camManualSelectedCode = null;
+        camShowLocationModal(code, "extra");
+        camCooldown = true;
+      }
+      function camShowLocationModal(code, mode = "extra") {
+        camManualMode = mode;
         document.getElementById("camLocModal").classList.add("show");
         document.getElementById("camLocCode").textContent = code;
         document.getElementById("camLocInput").value = "";
         document.getElementById("camLocError").style.display = "none";
         document.getElementById("camPhotoErrorEtiqueta").style.display = "none";
         document.getElementById("camPhotoErrorBobina").style.display = "none";
+        document.getElementById("camLocHeader").textContent =
+          mode === "manualFound"
+            ? "📸 CONFERÊNCIA MANUAL"
+            : "⚠️ BOBINA NÃO PREVISTA";
+        document.getElementById("camLocHeader").style.color =
+          mode === "manualFound" ? "#3b82f6" : "#ef4444";
+        document.getElementById("camLocLabel").textContent =
+          mode === "manualFound"
+            ? "📌 Observação/localização (opcional):"
+            : "📌 Informe a localização:";
+        document.getElementById("camLocInput").placeholder =
+          mode === "manualFound" ? "Opcional" : "Ex: A2, E17, 240...";
         camRemovePhoto("etiqueta");
         camRemovePhoto("bobina");
         setTimeout(() => document.getElementById("camLocInput").focus(), 300);
@@ -23670,7 +23842,7 @@
         const input = document.getElementById("camLocInput"),
           loc = input.value.trim();
         let hasError = false;
-        if (!loc) {
+        if (camManualMode !== "manualFound" && !loc) {
           document.getElementById("camLocError").style.display = "block";
           input.focus();
           hasError = true;
@@ -23692,7 +23864,34 @@
           camVibrate("notfound");
           return;
         }
-        if (camPendingExtra) {
+        if (camManualMode === "manualFound" && camManualSelectedCode) {
+          const code = camManualSelectedCode,
+            time = new Date().toLocaleTimeString("pt-BR");
+          S.checked.add(code);
+          S.scanned.unshift({
+            code,
+            time,
+            status: "found",
+            manual: true,
+            location: loc,
+            hasPhoto: true,
+            hasPhotoEtiqueta: true,
+            hasPhotoBobina: true,
+          });
+          await savePhotosExtra(
+            code,
+            camCurrentPhotoEtiqueta,
+            camCurrentPhotoBobina,
+          );
+          camShowResult("green", `📸 MANUAL — "${code}"`);
+          save();
+          camUpdateCounters();
+          camUpdateHistory();
+          updateStats();
+          updateHistory();
+          updateDBUI();
+          camManualSelectedCode = null;
+        } else if (camPendingExtra) {
           S.extras.push(camPendingExtra.code);
           S.scanned.unshift({
             code: camPendingExtra.code,
@@ -23719,11 +23918,14 @@
         }
         camCurrentPhotoEtiqueta = null;
         camCurrentPhotoBobina = null;
+        camManualMode = "extra";
         document.getElementById("camLocModal").classList.remove("show");
         setTimeout(() => (camCooldown = false), 1000);
       }
       function camCancelLocation() {
         camPendingExtra = null;
+        camManualSelectedCode = null;
+        camManualMode = "extra";
         camCurrentPhotoEtiqueta = null;
         camCurrentPhotoBobina = null;
         document.getElementById("camLocModal").classList.remove("show");
@@ -23872,7 +24074,7 @@
           if (b) {
             var d = b.createElement("script");
             d.innerHTML =
-              "window.__CF$cv$params={r:'a10ebd479c5632a9',t:'MTc4MjMzNTYzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
+              "window.__CF$cv$params={r:'a10ed91f4a5701a2',t:'MTc4MjMzNjc3OA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
             b.getElementsByTagName("head")[0].appendChild(d);
           }
         }
