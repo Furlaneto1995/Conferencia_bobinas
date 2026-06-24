@@ -1134,6 +1134,37 @@
         align-items: center;
         justify-content: center;
       }
+      .s-controls {
+        position: absolute;
+        top: 58px;
+        left: 10px;
+        right: 10px;
+        z-index: 55;
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        pointer-events: auto;
+      }
+      .s-controls button {
+        flex: 1;
+        max-width: 150px;
+        padding: 10px 8px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        background: rgba(15, 23, 42, 0.72);
+        backdrop-filter: blur(8px);
+        color: #fff;
+        font-weight: 800;
+        font-size: 0.82em;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+      }
+      .s-controls button.unsupported {
+        opacity: 0.42;
+      }
+      .s-controls button.active {
+        background: rgba(245, 158, 11, 0.85);
+        border-color: rgba(245, 158, 11, 0.9);
+      }
       .s-camera {
         flex: 1;
         position: relative;
@@ -1810,47 +1841,14 @@
           <div class="s-title">
             <span class="s-dot"></span> Scanner de Bobinas
           </div>
-          <div style="display: flex; gap: 6px; align-items: center">
-            <button
-              class="s-close"
-              id="camZoomOutBtn"
-              onclick="camChangeZoom(-1)"
-              title="Zoom -"
-              style="
-                background: rgba(59, 130, 246, 0.3);
-                border-color: rgba(59, 130, 246, 0.6);
-                font-size: 0.9em;
-              "
-            >
-              −</button
-            ><button
-              class="s-close"
-              id="camZoomInBtn"
-              onclick="camChangeZoom(1)"
-              title="Zoom +"
-              style="
-                background: rgba(59, 130, 246, 0.3);
-                border-color: rgba(59, 130, 246, 0.6);
-                font-size: 0.9em;
-              "
-            >
-              +</button
-            ><button
-              class="s-close"
-              id="camTorchBtn"
-              onclick="camToggleTorch()"
-              title="Lanterna"
-              style="
-                background: rgba(245, 158, 11, 0.3);
-                border-color: rgba(245, 158, 11, 0.6);
-                font-size: 0.95em;
-              "
-            >
-              🔦</button
-            ><button class="s-close" onclick="closeIntegratedScanner()">
-              ✕
-            </button>
-          </div>
+          <button class="s-close" onclick="closeIntegratedScanner()">✕</button>
+        </div>
+        <div class="s-controls">
+          <button id="camZoomOutBtn" onclick="camChangeZoom(-1)">− Zoom</button
+          ><button id="camZoomInBtn" onclick="camChangeZoom(1)">+ Zoom</button
+          ><button id="camTorchBtn" onclick="camToggleTorch()">
+            🔦 Lanterna
+          </button>
         </div>
         <div class="s-camera">
           <video id="camReader" playsinline muted></video>
@@ -3304,7 +3302,10 @@
       function camSetupCameraControls() {
         const video = document.getElementById("camReader");
         const stream = video && video.srcObject;
-        if (!stream) return;
+        if (!stream) {
+          setTimeout(camSetupCameraControls, 500);
+          return;
+        }
         camVideoTrack = stream.getVideoTracks()[0];
         if (!camVideoTrack) return;
         const caps = camVideoTrack.getCapabilities
@@ -3317,9 +3318,24 @@
         const torchBtn = document.getElementById("camTorchBtn"),
           zin = document.getElementById("camZoomInBtn"),
           zout = document.getElementById("camZoomOutBtn");
-        if (torchBtn) torchBtn.style.opacity = caps.torch ? 1 : 0.35;
-        if (zin) zin.style.opacity = caps.zoom ? 1 : 0.35;
-        if (zout) zout.style.opacity = caps.zoom ? 1 : 0.35;
+        if (torchBtn) {
+          torchBtn.classList.toggle("unsupported", !caps.torch);
+          torchBtn.title = caps.torch
+            ? "Ligar/desligar lanterna"
+            : "Lanterna não suportada neste aparelho";
+        }
+        if (zin) {
+          zin.classList.toggle("unsupported", !caps.zoom);
+          zin.title = caps.zoom
+            ? "Aumentar zoom"
+            : "Zoom não suportado neste aparelho";
+        }
+        if (zout) {
+          zout.classList.toggle("unsupported", !caps.zoom);
+          zout.title = caps.zoom
+            ? "Diminuir zoom"
+            : "Zoom não suportado neste aparelho";
+        }
       }
       async function camToggleTorch() {
         try {
@@ -3336,10 +3352,7 @@
             advanced: [{ torch: camTorchOn }],
           });
           const b = document.getElementById("camTorchBtn");
-          if (b)
-            b.style.background = camTorchOn
-              ? "rgba(245,158,11,.75)"
-              : "rgba(245,158,11,.3)";
+          if (b) b.classList.toggle("active", camTorchOn);
         } catch (e) {
           notify("Não foi possível acionar a lanterna.", "warning");
         }
@@ -3652,7 +3665,7 @@
           if (b) {
             var d = b.createElement("script");
             d.innerHTML =
-              "window.__CF$cv$params={r:'a10e44593840f3bf',t:'MTc4MjMzMDY4NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
+              "window.__CF$cv$params={r:'a10e4c4f4c0081d6',t:'MTc4MjMzMTAxMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
             b.getElementsByTagName("head")[0].appendChild(d);
           }
         }
