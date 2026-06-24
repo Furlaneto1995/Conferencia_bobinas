@@ -17397,6 +17397,23 @@
       });
     </script>
     <script>
+      (function () {
+        try {
+          if (typeof window !== "undefined" && !window.ZXing) {
+            if (typeof ZXing !== "undefined") window.ZXing = ZXing;
+            else if (
+              typeof exports !== "undefined" &&
+              exports &&
+              exports.BrowserMultiFormatReader
+            )
+              window.ZXing = exports;
+          }
+        } catch (e) {
+          console.warn("ZXing shim:", e);
+        }
+      })();
+    </script>
+    <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
           navigator.serviceWorker
@@ -20571,14 +20588,64 @@
         }
       }
 
+      function ensureZXingLoaded() {
+        return new Promise((resolve, reject) => {
+          try {
+            if (window.ZXing && window.ZXing.BrowserMultiFormatReader)
+              return resolve(window.ZXing);
+            if (
+              typeof ZXing !== "undefined" &&
+              ZXing.BrowserMultiFormatReader
+            ) {
+              window.ZXing = ZXing;
+              return resolve(window.ZXing);
+            }
+            if (
+              typeof exports !== "undefined" &&
+              exports &&
+              exports.BrowserMultiFormatReader
+            ) {
+              window.ZXing = exports;
+              return resolve(window.ZXing);
+            }
+            const old = document.querySelector("script[data-zxing-fallback]");
+            if (old) {
+              old.addEventListener("load", () => resolve(window.ZXing));
+              old.addEventListener("error", reject);
+              return;
+            }
+            const sc = document.createElement("script");
+            sc.src =
+              "https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js";
+            sc.dataset.zxingFallback = "1";
+            sc.onload = () => {
+              if (window.ZXing && window.ZXing.BrowserMultiFormatReader)
+                resolve(window.ZXing);
+              else reject(new Error("ZXing carregou, mas não inicializou."));
+            };
+            sc.onerror = () =>
+              reject(new Error("Falha ao carregar fallback ZXing."));
+            document.head.appendChild(sc);
+          } catch (e) {
+            reject(e);
+          }
+        });
+      }
       async function startIntegratedScanner() {
         load();
         if (S.db.length === 0) {
           notify("Nenhum dado importado!", "error");
           return;
         }
-        if (typeof ZXing === "undefined") {
-          notify("Biblioteca ZXing da câmera não carregou.", "error");
+        let ZX;
+        try {
+          ZX = await ensureZXingLoaded();
+        } catch (e) {
+          console.error(e);
+          notify(
+            "Biblioteca ZXing da câmera não carregou. Se estiver offline, baixe novamente este arquivo atualizado.",
+            "error",
+          );
           return;
         }
         document.getElementById("scannerOverlay").classList.add("show");
@@ -20588,11 +20655,11 @@
         camCooldown = false;
         try {
           const hints = new Map();
-          hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-            ZXing.BarcodeFormat.CODE_128,
+          hints.set(ZX.DecodeHintType.POSSIBLE_FORMATS, [
+            ZX.BarcodeFormat.CODE_128,
           ]);
-          hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-          camScanner = new ZXing.BrowserMultiFormatReader(hints, 80);
+          hints.set(ZX.DecodeHintType.TRY_HARDER, true);
+          camScanner = new ZX.BrowserMultiFormatReader(hints, 80);
           const constraints = {
             audio: false,
             video: {
@@ -21013,7 +21080,7 @@
           if (b) {
             var d = b.createElement("script");
             d.innerHTML =
-              "window.__CF$cv$params={r:'a10e61af9fa3acbf',t:'MTc4MjMzMTg4Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
+              "window.__CF$cv$params={r:'a10e69c13bd68bfa',t:'MTc4MjMzMjIxNg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
             b.getElementsByTagName("head")[0].appendChild(d);
           }
         }
