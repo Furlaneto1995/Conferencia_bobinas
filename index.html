@@ -18501,10 +18501,10 @@
       }
       .s-controls {
         position: absolute;
-        top: 58px;
         left: 10px;
         right: 10px;
-        z-index: 55;
+        bottom: max(env(safe-area-inset-bottom, 8px), 8px);
+        z-index: 80;
         display: flex;
         gap: 8px;
         justify-content: center;
@@ -18629,7 +18629,7 @@
         display: flex;
         flex-direction: column;
         max-height: 240px;
-        padding-bottom: max(env(safe-area-inset-bottom, 6px), 6px);
+        padding-bottom: 64px;
       }
       .s-result {
         padding: 7px 12px;
@@ -20660,12 +20660,14 @@
           ]);
           hints.set(ZX.DecodeHintType.TRY_HARDER, true);
           camScanner = new ZX.BrowserMultiFormatReader(hints, 80);
+          const isPortrait = window.innerHeight > window.innerWidth;
           const constraints = {
             audio: false,
             video: {
               facingMode: { ideal: "environment" },
-              width: { ideal: 1920 },
-              height: { ideal: 1080 },
+              width: { ideal: isPortrait ? 1080 : 1920 },
+              height: { ideal: isPortrait ? 1920 : 1080 },
+              aspectRatio: { ideal: isPortrait ? 9 / 16 : 16 / 9 },
               frameRate: { ideal: 30, max: 60 },
               advanced: [{ focusMode: "continuous" }],
             },
@@ -21080,7 +21082,7 @@
           if (b) {
             var d = b.createElement("script");
             d.innerHTML =
-              "window.__CF$cv$params={r:'a10e69c13bd68bfa',t:'MTc4MjMzMjIxNg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
+              "window.__CF$cv$params={r:'a10e71bffe3135d8',t:'MTc4MjMzMjU0NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
             b.getElementsByTagName("head")[0].appendChild(d);
           }
         }
