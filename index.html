@@ -1422,67 +1422,73 @@
     </div>
     <!-- Modal Tipo de Conferência -->
     <div class="modal-bg" id="confTypeModal">
-      <div class="modal">
+      <div
+        class="modal"
+        style="max-height: calc(100dvh - 32px); overflow: auto"
+      >
         <h2>📋 Tipo de Conferência</h2>
-        <p>Qual o tipo de conferência?</p>
-        <div
-          style="
-            background: var(--bg-input);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 10px;
-            margin-bottom: 10px;
-          "
-        >
-          <div
-            style="
-              font-weight: 700;
-              margin-bottom: 8px;
-              color: var(--text-primary);
-            "
-          >
-            Bases
-          </div>
-          <div class="btn-group" style="margin-top: 0">
-            <button
-              class="btn btn-primary"
-              onclick="selectConferenceType('bases_todas')"
-            >
-              Todas as bobinas
-            </button>
-            <button
-              class="btn btn-outline"
-              onclick="selectConferenceType('bases_peliculas')"
-            >
-              Películas
-            </button>
-          </div>
-          <div
-            style="font-size: 0.75em; color: var(--text-muted); margin-top: 6px"
-          >
-            Películas será ajustado depois. Por enquanto, use “Todas as
-            bobinas”.
-          </div>
-        </div>
-        <div class="btn-group">
+        <p style="margin-bottom: 10px">Escolha uma opção:</p>
+        <div style="display: grid; grid-template-columns: 1fr; gap: 8px">
           <button
             class="btn btn-primary"
+            style="
+              width: 100%;
+              justify-content: space-between;
+              padding: 12px 14px;
+            "
+            onclick="selectConferenceType('bases_todas')"
+          >
+            <span>Bases - Todas</span><small>Etapa 20</small>
+          </button>
+          <button
+            class="btn btn-outline"
+            style="
+              width: 100%;
+              justify-content: space-between;
+              padding: 12px 14px;
+            "
+            onclick="selectConferenceType('bases_peliculas')"
+          >
+            <span>Bases - Películas</span><small>BOPP/PP/PET</small>
+          </button>
+          <button
+            class="btn btn-primary"
+            style="
+              width: 100%;
+              justify-content: space-between;
+              padding: 12px 14px;
+            "
             onclick="selectConferenceType('capas')"
           >
-            Capas
+            <span>Capas</span><small>30/31</small>
           </button>
           <button
             class="btn btn-primary"
+            style="
+              width: 100%;
+              justify-content: space-between;
+              padding: 12px 14px;
+            "
             onclick="selectConferenceType('refiladeira')"
           >
-            Bobinas para Refiladeira
+            <span>Refiladeira</span><small>40-47</small>
           </button>
-        </div>
-        <div class="btn-group">
-          <button class="btn btn-primary" onclick="selectConferenceType('cs')">
-            Bobinas para C&amp;S
+          <button
+            class="btn btn-primary"
+            style="
+              width: 100%;
+              justify-content: space-between;
+              padding: 12px 14px;
+            "
+            onclick="selectConferenceType('cs')"
+          >
+            <span>C&amp;S</span><small>50-55</small>
           </button>
-          <button class="btn btn-outline" onclick="closeConferenceTypeModal()">
+          <button
+            class="btn btn-outline"
+            style="width: 100%; justify-content: center; padding: 12px 14px"
+            onclick="closeConferenceTypeModal()"
+          >
             Cancelar
           </button>
         </div>
@@ -1861,21 +1867,19 @@
         document.getElementById("confTypeModal").classList.remove("show");
       }
       function selectConferenceType(type) {
-        if (type === "bases_peliculas") {
-          notify(
-            "A opção Películas será ajustada depois. Use Bases > Todas as bobinas por enquanto.",
-            "warning",
-          );
-          return;
-        }
         const cfg = {
-          bases_todas: { label: "Bases - Todas as bobinas", etapas: [20] },
+          bases_todas: { label: "Bases - Todas", etapas: [20] },
+          bases_peliculas: {
+            label: "Bases - Películas",
+            etapas: [20],
+            materialTerms: ["BOPP", "PP", "PET"],
+          },
           capas: { label: "Capas", etapas: [30, 31] },
           refiladeira: {
-            label: "Bobinas para Refiladeira",
+            label: "Refiladeira",
             etapas: [40, 41, 42, 43, 44, 45, 46, 47],
           },
-          cs: { label: "Bobinas para C&S", etapas: [50, 51, 52, 53, 54, 55] },
+          cs: { label: "C&S", etapas: [50, 51, 52, 53, 54, 55] },
         }[type];
         if (!cfg) return;
         importByConferenceType(cfg);
@@ -1886,8 +1890,12 @@
           return;
         }
         const bIdx = S.fileLayout.idx.BARRAS_ORIGEM,
-          eIdx = S.fileLayout.idx.ETAPA;
+          eIdx = S.fileLayout.idx.ETAPA,
+          mIdx = S.fileLayout.idx.MATERIAL;
         const etapas = new Set(cfg.etapas.map(Number));
+        const terms = (cfg.materialTerms || []).map((t) =>
+          String(t).toUpperCase(),
+        );
         const rows = S.fileData.slice(1);
         const codes = [];
         let matched = 0;
@@ -1895,11 +1903,14 @@
           const etapaTxt = String(r[eIdx] || "").trim();
           const m = etapaTxt.match(/\d+/);
           const etapa = m ? parseInt(m[0], 10) : NaN;
-          if (etapas.has(etapa)) {
-            matched++;
-            const code = String(r[bIdx] || "").trim();
-            if (code) codes.push(code);
+          if (!etapas.has(etapa)) return;
+          if (terms.length) {
+            const material = String(r[mIdx] || "").toUpperCase();
+            if (!terms.some((t) => material.includes(t))) return;
           }
+          matched++;
+          const code = String(r[bIdx] || "").trim();
+          if (code) codes.push(code);
         });
         const uniq = [...new Set(codes)];
         if (!uniq.length) {
@@ -2383,41 +2394,6 @@
         document.getElementById("btnUndo").disabled = !S.scanned.length;
       }
       init();
-    </script>
-    <script>
-      (function () {
-        function c() {
-          var b = a.contentDocument || a.contentWindow.document;
-          if (b) {
-            var d = b.createElement("script");
-            d.innerHTML =
-              "window.__CF$cv$params={r:'a10d6d4aaad9fefc',t:'MTc4MjMyMTg3NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
-            b.getElementsByTagName("head")[0].appendChild(d);
-          }
-        }
-        if (document.body) {
-          var a = document.createElement("iframe");
-          a.height = 1;
-          a.width = 1;
-          a.style.position = "absolute";
-          a.style.top = 0;
-          a.style.left = 0;
-          a.style.border = "none";
-          a.style.visibility = "hidden";
-          document.body.appendChild(a);
-          if ("loading" !== document.readyState) c();
-          else if (window.addEventListener)
-            document.addEventListener("DOMContentLoaded", c);
-          else {
-            var e = document.onreadystatechange || function () {};
-            document.onreadystatechange = function (b) {
-              e(b);
-              "loading" !== document.readyState &&
-                ((document.onreadystatechange = e), c());
-            };
-          }
-        }
-      })();
     </script>
   </body>
 </html>
