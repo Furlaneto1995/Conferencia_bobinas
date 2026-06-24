@@ -18539,7 +18539,7 @@
       .s-camera #camReader {
         width: 100%;
         height: 100%;
-        object-fit: cover;
+        object-fit: contain;
         background: #000;
       }
       .s-mira {
@@ -18552,14 +18552,14 @@
         justify-content: center;
       }
       .s-mira-line {
-        width: 75%;
-        max-width: 300px;
-        height: 3px;
+        width: 92%;
+        max-width: 720px;
+        height: 4px;
         background: linear-gradient(
           90deg,
           transparent,
-          #ef4444 15%,
-          #ef4444 85%,
+          #ef4444 10%,
+          #ef4444 90%,
           transparent
         );
         box-shadow:
@@ -20660,14 +20660,13 @@
           ]);
           hints.set(ZX.DecodeHintType.TRY_HARDER, true);
           camScanner = new ZX.BrowserMultiFormatReader(hints, 80);
-          const isPortrait = window.innerHeight > window.innerWidth;
           const constraints = {
             audio: false,
             video: {
               facingMode: { ideal: "environment" },
-              width: { ideal: isPortrait ? 1080 : 1920 },
-              height: { ideal: isPortrait ? 1920 : 1080 },
-              aspectRatio: { ideal: isPortrait ? 9 / 16 : 16 / 9 },
+              width: { ideal: 1920 },
+              height: { ideal: 1080 },
+              aspectRatio: { ideal: 16 / 9 },
               frameRate: { ideal: 30, max: 60 },
               advanced: [{ focusMode: "continuous" }],
             },
@@ -21082,7 +21081,7 @@
           if (b) {
             var d = b.createElement("script");
             d.innerHTML =
-              "window.__CF$cv$params={r:'a10e71bffe3135d8',t:'MTc4MjMzMjU0NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
+              "window.__CF$cv$params={r:'a10e7b1ed935ccfb',t:'MTc4MjMzMjkyNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
             b.getElementsByTagName("head")[0].appendChild(d);
           }
         }
