@@ -1967,62 +1967,160 @@
         style="max-height: calc(100dvh - 32px); overflow: auto"
       >
         <h2>📋 Tipo de Conferência</h2>
-        <p style="margin-bottom: 10px">Escolha uma opção:</p>
+        <p style="margin-bottom: 10px">
+          Marque o que deve aparecer na conferência:
+        </p>
         <div style="display: grid; grid-template-columns: 1fr; gap: 8px">
+          <label
+            style="
+              display: flex;
+              align-items: center;
+              gap: 10px;
+              background: var(--bg-input);
+              border: 1px solid var(--border);
+              border-radius: 10px;
+              padding: 12px 14px;
+              cursor: pointer;
+            "
+          >
+            <input
+              type="checkbox"
+              class="conf-check"
+              value="bases_todas"
+              checked
+              style="
+                width: 20px;
+                height: 20px;
+                accent-color: var(--accent-blue);
+              "
+            />
+            <span style="flex: 1; font-weight: 700">Bases - Todas</span>
+            <small style="color: var(--text-muted)">Etapa 20</small>
+          </label>
+          <label
+            style="
+              display: flex;
+              align-items: center;
+              gap: 10px;
+              background: var(--bg-input);
+              border: 1px solid var(--border);
+              border-radius: 10px;
+              padding: 12px 14px;
+              cursor: pointer;
+            "
+          >
+            <input
+              type="checkbox"
+              class="conf-check"
+              value="bases_peliculas"
+              checked
+              style="
+                width: 20px;
+                height: 20px;
+                accent-color: var(--accent-blue);
+              "
+            />
+            <span style="flex: 1; font-weight: 700">Bases - Películas</span>
+            <small style="color: var(--text-muted)">BOPP/PP/PET</small>
+          </label>
+          <label
+            style="
+              display: flex;
+              align-items: center;
+              gap: 10px;
+              background: var(--bg-input);
+              border: 1px solid var(--border);
+              border-radius: 10px;
+              padding: 12px 14px;
+              cursor: pointer;
+            "
+          >
+            <input
+              type="checkbox"
+              class="conf-check"
+              value="capas"
+              checked
+              style="
+                width: 20px;
+                height: 20px;
+                accent-color: var(--accent-blue);
+              "
+            />
+            <span style="flex: 1; font-weight: 700">Capas</span>
+            <small style="color: var(--text-muted)">30/31</small>
+          </label>
+          <label
+            style="
+              display: flex;
+              align-items: center;
+              gap: 10px;
+              background: var(--bg-input);
+              border: 1px solid var(--border);
+              border-radius: 10px;
+              padding: 12px 14px;
+              cursor: pointer;
+            "
+          >
+            <input
+              type="checkbox"
+              class="conf-check"
+              value="refiladeira"
+              checked
+              style="
+                width: 20px;
+                height: 20px;
+                accent-color: var(--accent-blue);
+              "
+            />
+            <span style="flex: 1; font-weight: 700">Refiladeira</span>
+            <small style="color: var(--text-muted)">40-47</small>
+          </label>
+          <label
+            style="
+              display: flex;
+              align-items: center;
+              gap: 10px;
+              background: var(--bg-input);
+              border: 1px solid var(--border);
+              border-radius: 10px;
+              padding: 12px 14px;
+              cursor: pointer;
+            "
+          >
+            <input
+              type="checkbox"
+              class="conf-check"
+              value="cs"
+              checked
+              style="
+                width: 20px;
+                height: 20px;
+                accent-color: var(--accent-blue);
+              "
+            />
+            <span style="flex: 1; font-weight: 700">C&amp;S</span>
+            <small style="color: var(--text-muted)">50-55</small>
+          </label>
+          <div class="btn-group" style="margin-top: 4px">
+            <button
+              class="btn btn-outline"
+              onclick="setAllConferenceChecks(true)"
+            >
+              Marcar todos
+            </button>
+            <button
+              class="btn btn-outline"
+              onclick="setAllConferenceChecks(false)"
+            >
+              Limpar
+            </button>
+          </div>
           <button
             class="btn btn-primary"
-            style="
-              width: 100%;
-              justify-content: space-between;
-              padding: 12px 14px;
-            "
-            onclick="selectConferenceType('bases_todas')"
+            style="width: 100%; justify-content: center; padding: 12px 14px"
+            onclick="importSelectedConferenceTypes()"
           >
-            <span>Bases - Todas</span><small>Etapa 20</small>
-          </button>
-          <button
-            class="btn btn-outline"
-            style="
-              width: 100%;
-              justify-content: space-between;
-              padding: 12px 14px;
-            "
-            onclick="selectConferenceType('bases_peliculas')"
-          >
-            <span>Bases - Películas</span><small>BOPP/PP/PET</small>
-          </button>
-          <button
-            class="btn btn-primary"
-            style="
-              width: 100%;
-              justify-content: space-between;
-              padding: 12px 14px;
-            "
-            onclick="selectConferenceType('capas')"
-          >
-            <span>Capas</span><small>30/31</small>
-          </button>
-          <button
-            class="btn btn-primary"
-            style="
-              width: 100%;
-              justify-content: space-between;
-              padding: 12px 14px;
-            "
-            onclick="selectConferenceType('refiladeira')"
-          >
-            <span>Refiladeira</span><small>40-47</small>
-          </button>
-          <button
-            class="btn btn-primary"
-            style="
-              width: 100%;
-              justify-content: space-between;
-              padding: 12px 14px;
-            "
-            onclick="selectConferenceType('cs')"
-          >
-            <span>C&amp;S</span><small>50-55</small>
+            📥 Importar selecionados
           </button>
           <button
             class="btn btn-outline"
@@ -2074,25 +2172,15 @@
     <div class="photo-modal" id="photoModal">
       <div
         style="
-          display: grid;
-          gap: 12px;
+          text-align: center;
+          color: #fff;
+          font-weight: 700;
           max-width: 100%;
           max-height: 82vh;
           overflow: auto;
         "
       >
-        <div
-          id="photoEtiquetaWrap"
-          style="text-align: center; color: #fff; font-weight: 700"
-        >
-          🏷️ Etiqueta<br /><img id="photoModalImg" src="" />
-        </div>
-        <div
-          id="photoBobinaWrap"
-          style="text-align: center; color: #fff; font-weight: 700"
-        >
-          📦 Bobina<br /><img id="photoModalImgBobina" src="" />
-        </div>
+        🏷️ Etiqueta + 📦 Bobina<br /><img id="photoModalImg" src="" />
       </div>
       <button class="photo-modal-close" onclick="closePhotoModal()">
         ✕ Fechar
@@ -2442,8 +2530,8 @@
       function closeConferenceTypeModal() {
         document.getElementById("confTypeModal").classList.remove("show");
       }
-      function selectConferenceType(type) {
-        const cfg = {
+      function conferenceTypeConfigs() {
+        return {
           bases_todas: { label: "Bases - Todas", etapas: [20] },
           bases_peliculas: {
             label: "Bases - Películas",
@@ -2456,11 +2544,30 @@
             etapas: [40, 41, 42, 43, 44, 45, 46, 47],
           },
           cs: { label: "C&S", etapas: [50, 51, 52, 53, 54, 55] },
-        }[type];
-        if (!cfg) return;
-        importByConferenceType(cfg);
+        };
       }
-      function importByConferenceType(cfg) {
+      function setAllConferenceChecks(v) {
+        document
+          .querySelectorAll(".conf-check")
+          .forEach((c) => (c.checked = v));
+      }
+      function importSelectedConferenceTypes() {
+        const cfgs = conferenceTypeConfigs();
+        const selected = [...document.querySelectorAll(".conf-check:checked")]
+          .map((c) => cfgs[c.value])
+          .filter(Boolean);
+        if (!selected.length) {
+          notify("Marque pelo menos uma opção para importar.", "warning");
+          return;
+        }
+        importByConferenceTypes(selected);
+      }
+      function selectConferenceType(type) {
+        const cfg = conferenceTypeConfigs()[type];
+        if (!cfg) return;
+        importByConferenceTypes([cfg]);
+      }
+      function importByConferenceTypes(cfgList) {
         if (!S.fileData || !S.fileLayout) {
           notify("Arquivo não encontrado para importar.", "error");
           return;
@@ -2469,10 +2576,6 @@
           eIdx = S.fileLayout.idx.ETAPA,
           mIdx = S.fileLayout.idx.MATERIAL,
           opIdx = S.fileLayout.idx.OP;
-        const etapas = new Set(cfg.etapas.map(Number));
-        const terms = (cfg.materialTerms || []).map((t) =>
-          String(t).toUpperCase(),
-        );
         const rows = S.fileData.slice(1);
         const codes = [];
         let matched = 0;
@@ -2480,11 +2583,16 @@
           const etapaTxt = String(r[eIdx] || "").trim();
           const m = etapaTxt.match(/\d+/);
           const etapa = m ? parseInt(m[0], 10) : NaN;
-          if (!etapas.has(etapa)) return;
-          if (terms.length) {
-            const material = String(r[mIdx] || "").toUpperCase();
-            if (!terms.some((t) => material.includes(t))) return;
-          }
+          const material = String(r[mIdx] || "").toUpperCase();
+          const ok = cfgList.some((cfg) => {
+            const etapas = new Set(cfg.etapas.map(Number));
+            if (!etapas.has(etapa)) return false;
+            const terms = (cfg.materialTerms || []).map((t) =>
+              String(t).toUpperCase(),
+            );
+            return !terms.length || terms.some((t) => material.includes(t));
+          });
+          if (!ok) return;
           matched++;
           const code = String(r[bIdx] || "").trim();
           if (code) {
@@ -2497,17 +2605,18 @@
           }
         });
         const uniq = [...new Set(codes)];
+        const labels = cfgList.map((c) => c.label).join(", ");
         if (!uniq.length) {
-          notify(`Nenhum código encontrado para ${cfg.label}.`, "warning");
+          notify(`Nenhum código encontrado para: ${labels}.`, "warning");
           return;
         }
         S.db = [...new Set([...S.db, ...uniq])];
-        S.confType = cfg.label;
+        S.confType = labels;
         save();
         updateDBUI();
         closeConferenceTypeModal();
         notify(
-          `✅ ${uniq.length} códigos importados para ${cfg.label}! (${matched} linhas filtradas)`,
+          `✅ ${uniq.length} códigos únicos importados de ${matched} linhas filtradas. Duplicados foram ignorados.`,
         );
       }
       function previewCol() {
@@ -2845,7 +2954,7 @@
           csv += items
             .map(
               (i) =>
-                `${i.code};${i.op};${i.status};${i.time};${i.location};${i.hasPhoto ? "Etiqueta e Bobina" : "Não"}`,
+                `${i.code};${i.op};${i.status};${i.time};${i.location};${i.hasPhoto ? "Combinada etiqueta+bobina" : "Não"}`,
             )
             .join("\n");
           download(
@@ -2858,7 +2967,7 @@
           txt += items
             .map(
               (i) =>
-                `${i.code.padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | ${i.status.padEnd(15)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | ${i.hasPhoto ? "📸 Etiqueta/Bobina" : "—"}`,
+                `${i.code.padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | ${i.status.padEnd(15)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | ${i.hasPhoto ? "📸 Combinada" : "—"}`,
             )
             .join("\n");
           download(
@@ -2883,7 +2992,7 @@
             fotosFolder = zip.folder("fotos"),
             dateStr = new Date().toISOString().slice(0, 10),
             timeStr = new Date().toLocaleTimeString("pt-BR");
-          let csv = "Código;Hora;Localização;Foto Etiqueta;Foto Bobina\n",
+          let csv = "Código;Hora;Localização;Foto Combinada\n",
             countFotos = 0;
           extrasUniq.forEach((code) => {
             const scan = S.scanned.find(
@@ -2891,27 +3000,17 @@
               ),
               loc = scan?.location || "",
               time = scan?.time || "";
-            let fotoEtiqueta = "",
-              fotoBobina = "";
-            const photoEtiqueta = getPhoto(code),
-              baseEtiqueta = photoEtiqueta?.split(",")[1];
-            if (baseEtiqueta) {
-              fotosFolder.file(`${code}_etiqueta.jpg`, baseEtiqueta, {
+            let fotoName = "";
+            const photo = getPhoto(code),
+              base = photo?.split(",")[1];
+            if (base) {
+              fotosFolder.file(`${code}_etiqueta_bobina.jpg`, base, {
                 base64: true,
               });
-              fotoEtiqueta = `fotos/${code}_etiqueta.jpg`;
+              fotoName = `fotos/${code}_etiqueta_bobina.jpg`;
               countFotos++;
             }
-            const photoBobina = getPhotoBobina(code),
-              baseBobina = photoBobina?.split(",")[1];
-            if (baseBobina) {
-              fotosFolder.file(`${code}_bobina.jpg`, baseBobina, {
-                base64: true,
-              });
-              fotoBobina = `fotos/${code}_bobina.jpg`;
-              countFotos++;
-            }
-            csv += `${code};${time};${loc};${fotoEtiqueta};${fotoBobina}\n`;
+            csv += `${code};${time};${loc};${fotoName}\n`;
           });
           const total = S.db.length,
             chk = S.checked.size,
@@ -2923,7 +3022,7 @@
             const scan = S.scanned.find(
               (s) => s.code === code && s.status === "not-found",
             );
-            txt += `Código: ${code}\nHora: ${scan?.time || "-"}\nLocal: ${scan?.location || "-"}\nFoto etiqueta: ${getPhoto(code) ? "📸 Sim" : "—"}\nFoto bobina: ${getPhotoBobina(code) ? "📸 Sim" : "—"}\n${"─".repeat(40)}\n`;
+            txt += `Código: ${code}\nHora: ${scan?.time || "-"}\nLocal: ${scan?.location || "-"}\nFoto combinada: ${getPhoto(code) ? "📸 Sim" : "—"}\n${"─".repeat(40)}\n`;
           });
           zip.file(`nao_previstas_${dateStr}.txt`, "\uFEFF" + txt);
           const blob = await zip.generateAsync(
@@ -2997,14 +3096,61 @@
           }
         } catch (e) {}
       }
-      function savePhotosExtra(code, photoEtiqueta, photoBobina) {
+      function loadImgData(src) {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = src;
+        });
+      }
+      function drawCover(ctx, img, x, y, w, h) {
+        const r = Math.max(w / img.width, h / img.height),
+          nw = img.width * r,
+          nh = img.height * r;
+        ctx.drawImage(img, x + (w - nw) / 2, y + (h - nh) / 2, nw, nh);
+      }
+      async function combinePhotosHalf(code, photoEtiqueta, photoBobina) {
+        const [etq, bob] = await Promise.all([
+          loadImgData(photoEtiqueta),
+          loadImgData(photoBobina),
+        ]);
+        const canvas = document.createElement("canvas");
+        canvas.width = 1000;
+        canvas.height = 1400;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, 1000, 1400);
+        drawCover(ctx, etq, 0, 46, 1000, 654);
+        drawCover(ctx, bob, 0, 746, 1000, 654);
+        ctx.fillStyle = "rgba(0,0,0,.70)";
+        ctx.fillRect(0, 0, 1000, 46);
+        ctx.fillRect(0, 700, 1000, 46);
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 22px Arial";
+        ctx.fillText("ETIQUETA  •  Código: " + code, 18, 30);
+        ctx.fillText("BOBINA  •  Código: " + code, 18, 730);
+        return canvas.toDataURL("image/jpeg", 0.75);
+      }
+      async function savePhotosExtra(code, photoEtiqueta, photoBobina) {
         try {
-          localStorage.setItem("photo_" + code, photoEtiqueta);
-          localStorage.setItem("photo_bobina_" + code, photoBobina);
+          const combined = await combinePhotosHalf(
+            code,
+            photoEtiqueta,
+            photoBobina,
+          );
+          localStorage.setItem("photo_" + code, combined);
+          localStorage.removeItem("photo_bobina_" + code);
+          return combined;
         } catch (e) {
-          console.warn("Sem espaço para fotos");
+          console.warn("Erro ao combinar fotos", e);
+          try {
+            localStorage.setItem("photo_" + code, photoEtiqueta);
+          } catch (err) {}
+          return photoEtiqueta;
         }
       }
+
       async function startIntegratedScanner() {
         load();
         if (S.db.length === 0) {
@@ -3180,7 +3326,7 @@
         camRemovePhoto("bobina");
         setTimeout(() => document.getElementById("camLocInput").focus(), 300);
       }
-      function camConfirmLocation() {
+      async function camConfirmLocation() {
         const input = document.getElementById("camLocInput"),
           loc = input.value.trim();
         let hasError = false;
@@ -3217,7 +3363,7 @@
             hasPhotoEtiqueta: true,
             hasPhotoBobina: true,
           });
-          savePhotosExtra(
+          await savePhotosExtra(
             camPendingExtra.code,
             camCurrentPhotoEtiqueta,
             camCurrentPhotoBobina,
@@ -3344,18 +3490,9 @@
         box.insertAdjacentHTML("afterbegin", html);
       }
       function showPhotoModal(code) {
-        const etiqueta = getPhoto(code),
-          bobina = getPhotoBobina(code);
-        if (etiqueta || bobina) {
-          document.getElementById("photoEtiquetaWrap").style.display = etiqueta
-            ? "block"
-            : "none";
-          document.getElementById("photoBobinaWrap").style.display = bobina
-            ? "block"
-            : "none";
-          if (etiqueta) document.getElementById("photoModalImg").src = etiqueta;
-          if (bobina)
-            document.getElementById("photoModalImgBobina").src = bobina;
+        const photo = getPhoto(code);
+        if (photo) {
+          document.getElementById("photoModalImg").src = photo;
           document.getElementById("photoModal").classList.add("show");
         } else notify("Foto não encontrada", "warning");
       }
@@ -3415,7 +3552,7 @@
           if (b) {
             var d = b.createElement("script");
             d.innerHTML =
-              "window.__CF$cv$params={r:'a10e103d6df78760',t:'MTc4MjMyODU0OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
+              "window.__CF$cv$params={r:'a10e1f60a8a21aef',t:'MTc4MjMyOTE3MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
             b.getElementsByTagName("head")[0].appendChild(d);
           }
         }
