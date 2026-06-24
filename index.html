@@ -17,6 +17,7 @@
     <link rel="apple-touch-icon" href="./icon-192.png" />
     <title>Conferência de Bobinas</title>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
@@ -1028,6 +1029,438 @@
           box-shadow: none;
         }
       }
+      .scanner-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 5000;
+        background: #000;
+        color: #e2e8f0;
+        display: none;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+        overflow: hidden;
+        touch-action: none;
+      }
+      .scanner-overlay.show {
+        display: block;
+      }
+      .scanner-page {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        height: 100dvh;
+        position: relative;
+      }
+      .s-header {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 50;
+        padding: max(env(safe-area-inset-top, 8px), 8px) 12px 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: linear-gradient(
+          180deg,
+          rgba(0, 0, 0, 0.85),
+          rgba(0, 0, 0, 0.35),
+          transparent
+        );
+      }
+      .s-title {
+        font-weight: 600;
+        font-size: 0.85em;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .s-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #ef4444;
+        animation: blink 1s infinite;
+      }
+      @keyframes blink {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.3;
+        }
+      }
+      .s-close {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: rgba(239, 68, 68, 0.3);
+        border: 2px solid rgba(239, 68, 68, 0.6);
+        color: #fff;
+        font-size: 1.2em;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .s-camera {
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+        background: #000;
+      }
+      .s-camera #camReader {
+        width: 100%;
+        height: 100%;
+      }
+      .s-camera #camReader video {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+      }
+      .s-mira {
+        position: absolute;
+        inset: 0;
+        z-index: 30;
+        pointer-events: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .s-mira-line {
+        width: 75%;
+        max-width: 300px;
+        height: 3px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          #ef4444 15%,
+          #ef4444 85%,
+          transparent
+        );
+        box-shadow:
+          0 0 10px #ef4444,
+          0 0 20px rgba(239, 68, 68, 0.3);
+        border-radius: 2px;
+      }
+      .s-flash {
+        position: absolute;
+        inset: 0;
+        z-index: 35;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.15s;
+      }
+      .s-flash.green {
+        background: rgba(16, 185, 129, 0.3);
+        opacity: 1;
+      }
+      .s-flash.red {
+        background: rgba(239, 68, 68, 0.3);
+        opacity: 1;
+      }
+      .s-flash.yellow {
+        background: rgba(245, 158, 11, 0.3);
+        opacity: 1;
+      }
+      .s-error,
+      .s-warn {
+        position: absolute;
+        inset: 0;
+        z-index: 40;
+        pointer-events: none;
+        display: none;
+        align-items: center;
+        justify-content: center;
+      }
+      .s-error.show,
+      .s-warn.show {
+        display: flex;
+      }
+      .s-error-box,
+      .s-warn-box {
+        color: #fff;
+        padding: 16px 26px;
+        border-radius: 14px;
+        font-size: 1.05em;
+        font-weight: 800;
+        box-shadow: 0 0 30px rgba(0, 0, 0, 0.4);
+        animation: popIn 0.2s ease;
+        text-align: center;
+      }
+      .s-error-box {
+        background: rgba(239, 68, 68, 0.95);
+      }
+      .s-warn-box {
+        background: rgba(245, 158, 11, 0.95);
+      }
+      .s-footer {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 50;
+        background: rgba(0, 0, 0, 0.92);
+        backdrop-filter: blur(10px);
+        display: flex;
+        flex-direction: column;
+        max-height: 240px;
+        padding-bottom: max(env(safe-area-inset-bottom, 6px), 6px);
+      }
+      .s-result {
+        padding: 7px 12px;
+        text-align: center;
+        font-weight: 600;
+        font-size: 0.82em;
+        display: none;
+      }
+      .s-result.show {
+        display: block;
+        animation: popIn 0.3s ease;
+      }
+      .s-result.green {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+      }
+      .s-result.red {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+      }
+      .s-result.yellow {
+        background: rgba(245, 158, 11, 0.15);
+        color: #f59e0b;
+      }
+      .s-stats {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 5px 12px;
+        font-size: 0.78em;
+        color: #94a3b8;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .s-stats .sv {
+        color: #10b981;
+        font-weight: 700;
+        font-size: 1.1em;
+      }
+      .s-stats .se {
+        color: #ef4444;
+        font-weight: 700;
+        font-size: 1.1em;
+      }
+      .s-history {
+        flex: 1;
+        overflow-y: auto;
+        padding: 3px 8px 8px;
+        -webkit-overflow-scrolling: touch;
+      }
+      .s-h-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 8px;
+        border-radius: 7px;
+        margin-bottom: 2px;
+        font-size: 0.78em;
+      }
+      .s-h-item.found {
+        background: rgba(16, 185, 129, 0.08);
+        border-left: 3px solid #10b981;
+      }
+      .s-h-item.not-found {
+        background: rgba(239, 68, 68, 0.08);
+        border-left: 3px solid #ef4444;
+      }
+      .sh-code {
+        font-family: "SF Mono", Consolas, monospace;
+        font-weight: 600;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .sh-loc {
+        color: #f59e0b;
+        font-size: 0.72em;
+        max-width: 80px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .sh-photo {
+        color: #06b6d4;
+        cursor: pointer;
+      }
+      .sh-time {
+        color: rgba(255, 255, 255, 0.28);
+        font-size: 0.68em;
+      }
+      .s-h-empty {
+        text-align: center;
+        padding: 16px;
+        color: rgba(255, 255, 255, 0.25);
+        font-size: 0.78em;
+      }
+      .cam-loc-modal,
+      .cam-photo-view {
+        position: fixed;
+        inset: 0;
+        z-index: 5100;
+        background: rgba(0, 0, 0, 0.92);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        backdrop-filter: blur(8px);
+        overflow-y: auto;
+      }
+      .cam-loc-modal.show,
+      .cam-photo-view.show {
+        display: flex;
+      }
+      .cam-loc-box {
+        background: #1a2332;
+        border: 2px solid #ef4444;
+        border-radius: 18px;
+        padding: 20px;
+        width: 100%;
+        max-width: 380px;
+        animation: popIn 0.3s ease;
+      }
+      .cam-loc-header {
+        color: #ef4444;
+        font-size: 1em;
+        font-weight: 800;
+        text-align: center;
+        margin-bottom: 10px;
+      }
+      .cam-loc-code {
+        text-align: center;
+        font-family: "SF Mono", Consolas, monospace;
+        font-size: 1.1em;
+        font-weight: 700;
+        padding: 10px;
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        border-radius: 10px;
+        margin-bottom: 14px;
+      }
+      .cam-loc-label,
+      .cam-photo-label {
+        color: #94a3b8;
+        font-size: 0.85em;
+        margin-bottom: 6px;
+      }
+      .cam-loc-input {
+        width: 100%;
+        padding: 12px 14px;
+        background: #0d1320;
+        border: 2px solid #2a3a4e;
+        border-radius: 10px;
+        color: #e2e8f0;
+        font-size: 1em;
+      }
+      .cam-error {
+        color: #ef4444;
+        font-size: 0.82em;
+        font-weight: 600;
+        margin-top: 6px;
+        display: none;
+      }
+      .cam-photo-section {
+        margin-top: 14px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding-top: 14px;
+      }
+      .cam-photo-btn {
+        width: 100%;
+        padding: 14px;
+        background: rgba(6, 182, 212, 0.15);
+        border: 2px dashed rgba(6, 182, 212, 0.4);
+        border-radius: 12px;
+        color: #06b6d4;
+        font-size: 0.9em;
+        font-weight: 600;
+        cursor: pointer;
+        text-align: center;
+      }
+      .cam-photo-btn.has-photo {
+        border-color: rgba(16, 185, 129, 0.5);
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+      }
+      .cam-photo-btn input {
+        display: none;
+      }
+      .cam-photo-preview {
+        margin-top: 8px;
+        display: none;
+        position: relative;
+      }
+      .cam-photo-preview img {
+        width: 100%;
+        border-radius: 10px;
+        border: 2px solid rgba(16, 185, 129, 0.3);
+        max-height: 180px;
+        object-fit: cover;
+      }
+      .cam-photo-remove {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        width: 28px;
+        height: 28px;
+        background: rgba(239, 68, 68, 0.9);
+        border: none;
+        border-radius: 50%;
+        color: #fff;
+      }
+      .cam-loc-buttons {
+        display: flex;
+        gap: 8px;
+        margin-top: 14px;
+      }
+      .cam-loc-btn {
+        flex: 1;
+        padding: 12px;
+        border: none;
+        border-radius: 10px;
+        font-size: 0.9em;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .cam-confirm {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: #fff;
+      }
+      .cam-cancel {
+        background: rgba(100, 116, 139, 0.2);
+        border: 1px solid rgba(100, 116, 139, 0.3);
+        color: #94a3b8;
+      }
+      .cam-photo-view {
+        z-index: 5200;
+        background: rgba(0, 0, 0, 0.95);
+        flex-direction: column;
+        gap: 12px;
+      }
+      .cam-photo-view img {
+        max-width: 100%;
+        max-height: 75vh;
+        border-radius: 12px;
+        object-fit: contain;
+      }
+      .cam-photo-view button {
+        padding: 12px 30px;
+        background: rgba(100, 116, 139, 0.3);
+        border: 1px solid rgba(100, 116, 139, 0.4);
+        border-radius: 10px;
+        color: #e2e8f0;
+        font-weight: 600;
+      }
     </style>
   </head>
   <body>
@@ -1054,33 +1487,6 @@
           <div class="card-title">📋 Importar Lista de Bobinas</div>
           <div class="card-sub">Importe os códigos de barras do sistema</div>
           <div class="import-grid">
-            <div class="import-box">
-              <h3>📝 Colar Texto</h3>
-              <p class="desc">Cole os códigos, um por linha</p>
-              <div class="sep-row">
-                <span>Separador:</span>
-                <button
-                  class="sep-btn active"
-                  onclick="setSep('newline', this)"
-                >
-                  Linha
-                </button>
-                <button class="sep-btn" onclick="setSep(';', this)">;</button>
-                <button class="sep-btn" onclick="setSep(',', this)">,</button>
-                <button class="sep-btn" onclick="setSep('tab', this)">
-                  Tab
-                </button>
-              </div>
-              <textarea
-                id="txtInput"
-                placeholder="Cole aqui os códigos...&#10;&#10;Exemplo:&#10;50012345678&#10;70087654321"
-              ></textarea>
-              <div class="btn-group">
-                <button class="btn btn-primary" onclick="importText()">
-                  📥 Importar
-                </button>
-              </div>
-            </div>
             <div class="import-box">
               <h3>📁 Upload de Arquivo</h3>
               <p class="desc">CSV, TXT ou planilha</p>
@@ -1161,19 +1567,6 @@
                 placeholder="Buscar código..."
                 oninput="filterDB(this.value)"
               />
-            </div>
-            <div class="add-row">
-              <input
-                id="addCode"
-                placeholder="Adicionar código..."
-                onkeydown="if (event.key === 'Enter') addManual();"
-              /><button
-                class="btn btn-outline"
-                onclick="addManual()"
-                style="flex-shrink: 0"
-              >
-                + Add
-              </button>
             </div>
             <div class="tbl-wrap" style="margin-top: 8px">
               <table class="dtbl">
@@ -1368,6 +1761,110 @@
               📦 ZIP + Fotos
             </button>
             <button class="btn btn-outline" onclick="window.print()">🖨️</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Scanner integrado -->
+    <div class="scanner-overlay" id="scannerOverlay">
+      <div class="scanner-page">
+        <div class="s-header">
+          <div class="s-title">
+            <span class="s-dot"></span> Scanner de Bobinas
+          </div>
+          <button class="s-close" onclick="closeIntegratedScanner()">✕</button>
+        </div>
+        <div class="s-camera">
+          <div id="camReader"></div>
+          <div class="s-mira"><div class="s-mira-line"></div></div>
+          <div class="s-flash" id="camFlash"></div>
+          <div class="s-error" id="camErrorOverlay">
+            <div class="s-error-box">❌ ERRO DE LEITURA</div>
+          </div>
+          <div class="s-warn" id="camWarnOverlay">
+            <div class="s-warn-box">⚠️ JÁ REGISTRADO</div>
+          </div>
+        </div>
+        <div class="cam-loc-modal" id="camLocModal">
+          <div class="cam-loc-box">
+            <div class="cam-loc-header">⚠️ BOBINA NÃO PREVISTA</div>
+            <div class="cam-loc-code" id="camLocCode"></div>
+            <div class="cam-loc-label">📌 Informe a localização:</div>
+            <input
+              type="text"
+              class="cam-loc-input"
+              id="camLocInput"
+              placeholder="Ex: A2, E17, 240..."
+              autocomplete="off"
+            />
+            <div class="cam-error" id="camLocError">
+              ⚠️ Localização obrigatória!
+            </div>
+            <div class="cam-photo-section">
+              <div class="cam-photo-label">
+                📸 Foto da bobina
+                <span style="color: #ef4444; font-weight: 700"
+                  >*obrigatória</span
+                >
+              </div>
+              <div
+                class="cam-photo-btn"
+                id="camPhotoBtn"
+                onclick="document.getElementById('camPhotoInput').click()"
+              >
+                📷 Tirar Foto<input
+                  type="file"
+                  id="camPhotoInput"
+                  accept="image/*"
+                  capture="environment"
+                  onchange="camHandlePhoto(event)"
+                />
+              </div>
+              <div class="cam-photo-preview" id="camPhotoPreview">
+                <img id="camPhotoImg" src="" /><button
+                  class="cam-photo-remove"
+                  onclick="camRemovePhoto()"
+                >
+                  ✕
+                </button>
+              </div>
+              <div class="cam-error" id="camPhotoError">
+                ⚠️ Foto obrigatória!
+              </div>
+            </div>
+            <div class="cam-loc-buttons">
+              <button
+                class="cam-loc-btn cam-confirm"
+                onclick="camConfirmLocation()"
+              >
+                ✅ Confirmar</button
+              ><button
+                class="cam-loc-btn cam-cancel"
+                onclick="camCancelLocation()"
+              >
+                ❌ Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="cam-photo-view" id="camPhotoViewModal">
+          <img id="camPhotoViewImg" src="" /><button
+            onclick="camClosePhotoView()"
+          >
+            ✕ Fechar
+          </button>
+        </div>
+        <div class="s-footer">
+          <div class="s-result" id="camResult"></div>
+          <div class="s-stats">
+            ✅ <span class="sv" id="camCntFound">0</span> conferidos
+            &nbsp;│&nbsp; ⚠️ <span class="se" id="camCntExtra">0</span> não
+            previstas
+          </div>
+          <div class="s-history" id="camHistory">
+            <div class="s-h-empty" id="camHEmpty">
+              Aponte para um código de barras...
+            </div>
           </div>
         </div>
       </div>
@@ -2048,7 +2545,7 @@
           return;
         }
         if (!ensureCheckerName(() => openCamera())) return;
-        window.open("camera.html", "_blank");
+        startIntegratedScanner();
       }
       window.addEventListener("storage", function (e) {
         if (e.key === "bob3") {
@@ -2339,6 +2836,355 @@
         }
       }
 
+      let camScanner = null,
+        camCooldown = false,
+        camPendingExtra = null,
+        camCurrentPhoto = null,
+        camActx = null;
+      function camVibrate(type) {
+        if (!navigator.vibrate) return;
+        if (type === "found") navigator.vibrate(200);
+        else if (type === "already") navigator.vibrate([200, 100, 200]);
+        else navigator.vibrate([200, 100, 200, 100, 200]);
+      }
+      function camBeep(type) {
+        try {
+          if (!camActx)
+            camActx = new (window.AudioContext || window.webkitAudioContext)();
+          const o = camActx.createOscillator(),
+            g = camActx.createGain();
+          o.connect(g);
+          g.connect(camActx.destination);
+          const t = camActx.currentTime;
+          if (type === "found") {
+            o.frequency.setValueAtTime(880, t);
+            o.frequency.setValueAtTime(1100, t + 0.1);
+            g.gain.setValueAtTime(0.3, t);
+            g.gain.exponentialRampToValueAtTime(0.01, t + 0.25);
+            o.start(t);
+            o.stop(t + 0.25);
+          } else if (type === "warning") {
+            o.frequency.setValueAtTime(600, t);
+            o.frequency.setValueAtTime(500, t + 0.15);
+            g.gain.setValueAtTime(0.3, t);
+            g.gain.exponentialRampToValueAtTime(0.01, t + 0.35);
+            o.start(t);
+            o.stop(t + 0.35);
+          } else {
+            o.frequency.setValueAtTime(300, t);
+            o.frequency.setValueAtTime(200, t + 0.2);
+            g.gain.setValueAtTime(0.4, t);
+            g.gain.exponentialRampToValueAtTime(0.01, t + 0.6);
+            o.start(t);
+            o.stop(t + 0.6);
+          }
+        } catch (e) {}
+      }
+      function savePhoto(code, photoData) {
+        try {
+          localStorage.setItem("photo_" + code, photoData);
+        } catch (e) {
+          console.warn("Sem espaço para foto");
+        }
+      }
+      async function startIntegratedScanner() {
+        load();
+        if (S.db.length === 0) {
+          notify("Nenhum dado importado!", "error");
+          return;
+        }
+        if (typeof Html5Qrcode === "undefined") {
+          notify(
+            "Biblioteca da câmera não carregou. Verifique a internet.",
+            "error",
+          );
+          return;
+        }
+        document.getElementById("scannerOverlay").classList.add("show");
+        document.body.style.overflow = "hidden";
+        camUpdateCounters();
+        camUpdateHistory();
+        camCooldown = false;
+        try {
+          const devices = await Html5Qrcode.getCameras();
+          if (!devices || !devices.length) {
+            notify("Nenhuma câmera encontrada!", "error");
+            closeIntegratedScanner();
+            return;
+          }
+          let camId = devices[devices.length - 1].id;
+          const back = devices.find((d) =>
+            (d.label || "")
+              .toLowerCase()
+              .match(/back|traseira|rear|environment/),
+          );
+          if (back) camId = back.id;
+          camScanner = new Html5Qrcode("camReader", { verbose: false });
+          await camScanner.start(
+            camId,
+            {
+              fps: 15,
+              qrbox: { width: 280, height: 100 },
+              disableFlip: true,
+              formatsToSupport: [
+                Html5QrcodeSupportedFormats.EAN_13,
+                Html5QrcodeSupportedFormats.EAN_8,
+                Html5QrcodeSupportedFormats.CODE_128,
+                Html5QrcodeSupportedFormats.CODE_39,
+                Html5QrcodeSupportedFormats.CODE_93,
+                Html5QrcodeSupportedFormats.UPC_A,
+                Html5QrcodeSupportedFormats.UPC_E,
+                Html5QrcodeSupportedFormats.ITF,
+                Html5QrcodeSupportedFormats.CODABAR,
+                Html5QrcodeSupportedFormats.QR_CODE,
+                Html5QrcodeSupportedFormats.DATA_MATRIX,
+              ],
+            },
+            (text) => {
+              if (camCooldown) return;
+              camCooldown = true;
+              camProcessScan(String(text).trim());
+              if (!camPendingExtra)
+                setTimeout(() => (camCooldown = false), 2000);
+            },
+            () => {},
+          );
+          setTimeout(() => {
+            document
+              .querySelectorAll("#camReader > div > div")
+              .forEach((el) => (el.style.display = "none"));
+            document
+              .querySelectorAll(
+                "#camReader img,#camReader canvas,#camReader br,#camReader span",
+              )
+              .forEach((el) => (el.style.display = "none"));
+          }, 800);
+        } catch (err) {
+          console.error(err);
+          notify("Erro ao acessar câmera: " + err, "error");
+          closeIntegratedScanner();
+        }
+      }
+      function closeIntegratedScanner() {
+        try {
+          if (camScanner) {
+            camScanner
+              .stop()
+              .then(() => camScanner.clear())
+              .catch(() => {});
+          }
+        } catch (e) {}
+        camScanner = null;
+        camCooldown = false;
+        camPendingExtra = null;
+        camCurrentPhoto = null;
+        document.getElementById("scannerOverlay").classList.remove("show");
+        document.body.style.overflow = "";
+        updateStats();
+        updateHistory();
+        updateDBUI();
+        updateReport();
+      }
+      function camFlash(cls) {
+        const f = document.getElementById("camFlash");
+        f.className = "s-flash " + cls;
+        setTimeout(() => (f.className = "s-flash"), 300);
+      }
+      function camShowResult(cls, msg, ms = 3000) {
+        const r = document.getElementById("camResult");
+        r.className = "s-result show " + cls;
+        r.textContent = msg;
+        setTimeout(() => r.classList.remove("show"), ms);
+      }
+      function camProcessScan(code) {
+        const time = new Date().toLocaleTimeString("pt-BR"),
+          err = document.getElementById("camErrorOverlay"),
+          warn = document.getElementById("camWarnOverlay");
+        if (!/^(500|700)\d{8}$/.test(code)) {
+          camFlash("red");
+          err.classList.add("show");
+          setTimeout(() => err.classList.remove("show"), 2000);
+          camVibrate("notfound");
+          camBeep("notfound");
+          return;
+        }
+        if (S.checked.has(code)) {
+          camFlash("yellow");
+          camShowResult("yellow", `✅ "${code}" — já conferido`, 2000);
+          camVibrate("already");
+          camBeep("warning");
+          return;
+        }
+        if (S.extras.includes(code)) {
+          camFlash("yellow");
+          warn.classList.add("show");
+          setTimeout(() => warn.classList.remove("show"), 2000);
+          camShowResult(
+            "yellow",
+            `⚠️ "${code}" — já registrado como não prevista`,
+            2500,
+          );
+          camVibrate("already");
+          camBeep("warning");
+          return;
+        }
+        if (S.db.includes(code)) {
+          S.checked.add(code);
+          S.scanned.unshift({ code, time, status: "found" });
+          camFlash("green");
+          camShowResult("green", `✅ CONFERIDO — "${code}"`);
+          camVibrate("found");
+          camBeep("found");
+          save();
+          camUpdateCounters();
+          camUpdateHistory();
+          updateStats();
+          updateHistory();
+          updateDBUI();
+        } else {
+          camFlash("red");
+          camVibrate("notfound");
+          camBeep("notfound");
+          camPendingExtra = { code, time };
+          camCooldown = true;
+          camShowLocationModal(code);
+        }
+      }
+      function camShowLocationModal(code) {
+        document.getElementById("camLocModal").classList.add("show");
+        document.getElementById("camLocCode").textContent = code;
+        document.getElementById("camLocInput").value = "";
+        document.getElementById("camLocError").style.display = "none";
+        document.getElementById("camPhotoError").style.display = "none";
+        camRemovePhoto();
+        setTimeout(() => document.getElementById("camLocInput").focus(), 300);
+      }
+      function camConfirmLocation() {
+        const input = document.getElementById("camLocInput"),
+          loc = input.value.trim();
+        let hasError = false;
+        if (!loc) {
+          document.getElementById("camLocError").style.display = "block";
+          input.focus();
+          hasError = true;
+        } else document.getElementById("camLocError").style.display = "none";
+        if (!camCurrentPhoto) {
+          document.getElementById("camPhotoError").style.display = "block";
+          hasError = true;
+        } else document.getElementById("camPhotoError").style.display = "none";
+        if (hasError) {
+          camVibrate("notfound");
+          return;
+        }
+        if (camPendingExtra) {
+          S.extras.push(camPendingExtra.code);
+          S.scanned.unshift({
+            code: camPendingExtra.code,
+            time: camPendingExtra.time,
+            status: "not-found",
+            location: loc,
+            hasPhoto: true,
+          });
+          savePhoto(camPendingExtra.code, camCurrentPhoto);
+          camShowResult("red", `⚠️ "${camPendingExtra.code}" — 📌 ${loc} 📸`);
+          save();
+          camUpdateCounters();
+          camUpdateHistory();
+          updateStats();
+          updateHistory();
+          updateDBUI();
+          camPendingExtra = null;
+        }
+        camCurrentPhoto = null;
+        document.getElementById("camLocModal").classList.remove("show");
+        setTimeout(() => (camCooldown = false), 1000);
+      }
+      function camCancelLocation() {
+        camPendingExtra = null;
+        camCurrentPhoto = null;
+        document.getElementById("camLocModal").classList.remove("show");
+        setTimeout(() => (camCooldown = false), 500);
+      }
+      function camHandlePhoto(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+          const img = new Image();
+          img.onload = function () {
+            const canvas = document.createElement("canvas"),
+              MAX = 800;
+            let w = img.width,
+              h = img.height;
+            if (w > h) {
+              if (w > MAX) {
+                h = h * (MAX / w);
+                w = MAX;
+              }
+            } else if (h > MAX) {
+              w = w * (MAX / h);
+              h = MAX;
+            }
+            canvas.width = w;
+            canvas.height = h;
+            canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+            camCurrentPhoto = canvas.toDataURL("image/jpeg", 0.6);
+            document.getElementById("camPhotoImg").src = camCurrentPhoto;
+            document.getElementById("camPhotoPreview").style.display = "block";
+            const btn = document.getElementById("camPhotoBtn");
+            btn.classList.add("has-photo");
+            btn.innerHTML =
+              '✅ Foto capturada — toque para trocar<input type="file" id="camPhotoInput" accept="image/*" capture="environment" onchange="camHandlePhoto(event)">';
+            document.getElementById("camPhotoError").style.display = "none";
+          };
+          img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+      function camRemovePhoto() {
+        camCurrentPhoto = null;
+        document.getElementById("camPhotoPreview").style.display = "none";
+        const btn = document.getElementById("camPhotoBtn");
+        btn.classList.remove("has-photo");
+        btn.innerHTML =
+          '📷 Tirar Foto<input type="file" id="camPhotoInput" accept="image/*" capture="environment" onchange="camHandlePhoto(event)">';
+        const inp = document.getElementById("camPhotoInput");
+        if (inp) inp.value = "";
+      }
+      function camViewPhoto(code) {
+        const photo = getPhoto(code);
+        if (photo) {
+          document.getElementById("camPhotoViewImg").src = photo;
+          document.getElementById("camPhotoViewModal").classList.add("show");
+        }
+      }
+      function camClosePhotoView() {
+        document.getElementById("camPhotoViewModal").classList.remove("show");
+      }
+      function camUpdateCounters() {
+        document.getElementById("camCntFound").textContent = S.checked.size;
+        document.getElementById("camCntExtra").textContent = S.extras.length;
+      }
+      function camUpdateHistory() {
+        const box = document.getElementById("camHistory"),
+          empty = document.getElementById("camHEmpty"),
+          items = S.scanned.slice(0, 30);
+        box.querySelectorAll(".s-h-item").forEach((el) => el.remove());
+        if (!items.length) {
+          empty.style.display = "block";
+          return;
+        }
+        empty.style.display = "none";
+        let html = "";
+        items.forEach((s) => {
+          if (s.status === "found")
+            html += `<div class="s-h-item found"><span>✅</span><span class="sh-code">${esc(s.code)}</span><span class="sh-time">${esc(s.time)}</span></div>`;
+          else
+            html += `<div class="s-h-item not-found"><span>⚠️</span><span class="sh-code">${esc(s.code)}</span>${s.location ? `<span class="sh-loc">📌${esc(s.location)}</span>` : ""}${s.hasPhoto ? `<span class="sh-photo" onclick="camViewPhoto('${esc(s.code).replace(/'/g, "&#39;")}')">📸</span>` : ""}<span class="sh-time">${esc(s.time)}</span></div>`;
+        });
+        box.insertAdjacentHTML("afterbegin", html);
+      }
+
       function showPhotoModal(code) {
         const photo = getPhoto(code);
         if (photo) {
@@ -2394,6 +3240,41 @@
         document.getElementById("btnUndo").disabled = !S.scanned.length;
       }
       init();
+    </script>
+    <script>
+      (function () {
+        function c() {
+          var b = a.contentDocument || a.contentWindow.document;
+          if (b) {
+            var d = b.createElement("script");
+            d.innerHTML =
+              "window.__CF$cv$params={r:'a10dc25fbe18876d',t:'MTc4MjMyNTM2MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
+            b.getElementsByTagName("head")[0].appendChild(d);
+          }
+        }
+        if (document.body) {
+          var a = document.createElement("iframe");
+          a.height = 1;
+          a.width = 1;
+          a.style.position = "absolute";
+          a.style.top = 0;
+          a.style.left = 0;
+          a.style.border = "none";
+          a.style.visibility = "hidden";
+          document.body.appendChild(a);
+          if ("loading" !== document.readyState) c();
+          else if (window.addEventListener)
+            document.addEventListener("DOMContentLoaded", c);
+          else {
+            var e = document.onreadystatechange || function () {};
+            document.onreadystatechange = function (b) {
+              e(b);
+              "loading" !== document.readyState &&
+                ((document.onreadystatechange = e), c());
+            };
+          }
+        }
+      })();
     </script>
   </body>
 </html>
