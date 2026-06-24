@@ -2945,7 +2945,7 @@
             "",
             "",
             "",
-            "",
+            " ",
             "\b",
             "\t",
             "\n",
@@ -16739,7 +16739,7 @@
             "",
             "",
             "",
-            "",
+            " ",
             "\b",
             "\t",
             "\n",
@@ -20483,6 +20483,12 @@
 
       let camScanner = null,
         camVideoTrack = null,
+        camStream = null,
+        camDecodeTimer = null,
+        camDecodeReader = null,
+        camCanvasA = null,
+        camCanvasB = null,
+        camZX = null,
         camTorchOn = false,
         camZoomValue = null,
         camCooldown = false,
@@ -20640,6 +20646,7 @@
         let ZX;
         try {
           ZX = await ensureZXingLoaded();
+          camZX = ZX;
         } catch (e) {
           console.error(e);
           notify(
@@ -20659,7 +20666,8 @@
             ZX.BarcodeFormat.CODE_128,
           ]);
           hints.set(ZX.DecodeHintType.TRY_HARDER, true);
-          camScanner = new ZX.BrowserMultiFormatReader(hints, 80);
+          camDecodeReader = new ZX.MultiFormatReader();
+          camDecodeReader.setHints(hints);
           const constraints = {
             audio: false,
             video: {
@@ -20671,23 +20679,24 @@
               advanced: [{ focusMode: "continuous" }],
             },
           };
-          await camScanner.decodeFromConstraints(
-            constraints,
-            "camReader",
-            (result, err) => {
-              if (!result) return;
-              if (camCooldown) return;
-              const text =
-                typeof result.getText === "function"
-                  ? result.getText()
-                  : String(result.text || result);
-              camCooldown = true;
-              camProcessScan(String(text).trim());
-              if (!camPendingExtra)
-                setTimeout(() => (camCooldown = false), 600);
+          camStream = await navigator.mediaDevices.getUserMedia(constraints);
+          const video = document.getElementById("camReader");
+          video.srcObject = camStream;
+          video.setAttribute("playsinline", "true");
+          video.muted = true;
+          await video.play();
+          camScanner = {
+            reset: () => {
+              try {
+                if (camDecodeTimer) clearTimeout(camDecodeTimer);
+              } catch (e) {}
+              try {
+                camStream && camStream.getTracks().forEach((t) => t.stop());
+              } catch (e) {}
             },
-          );
-          setTimeout(camSetupCameraControls, 700);
+          };
+          camSetupCameraControls();
+          camDecodeLoop();
         } catch (err) {
           console.error(err);
           notify("Erro ao acessar câmera: " + err, "error");
@@ -20700,7 +20709,17 @@
             camScanner.reset();
           }
         } catch (e) {}
+        try {
+          const video = document.getElementById("camReader");
+          if (video) {
+            video.pause();
+            video.srcObject = null;
+          }
+        } catch (e) {}
         camScanner = null;
+        camStream = null;
+        camDecodeTimer = null;
+        camDecodeReader = null;
         camVideoTrack = null;
         camTorchOn = false;
         camZoomValue = null;
@@ -20714,6 +20733,81 @@
         updateHistory();
         updateDBUI();
         updateReport();
+      }
+      function camDecodeLoop() {
+        if (
+          !document.getElementById("scannerOverlay").classList.contains("show")
+        )
+          return;
+        try {
+          const video = document.getElementById("camReader");
+          if (video && video.readyState >= 2 && !camCooldown) {
+            const txt = camTryDecodeVideo(video);
+            if (txt) {
+              camCooldown = true;
+              camProcessScan(String(txt).trim());
+              if (!camPendingExtra)
+                setTimeout(() => (camCooldown = false), 600);
+            }
+          }
+        } catch (e) {}
+        camDecodeTimer = setTimeout(camDecodeLoop, 90);
+      }
+      function camTryDecodeVideo(video) {
+        const vw = video.videoWidth,
+          vh = video.videoHeight;
+        if (!vw || !vh || !camZX || !camDecodeReader) return null;
+        const maxDim = 1500,
+          scale = Math.min(1, maxDim / Math.max(vw, vh)),
+          sw = Math.max(1, Math.round(vw * scale)),
+          sh = Math.max(1, Math.round(vh * scale));
+        if (!camCanvasA) camCanvasA = document.createElement("canvas");
+        if (!camCanvasB) camCanvasB = document.createElement("canvas");
+        camCanvasA.width = sw;
+        camCanvasA.height = sh;
+        let ctx = camCanvasA.getContext("2d", { willReadFrequently: true });
+        ctx.drawImage(video, 0, 0, sw, sh);
+        let t = camDecodeCanvas(camCanvasA);
+        if (t) return t;
+        camCanvasB.width = sh;
+        camCanvasB.height = sw;
+        ctx = camCanvasB.getContext("2d", { willReadFrequently: true });
+        ctx.save();
+        ctx.translate(sh, 0);
+        ctx.rotate(Math.PI / 2);
+        ctx.drawImage(video, 0, 0, sw, sh);
+        ctx.restore();
+        t = camDecodeCanvas(camCanvasB);
+        if (t) return t;
+        ctx = camCanvasB.getContext("2d", { willReadFrequently: true });
+        ctx.clearRect(0, 0, sh, sw);
+        ctx.save();
+        ctx.translate(0, sw);
+        ctx.rotate(-Math.PI / 2);
+        ctx.drawImage(video, 0, 0, sw, sh);
+        ctx.restore();
+        return camDecodeCanvas(camCanvasB);
+      }
+      function camDecodeCanvas(canvas) {
+        try {
+          const source = new camZX.HTMLCanvasElementLuminanceSource(canvas);
+          const bitmap = new camZX.BinaryBitmap(
+            new camZX.HybridBinarizer(source),
+          );
+          const result = camDecodeReader.decodeWithState(bitmap);
+          return (
+            result &&
+            (typeof result.getText === "function"
+              ? result.getText()
+              : result.text)
+          );
+        } catch (e) {
+          return null;
+        } finally {
+          try {
+            camDecodeReader && camDecodeReader.reset();
+          } catch (e) {}
+        }
       }
       function camSetupCameraControls() {
         const video = document.getElementById("camReader");
@@ -21073,41 +21167,6 @@
         document.getElementById("btnUndo").disabled = !S.scanned.length;
       }
       init();
-    </script>
-    <script>
-      (function () {
-        function c() {
-          var b = a.contentDocument || a.contentWindow.document;
-          if (b) {
-            var d = b.createElement("script");
-            d.innerHTML =
-              "window.__CF$cv$params={r:'a10e7b1ed935ccfb',t:'MTc4MjMzMjkyNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
-            b.getElementsByTagName("head")[0].appendChild(d);
-          }
-        }
-        if (document.body) {
-          var a = document.createElement("iframe");
-          a.height = 1;
-          a.width = 1;
-          a.style.position = "absolute";
-          a.style.top = 0;
-          a.style.left = 0;
-          a.style.border = "none";
-          a.style.visibility = "hidden";
-          document.body.appendChild(a);
-          if ("loading" !== document.readyState) c();
-          else if (window.addEventListener)
-            document.addEventListener("DOMContentLoaded", c);
-          else {
-            var e = document.onreadystatechange || function () {};
-            document.onreadystatechange = function (b) {
-              e(b);
-              "loading" !== document.readyState &&
-                ((document.onreadystatechange = e), c());
-            };
-          }
-        }
-      })();
     </script>
   </body>
 </html>
