@@ -1813,34 +1813,66 @@
             </div>
             <div class="cam-photo-section">
               <div class="cam-photo-label">
-                📸 Foto da bobina
+                🏷️ Foto da etiqueta
                 <span style="color: #ef4444; font-weight: 700"
                   >*obrigatória</span
                 >
               </div>
               <div
                 class="cam-photo-btn"
-                id="camPhotoBtn"
-                onclick="document.getElementById('camPhotoInput').click()"
+                id="camPhotoBtnEtiqueta"
+                onclick="
+                  document.getElementById('camPhotoInputEtiqueta').click()
+                "
               >
-                📷 Tirar Foto<input
+                📷 Tirar foto da etiqueta<input
                   type="file"
-                  id="camPhotoInput"
+                  id="camPhotoInputEtiqueta"
                   accept="image/*"
                   capture="environment"
-                  onchange="camHandlePhoto(event)"
+                  onchange="camHandlePhoto(event, 'etiqueta')"
                 />
               </div>
-              <div class="cam-photo-preview" id="camPhotoPreview">
-                <img id="camPhotoImg" src="" /><button
+              <div class="cam-photo-preview" id="camPhotoPreviewEtiqueta">
+                <img id="camPhotoImgEtiqueta" src="" /><button
                   class="cam-photo-remove"
-                  onclick="camRemovePhoto()"
+                  onclick="camRemovePhoto('etiqueta')"
                 >
                   ✕
                 </button>
               </div>
-              <div class="cam-error" id="camPhotoError">
-                ⚠️ Foto obrigatória!
+              <div class="cam-error" id="camPhotoErrorEtiqueta">
+                ⚠️ Foto da etiqueta obrigatória!
+              </div>
+              <div class="cam-photo-label" style="margin-top: 12px">
+                📦 Foto da bobina
+                <span style="color: #ef4444; font-weight: 700"
+                  >*obrigatória</span
+                >
+              </div>
+              <div
+                class="cam-photo-btn"
+                id="camPhotoBtnBobina"
+                onclick="document.getElementById('camPhotoInputBobina').click()"
+              >
+                📷 Tirar foto da bobina<input
+                  type="file"
+                  id="camPhotoInputBobina"
+                  accept="image/*"
+                  capture="environment"
+                  onchange="camHandlePhoto(event, 'bobina')"
+                />
+              </div>
+              <div class="cam-photo-preview" id="camPhotoPreviewBobina">
+                <img id="camPhotoImgBobina" src="" /><button
+                  class="cam-photo-remove"
+                  onclick="camRemovePhoto('bobina')"
+                >
+                  ✕
+                </button>
+              </div>
+              <div class="cam-error" id="camPhotoErrorBobina">
+                ⚠️ Foto da bobina obrigatória!
               </div>
             </div>
             <div class="cam-loc-buttons">
@@ -2040,7 +2072,28 @@
     </div>
     <!-- Modal Foto -->
     <div class="photo-modal" id="photoModal">
-      <img id="photoModalImg" src="" />
+      <div
+        style="
+          display: grid;
+          gap: 12px;
+          max-width: 100%;
+          max-height: 82vh;
+          overflow: auto;
+        "
+      >
+        <div
+          id="photoEtiquetaWrap"
+          style="text-align: center; color: #fff; font-weight: 700"
+        >
+          🏷️ Etiqueta<br /><img id="photoModalImg" src="" />
+        </div>
+        <div
+          id="photoBobinaWrap"
+          style="text-align: center; color: #fff; font-weight: 700"
+        >
+          📦 Bobina<br /><img id="photoModalImgBobina" src="" />
+        </div>
+      </div>
       <button class="photo-modal-close" onclick="closePhotoModal()">
         ✕ Fechar
       </button>
@@ -2102,6 +2155,13 @@
       function getPhoto(code) {
         try {
           return localStorage.getItem("photo_" + code);
+        } catch (e) {
+          return null;
+        }
+      }
+      function getPhotoBobina(code) {
+        try {
+          return localStorage.getItem("photo_bobina_" + code);
         } catch (e) {
           return null;
         }
@@ -2781,11 +2841,11 @@
           conferente = S.checkerName || "-",
           extras = [...new Set(S.extras)].length;
         if (fmt === "csv") {
-          let csv = `RELATÓRIO DE CONFERÊNCIA\nData;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente;${conferente}\nTipo de Conferência;${tipo}\n\nRESUMO\nTotal;${total}\nConferidos;${chk}\nPendentes;${total - chk}\nNão Previstas;${extras}\nPercentual;${pct}%\n\nBOBINAS\nCódigo;OP;Status;Hora;Localização;Foto\n`;
+          let csv = `RELATÓRIO DE CONFERÊNCIA\nData;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente;${conferente}\nTipo de Conferência;${tipo}\n\nRESUMO\nTotal;${total}\nConferidos;${chk}\nPendentes;${total - chk}\nNão Previstas;${extras}\nPercentual;${pct}%\n\nBOBINAS\nCódigo;OP;Status;Hora;Localização;Fotos\n`;
           csv += items
             .map(
               (i) =>
-                `${i.code};${i.op};${i.status};${i.time};${i.location};${i.hasPhoto ? "Sim" : "Não"}`,
+                `${i.code};${i.op};${i.status};${i.time};${i.location};${i.hasPhoto ? "Etiqueta e Bobina" : "Não"}`,
             )
             .join("\n");
           download(
@@ -2798,7 +2858,7 @@
           txt += items
             .map(
               (i) =>
-                `${i.code.padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | ${i.status.padEnd(15)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | ${i.hasPhoto ? "📸 Sim" : "—"}`,
+                `${i.code.padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | ${i.status.padEnd(15)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | ${i.hasPhoto ? "📸 Etiqueta/Bobina" : "—"}`,
             )
             .join("\n");
           download(
@@ -2823,26 +2883,35 @@
             fotosFolder = zip.folder("fotos"),
             dateStr = new Date().toISOString().slice(0, 10),
             timeStr = new Date().toLocaleTimeString("pt-BR");
-          let csv = "Código;Hora;Localização;Arquivo da Foto\n",
+          let csv = "Código;Hora;Localização;Foto Etiqueta;Foto Bobina\n",
             countFotos = 0;
           extrasUniq.forEach((code) => {
             const scan = S.scanned.find(
                 (s) => s.code === code && s.status === "not-found",
               ),
               loc = scan?.location || "",
-              time = scan?.time || "",
-              hasPhoto = scan?.hasPhoto || false;
-            let fotoName = "";
-            if (hasPhoto) {
-              const photoData = getPhoto(code),
-                base64 = photoData?.split(",")[1];
-              if (base64) {
-                fotosFolder.file(`${code}.jpg`, base64, { base64: true });
-                fotoName = `fotos/${code}.jpg`;
-                countFotos++;
-              }
+              time = scan?.time || "";
+            let fotoEtiqueta = "",
+              fotoBobina = "";
+            const photoEtiqueta = getPhoto(code),
+              baseEtiqueta = photoEtiqueta?.split(",")[1];
+            if (baseEtiqueta) {
+              fotosFolder.file(`${code}_etiqueta.jpg`, baseEtiqueta, {
+                base64: true,
+              });
+              fotoEtiqueta = `fotos/${code}_etiqueta.jpg`;
+              countFotos++;
             }
-            csv += `${code};${time};${loc};${fotoName}\n`;
+            const photoBobina = getPhotoBobina(code),
+              baseBobina = photoBobina?.split(",")[1];
+            if (baseBobina) {
+              fotosFolder.file(`${code}_bobina.jpg`, baseBobina, {
+                base64: true,
+              });
+              fotoBobina = `fotos/${code}_bobina.jpg`;
+              countFotos++;
+            }
+            csv += `${code};${time};${loc};${fotoEtiqueta};${fotoBobina}\n`;
           });
           const total = S.db.length,
             chk = S.checked.size,
@@ -2854,7 +2923,7 @@
             const scan = S.scanned.find(
               (s) => s.code === code && s.status === "not-found",
             );
-            txt += `Código: ${code}\nHora: ${scan?.time || "-"}\nLocal: ${scan?.location || "-"}\nFoto: ${scan?.hasPhoto ? "📸 Sim" : "—"}\n${"─".repeat(40)}\n`;
+            txt += `Código: ${code}\nHora: ${scan?.time || "-"}\nLocal: ${scan?.location || "-"}\nFoto etiqueta: ${getPhoto(code) ? "📸 Sim" : "—"}\nFoto bobina: ${getPhotoBobina(code) ? "📸 Sim" : "—"}\n${"─".repeat(40)}\n`;
           });
           zip.file(`nao_previstas_${dateStr}.txt`, "\uFEFF" + txt);
           const blob = await zip.generateAsync(
@@ -2886,7 +2955,8 @@
       let camScanner = null,
         camCooldown = false,
         camPendingExtra = null,
-        camCurrentPhoto = null,
+        camCurrentPhotoEtiqueta = null,
+        camCurrentPhotoBobina = null,
         camActx = null;
       function camVibrate(type) {
         if (!navigator.vibrate) return;
@@ -2927,11 +2997,12 @@
           }
         } catch (e) {}
       }
-      function savePhoto(code, photoData) {
+      function savePhotosExtra(code, photoEtiqueta, photoBobina) {
         try {
-          localStorage.setItem("photo_" + code, photoData);
+          localStorage.setItem("photo_" + code, photoEtiqueta);
+          localStorage.setItem("photo_bobina_" + code, photoBobina);
         } catch (e) {
-          console.warn("Sem espaço para foto");
+          console.warn("Sem espaço para fotos");
         }
       }
       async function startIntegratedScanner() {
@@ -3024,7 +3095,8 @@
         camScanner = null;
         camCooldown = false;
         camPendingExtra = null;
-        camCurrentPhoto = null;
+        camCurrentPhotoEtiqueta = null;
+        camCurrentPhotoBobina = null;
         document.getElementById("scannerOverlay").classList.remove("show");
         document.body.style.overflow = "";
         updateStats();
@@ -3057,7 +3129,7 @@
         }
         if (S.checked.has(code)) {
           camFlash("yellow");
-          camShowResult("yellow", `✅ "${code}" — já conferido`, 2000);
+          camShowResult("yellow", `✅ "${code}" — já conferido`, 1200);
           camVibrate("already");
           camBeep("warning");
           return;
@@ -3102,8 +3174,10 @@
         document.getElementById("camLocCode").textContent = code;
         document.getElementById("camLocInput").value = "";
         document.getElementById("camLocError").style.display = "none";
-        document.getElementById("camPhotoError").style.display = "none";
-        camRemovePhoto();
+        document.getElementById("camPhotoErrorEtiqueta").style.display = "none";
+        document.getElementById("camPhotoErrorBobina").style.display = "none";
+        camRemovePhoto("etiqueta");
+        camRemovePhoto("bobina");
         setTimeout(() => document.getElementById("camLocInput").focus(), 300);
       }
       function camConfirmLocation() {
@@ -3115,10 +3189,19 @@
           input.focus();
           hasError = true;
         } else document.getElementById("camLocError").style.display = "none";
-        if (!camCurrentPhoto) {
-          document.getElementById("camPhotoError").style.display = "block";
+        if (!camCurrentPhotoEtiqueta) {
+          document.getElementById("camPhotoErrorEtiqueta").style.display =
+            "block";
           hasError = true;
-        } else document.getElementById("camPhotoError").style.display = "none";
+        } else
+          document.getElementById("camPhotoErrorEtiqueta").style.display =
+            "none";
+        if (!camCurrentPhotoBobina) {
+          document.getElementById("camPhotoErrorBobina").style.display =
+            "block";
+          hasError = true;
+        } else
+          document.getElementById("camPhotoErrorBobina").style.display = "none";
         if (hasError) {
           camVibrate("notfound");
           return;
@@ -3131,9 +3214,15 @@
             status: "not-found",
             location: loc,
             hasPhoto: true,
+            hasPhotoEtiqueta: true,
+            hasPhotoBobina: true,
           });
-          savePhoto(camPendingExtra.code, camCurrentPhoto);
-          camShowResult("red", `⚠️ "${camPendingExtra.code}" — 📌 ${loc} 📸`);
+          savePhotosExtra(
+            camPendingExtra.code,
+            camCurrentPhotoEtiqueta,
+            camCurrentPhotoBobina,
+          );
+          camShowResult("red", `⚠️ "${camPendingExtra.code}" — 📌 ${loc} 🏷️📦`);
           save();
           camUpdateCounters();
           camUpdateHistory();
@@ -3142,17 +3231,19 @@
           updateDBUI();
           camPendingExtra = null;
         }
-        camCurrentPhoto = null;
+        camCurrentPhotoEtiqueta = null;
+        camCurrentPhotoBobina = null;
         document.getElementById("camLocModal").classList.remove("show");
         setTimeout(() => (camCooldown = false), 1000);
       }
       function camCancelLocation() {
         camPendingExtra = null;
-        camCurrentPhoto = null;
+        camCurrentPhotoEtiqueta = null;
+        camCurrentPhotoBobina = null;
         document.getElementById("camLocModal").classList.remove("show");
         setTimeout(() => (camCooldown = false), 500);
       }
-      function camHandlePhoto(e) {
+      function camHandlePhoto(e, tipo) {
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
@@ -3175,27 +3266,48 @@
             canvas.width = w;
             canvas.height = h;
             canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-            camCurrentPhoto = canvas.toDataURL("image/jpeg", 0.6);
-            document.getElementById("camPhotoImg").src = camCurrentPhoto;
-            document.getElementById("camPhotoPreview").style.display = "block";
-            const btn = document.getElementById("camPhotoBtn");
+            const data = canvas.toDataURL("image/jpeg", 0.6);
+            const isBobina = tipo === "bobina";
+            if (isBobina) camCurrentPhotoBobina = data;
+            else camCurrentPhotoEtiqueta = data;
+            document.getElementById(
+              isBobina ? "camPhotoImgBobina" : "camPhotoImgEtiqueta",
+            ).src = data;
+            document.getElementById(
+              isBobina ? "camPhotoPreviewBobina" : "camPhotoPreviewEtiqueta",
+            ).style.display = "block";
+            const btn = document.getElementById(
+              isBobina ? "camPhotoBtnBobina" : "camPhotoBtnEtiqueta",
+            );
             btn.classList.add("has-photo");
-            btn.innerHTML =
-              '✅ Foto capturada — toque para trocar<input type="file" id="camPhotoInput" accept="image/*" capture="environment" onchange="camHandlePhoto(event)">';
-            document.getElementById("camPhotoError").style.display = "none";
+            btn.innerHTML = isBobina
+              ? '✅ Foto da bobina capturada — toque para trocar<input type="file" id="camPhotoInputBobina" accept="image/*" capture="environment" onchange="camHandlePhoto(event,\'bobina\')">'
+              : '✅ Foto da etiqueta capturada — toque para trocar<input type="file" id="camPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="camHandlePhoto(event,\'etiqueta\')">';
+            document.getElementById(
+              isBobina ? "camPhotoErrorBobina" : "camPhotoErrorEtiqueta",
+            ).style.display = "none";
           };
           img.src = ev.target.result;
         };
         reader.readAsDataURL(file);
       }
-      function camRemovePhoto() {
-        camCurrentPhoto = null;
-        document.getElementById("camPhotoPreview").style.display = "none";
-        const btn = document.getElementById("camPhotoBtn");
+      function camRemovePhoto(tipo) {
+        const isBobina = tipo === "bobina";
+        if (isBobina) camCurrentPhotoBobina = null;
+        else camCurrentPhotoEtiqueta = null;
+        document.getElementById(
+          isBobina ? "camPhotoPreviewBobina" : "camPhotoPreviewEtiqueta",
+        ).style.display = "none";
+        const btn = document.getElementById(
+          isBobina ? "camPhotoBtnBobina" : "camPhotoBtnEtiqueta",
+        );
         btn.classList.remove("has-photo");
-        btn.innerHTML =
-          '📷 Tirar Foto<input type="file" id="camPhotoInput" accept="image/*" capture="environment" onchange="camHandlePhoto(event)">';
-        const inp = document.getElementById("camPhotoInput");
+        btn.innerHTML = isBobina
+          ? '📷 Tirar foto da bobina<input type="file" id="camPhotoInputBobina" accept="image/*" capture="environment" onchange="camHandlePhoto(event,\'bobina\')">'
+          : '📷 Tirar foto da etiqueta<input type="file" id="camPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="camHandlePhoto(event,\'etiqueta\')">';
+        const inp = document.getElementById(
+          isBobina ? "camPhotoInputBobina" : "camPhotoInputEtiqueta",
+        );
         if (inp) inp.value = "";
       }
       function camViewPhoto(code) {
@@ -3227,15 +3339,23 @@
           if (s.status === "found")
             html += `<div class="s-h-item found"><span>✅</span><span class="sh-code">${esc(s.code)}</span><span class="sh-time">${esc(s.time)}</span></div>`;
           else
-            html += `<div class="s-h-item not-found"><span>⚠️</span><span class="sh-code">${esc(s.code)}</span>${s.location ? `<span class="sh-loc">📌${esc(s.location)}</span>` : ""}${s.hasPhoto ? `<span class="sh-photo" onclick="camViewPhoto('${esc(s.code).replace(/'/g, "&#39;")}')">📸</span>` : ""}<span class="sh-time">${esc(s.time)}</span></div>`;
+            html += `<div class="s-h-item not-found"><span>⚠️</span><span class="sh-code">${esc(s.code)}</span>${s.location ? `<span class="sh-loc">📌${esc(s.location)}</span>` : ""}${s.hasPhoto ? `<span class="sh-photo" onclick="camViewPhoto('${esc(s.code).replace(/'/g, "&#39;")}')">🏷️📦</span>` : ""}<span class="sh-time">${esc(s.time)}</span></div>`;
         });
         box.insertAdjacentHTML("afterbegin", html);
       }
-
       function showPhotoModal(code) {
-        const photo = getPhoto(code);
-        if (photo) {
-          document.getElementById("photoModalImg").src = photo;
+        const etiqueta = getPhoto(code),
+          bobina = getPhotoBobina(code);
+        if (etiqueta || bobina) {
+          document.getElementById("photoEtiquetaWrap").style.display = etiqueta
+            ? "block"
+            : "none";
+          document.getElementById("photoBobinaWrap").style.display = bobina
+            ? "block"
+            : "none";
+          if (etiqueta) document.getElementById("photoModalImg").src = etiqueta;
+          if (bobina)
+            document.getElementById("photoModalImgBobina").src = bobina;
           document.getElementById("photoModal").classList.add("show");
         } else notify("Foto não encontrada", "warning");
       }
@@ -3295,7 +3415,7 @@
           if (b) {
             var d = b.createElement("script");
             d.innerHTML =
-              "window.__CF$cv$params={r:'a10de7f3bd39c5f6',t:'MTc4MjMyNjg5OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
+              "window.__CF$cv$params={r:'a10e103d6df78760',t:'MTc4MjMyODU0OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
             b.getElementsByTagName("head")[0].appendChild(d);
           }
         }
