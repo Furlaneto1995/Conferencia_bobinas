@@ -18539,7 +18539,7 @@
       .s-camera #camReader {
         width: 100%;
         height: 100%;
-        object-fit: contain;
+        object-fit: cover;
         background: #000;
       }
       .s-mira {
@@ -20486,6 +20486,7 @@
         camStream = null,
         camDecodeTimer = null,
         camDecodeReader = null,
+        camNativeDetector = null,
         camCanvasA = null,
         camCanvasB = null,
         camZX = null,
@@ -20668,13 +20669,22 @@
           hints.set(ZX.DecodeHintType.TRY_HARDER, true);
           camDecodeReader = new ZX.MultiFormatReader();
           camDecodeReader.setHints(hints);
+          try {
+            camNativeDetector =
+              "BarcodeDetector" in window
+                ? new BarcodeDetector({ formats: ["code_128"] })
+                : null;
+          } catch (e) {
+            camNativeDetector = null;
+          }
+          const isPortrait = window.innerHeight >= window.innerWidth;
           const constraints = {
             audio: false,
             video: {
               facingMode: { ideal: "environment" },
-              width: { ideal: 1920 },
-              height: { ideal: 1080 },
-              aspectRatio: { ideal: 16 / 9 },
+              width: { ideal: isPortrait ? 1080 : 1920 },
+              height: { ideal: isPortrait ? 1920 : 1080 },
+              aspectRatio: { ideal: isPortrait ? 9 / 16 : 16 / 9 },
               frameRate: { ideal: 30, max: 60 },
               advanced: [{ focusMode: "continuous" }],
             },
@@ -20720,6 +20730,7 @@
         camStream = null;
         camDecodeTimer = null;
         camDecodeReader = null;
+        camNativeDetector = null;
         camVideoTrack = null;
         camTorchOn = false;
         camZoomValue = null;
@@ -20734,7 +20745,7 @@
         updateDBUI();
         updateReport();
       }
-      function camDecodeLoop() {
+      async function camDecodeLoop() {
         if (
           !document.getElementById("scannerOverlay").classList.contains("show")
         )
@@ -20742,7 +20753,8 @@
         try {
           const video = document.getElementById("camReader");
           if (video && video.readyState >= 2 && !camCooldown) {
-            const txt = camTryDecodeVideo(video);
+            let txt = await camTryNativeDecode(video);
+            if (!txt) txt = camTryDecodeVideo(video);
             if (txt) {
               camCooldown = true;
               camProcessScan(String(txt).trim());
@@ -20752,6 +20764,17 @@
           }
         } catch (e) {}
         camDecodeTimer = setTimeout(camDecodeLoop, 90);
+      }
+      async function camTryNativeDecode(video) {
+        try {
+          if (!camNativeDetector) return null;
+          const results = await camNativeDetector.detect(video);
+          if (results && results.length) {
+            const r = results[0];
+            return r.rawValue || r.rawValueText || r.data || null;
+          }
+        } catch (e) {}
+        return null;
       }
       function camTryDecodeVideo(video) {
         const vw = video.videoWidth,
