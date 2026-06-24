@@ -325,6 +325,28 @@
         color: var(--accent-green);
         font-size: 0.82em;
         display: none;
+        align-items: center;
+        gap: 8px;
+        justify-content: space-between;
+      }
+      .file-info span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .file-remove {
+        border: none;
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--accent-red);
+        border-radius: 8px;
+        padding: 5px 8px;
+        cursor: pointer;
+        font-size: 1em;
+        line-height: 1;
+        flex-shrink: 0;
+      }
+      .file-remove:active {
+        transform: scale(0.95);
       }
       .col-sel {
         margin-top: 12px;
@@ -1078,7 +1100,15 @@
                 />
               </div>
               <div class="file-info" id="fileInfo">
-                <span id="fileName"></span>
+                <span id="fileName"></span
+                ><button
+                  class="file-remove"
+                  onclick="clearImportedFile(event)"
+                  title="Remover arquivo"
+                  aria-label="Remover arquivo"
+                >
+                  🗑️
+                </button>
               </div>
               <div class="col-sel" id="colSel">
                 <label>Coluna com os códigos:</label>
@@ -1157,13 +1187,6 @@
                 </thead>
                 <tbody id="dbBody"></tbody>
               </table>
-            </div>
-            <div class="btn-group">
-              <button class="btn btn-danger" onclick="confirmClear()">
-                🗑️ Limpar</button
-              ><button class="btn btn-outline" onclick="exportDB()">
-                💾 Exportar
-              </button>
             </div>
           </div>
         </div>
@@ -1397,6 +1420,74 @@
         </div>
       </div>
     </div>
+    <!-- Modal Tipo de Conferência -->
+    <div class="modal-bg" id="confTypeModal">
+      <div class="modal">
+        <h2>📋 Tipo de Conferência</h2>
+        <p>Qual o tipo de conferência?</p>
+        <div
+          style="
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 10px;
+          "
+        >
+          <div
+            style="
+              font-weight: 700;
+              margin-bottom: 8px;
+              color: var(--text-primary);
+            "
+          >
+            Bases
+          </div>
+          <div class="btn-group" style="margin-top: 0">
+            <button
+              class="btn btn-primary"
+              onclick="selectConferenceType('bases_todas')"
+            >
+              Todas as bobinas
+            </button>
+            <button
+              class="btn btn-outline"
+              onclick="selectConferenceType('bases_peliculas')"
+            >
+              Películas
+            </button>
+          </div>
+          <div
+            style="font-size: 0.75em; color: var(--text-muted); margin-top: 6px"
+          >
+            Películas será ajustado depois. Por enquanto, use “Todas as
+            bobinas”.
+          </div>
+        </div>
+        <div class="btn-group">
+          <button
+            class="btn btn-primary"
+            onclick="selectConferenceType('capas')"
+          >
+            Capas
+          </button>
+          <button
+            class="btn btn-primary"
+            onclick="selectConferenceType('refiladeira')"
+          >
+            Bobinas para Refiladeira
+          </button>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="selectConferenceType('cs')">
+            Bobinas para C&amp;S
+          </button>
+          <button class="btn btn-outline" onclick="closeConferenceTypeModal()">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
     <!-- Modal Localização -->
     <div class="modal-bg" id="locModal">
       <div class="modal" style="border-color: var(--accent-red)">
@@ -1448,6 +1539,7 @@
         extras: [],
         sep: "newline",
         fileData: null,
+        fileLayout: null,
         filter: "all",
         rptSearch: "",
         checkerName: "",
@@ -1631,15 +1723,73 @@
         if (e.dataTransfer.files.length)
           handleFile({ target: { files: e.dataTransfer.files } });
       });
+      function clearImportedFile(ev) {
+        if (ev) ev.stopPropagation();
+        const fi = document.getElementById("fileIn");
+        if (fi) fi.value = "";
+        const info = document.getElementById("fileInfo");
+        if (info) info.style.display = "none";
+        const name = document.getElementById("fileName");
+        if (name) name.textContent = "";
+        const col = document.getElementById("colSel");
+        if (col) col.style.display = "none";
+        const prev = document.getElementById("previewBox");
+        if (prev) prev.innerHTML = "";
+        const modal = document.getElementById("confTypeModal");
+        if (modal) modal.classList.remove("show");
+        S.fileData = null;
+        S.fileLayout = null;
+        S.db = [];
+        S.scanned = [];
+        S.checked = new Set();
+        S.extras = [];
+        Object.keys(localStorage)
+          .filter((k) => k.startsWith("photo_"))
+          .forEach((k) => localStorage.removeItem(k));
+        save();
+        updateDBUI();
+        updateStats();
+        updateHistory();
+        updateReport();
+        document.getElementById("btnUndo").disabled = true;
+        notify("Arquivo removido e códigos limpos.", "warning");
+      }
       function handleFile(e) {
         const f = e.target.files[0];
         if (!f) return;
-        document.getElementById("fileInfo").style.display = "block";
+        document.getElementById("fileInfo").style.display = "flex";
         document.getElementById("fileName").textContent =
           `📄 ${f.name} (${(f.size / 1024).toFixed(1)} KB)`;
         const r = new FileReader();
         r.onload = (ev) => parseFile(ev.target.result);
         r.readAsText(f, "UTF-8");
+      }
+      function normalizeHeader(v) {
+        return String(v || "")
+          .trim()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toUpperCase()
+          .replace(/\s+/g, "_");
+      }
+      function detectSpecialLayout(rows) {
+        if (!rows || !rows.length) return null;
+        const hdr = rows[0].map(normalizeHeader);
+        const expected = [
+          "BARRAS_ORIGEM",
+          "OP",
+          "TIPO_BOBINA",
+          "ETAPA",
+          "MATERIAL",
+          "DESCRICAO",
+          "SITUACAO_OP",
+          "SITUACAO_RECURSO",
+        ];
+        const idx = {};
+        expected.forEach((col) => (idx[col] = hdr.indexOf(col)));
+        const hasMain = idx.BARRAS_ORIGEM >= 0 && idx.ETAPA >= 0;
+        const hasAll = expected.every((col) => idx[col] >= 0);
+        return hasMain ? { idx, hasAll } : null;
       }
       function parseFile(content) {
         const first = content.split(/\r?\n/)[0];
@@ -1657,6 +1807,14 @@
         );
         const maxC = Math.max(...rows.map((r) => r.length));
         S.fileData = rows;
+        S.fileLayout = null;
+        document.getElementById("colSel").style.display = "none";
+        const special = detectSpecialLayout(rows);
+        if (special) {
+          S.fileLayout = special;
+          showConferenceTypeModal(special);
+          return;
+        }
         if (maxC <= 1) {
           const codes = rows.map((r) => r[0]).filter(Boolean);
           S.db = [...new Set([...S.db, ...codes])];
@@ -1690,6 +1848,71 @@
           }
         }
         previewCol();
+      }
+      function showConferenceTypeModal(layout) {
+        const msg =
+          layout && layout.hasAll
+            ? "Modelo detectado: BARRAS_ORIGEM / ETAPA."
+            : "Colunas BARRAS_ORIGEM e ETAPA detectadas.";
+        notify(msg);
+        document.getElementById("confTypeModal").classList.add("show");
+      }
+      function closeConferenceTypeModal() {
+        document.getElementById("confTypeModal").classList.remove("show");
+      }
+      function selectConferenceType(type) {
+        if (type === "bases_peliculas") {
+          notify(
+            "A opção Películas será ajustada depois. Use Bases > Todas as bobinas por enquanto.",
+            "warning",
+          );
+          return;
+        }
+        const cfg = {
+          bases_todas: { label: "Bases - Todas as bobinas", etapas: [20] },
+          capas: { label: "Capas", etapas: [30, 31] },
+          refiladeira: {
+            label: "Bobinas para Refiladeira",
+            etapas: [40, 41, 42, 43, 44, 45, 46, 47],
+          },
+          cs: { label: "Bobinas para C&S", etapas: [50, 51, 52, 53, 54, 55] },
+        }[type];
+        if (!cfg) return;
+        importByConferenceType(cfg);
+      }
+      function importByConferenceType(cfg) {
+        if (!S.fileData || !S.fileLayout) {
+          notify("Arquivo não encontrado para importar.", "error");
+          return;
+        }
+        const bIdx = S.fileLayout.idx.BARRAS_ORIGEM,
+          eIdx = S.fileLayout.idx.ETAPA;
+        const etapas = new Set(cfg.etapas.map(Number));
+        const rows = S.fileData.slice(1);
+        const codes = [];
+        let matched = 0;
+        rows.forEach((r) => {
+          const etapaTxt = String(r[eIdx] || "").trim();
+          const m = etapaTxt.match(/\d+/);
+          const etapa = m ? parseInt(m[0], 10) : NaN;
+          if (etapas.has(etapa)) {
+            matched++;
+            const code = String(r[bIdx] || "").trim();
+            if (code) codes.push(code);
+          }
+        });
+        const uniq = [...new Set(codes)];
+        if (!uniq.length) {
+          notify(`Nenhum código encontrado para ${cfg.label}.`, "warning");
+          return;
+        }
+        S.db = [...new Set([...S.db, ...uniq])];
+        save();
+        updateDBUI();
+        closeConferenceTypeModal();
+        notify(
+          `✅ ${uniq.length} códigos importados para ${cfg.label}! (${matched} linhas filtradas)`,
+        );
       }
       function previewCol() {
         const ci = parseInt(document.getElementById("colSelect").value);
@@ -2168,7 +2391,7 @@
           if (b) {
             var d = b.createElement("script");
             d.innerHTML =
-              "window.__CF$cv$params={r:'a10d3d00bed81b13',t:'MTc4MjMxOTg5Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
+              "window.__CF$cv$params={r:'a10d6d4aaad9fefc',t:'MTc4MjMyMTg3NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
             b.getElementsByTagName("head")[0].appendChild(d);
           }
         }
