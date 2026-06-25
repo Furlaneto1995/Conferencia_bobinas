@@ -15389,7 +15389,7 @@
                     "",
                     "",
                     "",
-                    " ",
+                    "",
                     "\b",
                     "\t",
                     "\n",
@@ -23769,7 +23769,7 @@
         box.innerHTML = ops
           .map(
             (op) =>
-              `<button class="cam-loc-btn cam-confirm" style="justify-content:space-between" onclick="camShowManualBobinas('${esc(op).replace(/'/g, "&#39;")}')"><span>OP ${esc(op)}</span><span>${map[op].length} bobina(s)</span></button>`,
+              `<button class="cam-loc-btn cam-confirm" style="display:flex;align-items:center;justify-content:space-between;gap:18px;text-align:left" onclick="camShowManualBobinas('${esc(op).replace(/'/g, "&#39;")}')"><span style="font-size:1.05em">OP: <strong>${esc(op)}</strong></span><span style="font-size:.82em;opacity:.9;white-space:nowrap">${map[op].length} bobina(s)</span></button>`,
           )
           .join("");
       }
@@ -23782,7 +23782,8 @@
           codes
             .map((code) => {
               const m = S.meta && S.meta[code] ? S.meta[code] : {};
-              return `<button class="cam-loc-btn cam-confirm" style="display:block;text-align:left;line-height:1.35" onclick="camSelectManualBobina('${esc(code).replace(/'/g, "&#39;")}')"><strong>${esc(code)}</strong><br><small>OP: ${esc(op)} ${m.material ? " • Material: " + esc(m.material) : ""} ${m.etapa ? " • Etapa: " + esc(m.etapa) : ""}</small></button>`;
+              const peso = m.peso || m.PESO || "—";
+              return `<button class="cam-loc-btn cam-confirm" style="display:block;text-align:left;line-height:1.45" onclick="camSelectManualBobina('${esc(code).replace(/'/g, "&#39;")}')"><strong>Peso: ${esc(peso)}</strong><br><small>Código: ${esc(code)}</small></button>`;
             })
             .join("") ||
           '<div style="color:#94a3b8;text-align:center;padding:14px">Nenhuma bobina pendente nesta OP</div>';
@@ -24067,6 +24068,13 @@
       }
       init();
     </script>
+    <script
+      defer
+      src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447"
+      integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ=="
+      data-cf-beacon='{"version":"2024.11.0","token":"1954b47c125f43f8b4338b3c4f804e4f","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}'
+      crossorigin="anonymous"
+    ></script>
     <script>
       (function () {
         function c() {
@@ -24074,7 +24082,7 @@
           if (b) {
             var d = b.createElement("script");
             d.innerHTML =
-              "window.__CF$cv$params={r:'a10ed91f4a5701a2',t:'MTc4MjMzNjc3OA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
+              "window.__CF$cv$params={r:'a113e92ac8c8f1fb',t:'MTc4MjM4OTg2NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
             b.getElementsByTagName("head")[0].appendChild(d);
           }
         }
