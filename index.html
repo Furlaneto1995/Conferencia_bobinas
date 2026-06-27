@@ -21651,35 +21651,6 @@
         border-radius: 50%;
         color: #fff;
       }
-.cam-photo-actions {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  display: flex;
-  gap: 6px;
-}
-
-.cam-photo-rotate,
-.cam-photo-remove {
-  width: 30px;
-  height: 30px;
-  border: none;
-  border-radius: 50%;
-  color: #fff;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.cam-photo-rotate {
-  background: rgba(59, 130, 246, 0.95);
-}
-
-.cam-photo-remove {
-  background: rgba(239, 68, 68, 0.95);
-}
       .cam-loc-buttons {
         display: flex;
         gap: 8px;
@@ -22119,26 +22090,13 @@
                 />
               </div>
               <div class="cam-photo-preview" id="camPhotoPreviewEtiqueta">
-  <img id="camPhotoImgEtiqueta" src="" />
-  <div class="cam-photo-actions">
-    <button
-      type="button"
-      class="cam-photo-rotate"
-      onclick="camRotatePhoto('etiqueta')"
-      title="Girar foto"
-    >
-      ↻
-    </button>
-    <button
-      type="button"
-      class="cam-photo-remove"
-      onclick="camRemovePhoto('etiqueta')"
-      title="Remover foto"
-    >
-      ✕
-    </button>
-  </div>
-</div>
+                <img id="camPhotoImgEtiqueta" src="" /><button
+                  class="cam-photo-remove"
+                  onclick="camRemovePhoto('etiqueta')"
+                >
+                  ✕
+                </button>
+              </div>
               <div class="cam-error" id="camPhotoErrorEtiqueta">
                 ⚠️ Foto da etiqueta obrigatória!
               </div>
@@ -22162,26 +22120,13 @@
                 />
               </div>
               <div class="cam-photo-preview" id="camPhotoPreviewBobina">
-  <img id="camPhotoImgBobina" src="" />
-  <div class="cam-photo-actions">
-    <button
-      type="button"
-      class="cam-photo-rotate"
-      onclick="camRotatePhoto('bobina')"
-      title="Girar foto"
-    >
-      ↻
-    </button>
-    <button
-      type="button"
-      class="cam-photo-remove"
-      onclick="camRemovePhoto('bobina')"
-      title="Remover foto"
-    >
-      ✕
-    </button>
-  </div>
-</div>
+                <img id="camPhotoImgBobina" src="" /><button
+                  class="cam-photo-remove"
+                  onclick="camRemovePhoto('bobina')"
+                >
+                  ✕
+                </button>
+              </div>
               <div class="cam-error" id="camPhotoErrorBobina">
                 ⚠️ Foto da bobina obrigatória!
               </div>
@@ -23442,8 +23387,6 @@
         camCurrentPhotoEtiqueta = null,
         camCurrentPhotoBobina = null,
         camActx = null;
-let camPhotoEditTarget = null;
-let camPhotoEditTemp = null;
       function camVibrate(type) {
         if (!navigator.vibrate) return;
         if (type === "found") navigator.vibrate(200);
@@ -24023,154 +23966,52 @@ let camPhotoEditTemp = null;
         setTimeout(() => (camCooldown = false), 500);
       }
       function camHandlePhoto(e, tipo) {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = function (ev) {
-    camPhotoEditTarget = tipo;
-    camPhotoEditTemp = ev.target.result;
-
-    const img = document.getElementById("camPhotoEditImg");
-    img.src = camPhotoEditTemp;
-
-    document.getElementById("camPhotoEditModal").classList.add("show");
-  };
-  reader.readAsDataURL(file);
-}
-
-async function camRotateEditorPhoto() {
-  try {
-    if (!camPhotoEditTemp) return;
-
-    const img = await loadImgData(camPhotoEditTemp);
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-
-    canvas.width = img.height;
-    canvas.height = img.width;
-
-    ctx.translate(canvas.width / 2, canvas.height / 2);
-    ctx.rotate(Math.PI / 2);
-    ctx.drawImage(img, -img.width / 2, -img.height / 2);
-
-    camPhotoEditTemp = canvas.toDataURL("image/jpeg", 0.92);
-    document.getElementById("camPhotoEditImg").src = camPhotoEditTemp;
-  } catch (e) {
-    console.error(e);
-    notify("Não foi possível girar a foto.", "warning");
-  }
-}
-
-function camConfirmEditorPhoto() {
-  if (!camPhotoEditTemp || !camPhotoEditTarget) return;
-
-  const isBobina = camPhotoEditTarget === "bobina";
-
-  if (isBobina) {
-    camCurrentPhotoBobina = camPhotoEditTemp;
-    document.getElementById("camPhotoImgBobina").src = camPhotoEditTemp;
-    document.getElementById("camPhotoPreviewBobina").style.display = "block";
-
-    const btn = document.getElementById("camPhotoBtnBobina");
-    btn.classList.add("has-photo");
-    btn.innerHTML =
-      '✅ Foto da bobina capturada — toque para trocar<input type="file" id="camPhotoInputBobina" accept="image/*" capture="environment" onchange="camHandlePhoto(event,\'bobina\')">';
-    document.getElementById("camPhotoErrorBobina").style.display = "none";
-  } else {
-    camCurrentPhotoEtiqueta = camPhotoEditTemp;
-    document.getElementById("camPhotoImgEtiqueta").src = camPhotoEditTemp;
-    document.getElementById("camPhotoPreviewEtiqueta").style.display = "block";
-
-    const btn = document.getElementById("camPhotoBtnEtiqueta");
-    btn.classList.add("has-photo");
-    btn.innerHTML =
-      '✅ Foto da etiqueta capturada — toque para trocar<input type="file" id="camPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="camHandlePhoto(event,\'etiqueta\')">';
-    document.getElementById("camPhotoErrorEtiqueta").style.display = "none";
-  }
-
-  camCloseEditorPhoto();
-}
-
-function camCloseEditorPhoto() {
-  document.getElementById("camPhotoEditModal").classList.remove("show");
-  camPhotoEditTarget = null;
-  camPhotoEditTemp = null;
-}
-
-function camRefazerEditorPhoto() {
-  const target = camPhotoEditTarget;
-  camCloseEditorPhoto();
-
-  setTimeout(() => {
-    const inputId =
-      target === "bobina" ? "camPhotoInputBobina" : "camPhotoInputEtiqueta";
-    const inp = document.getElementById(inputId);
-    if (inp) {
-      inp.value = "";
-      inp.click();
-    }
-  }, 150);
-}
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+          const data = ev.target.result;
+          const isBobina = tipo === "bobina";
+          if (isBobina) camCurrentPhotoBobina = data;
+          else camCurrentPhotoEtiqueta = data;
+          document.getElementById(
+            isBobina ? "camPhotoImgBobina" : "camPhotoImgEtiqueta",
+          ).src = data;
+          document.getElementById(
+            isBobina ? "camPhotoPreviewBobina" : "camPhotoPreviewEtiqueta",
+          ).style.display = "block";
+          const btn = document.getElementById(
+            isBobina ? "camPhotoBtnBobina" : "camPhotoBtnEtiqueta",
+          );
+          btn.classList.add("has-photo");
+          btn.innerHTML = isBobina
+            ? '✅ Foto da bobina capturada — toque para trocar<input type="file" id="camPhotoInputBobina" accept="image/*" capture="environment" onchange="camHandlePhoto(event,\'bobina\')">'
+            : '✅ Foto da etiqueta capturada — toque para trocar<input type="file" id="camPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="camHandlePhoto(event,\'etiqueta\')">';
+          document.getElementById(
+            isBobina ? "camPhotoErrorBobina" : "camPhotoErrorEtiqueta",
+          ).style.display = "none";
+        };
+        reader.readAsDataURL(file);
+      }
       function camRemovePhoto(tipo) {
-  const isBobina = tipo === "bobina";
-
-  if (isBobina) {
-    camCurrentPhotoBobina = null;
-    document.getElementById("camPhotoPreviewBobina").style.display = "none";
-    const btn = document.getElementById("camPhotoBtnBobina");
-    btn.classList.remove("has-photo");
-    btn.innerHTML =
-      '📷 Tirar foto da bobina<input type="file" id="camPhotoInputBobina" accept="image/*" capture="environment" onchange="camHandlePhoto(event,\'bobina\')">';
-    const inp = document.getElementById("camPhotoInputBobina");
-    if (inp) inp.value = "";
-  } else {
-    camCurrentPhotoEtiqueta = null;
-    document.getElementById("camPhotoPreviewEtiqueta").style.display = "none";
-    const btn = document.getElementById("camPhotoBtnEtiqueta");
-    btn.classList.remove("has-photo");
-    btn.innerHTML =
-      '📷 Tirar foto da etiqueta<input type="file" id="camPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="camHandlePhoto(event,\'etiqueta\')">';
-    const inp = document.getElementById("camPhotoInputEtiqueta");
-    if (inp) inp.value = "";
-  }
-}
-async function camRotatePhoto(tipo) {
-  try {
-    const isBobina = tipo === "bobina";
-    const current = isBobina ? camCurrentPhotoBobina : camCurrentPhotoEtiqueta;
-
-    if (!current) {
-      notify("Nenhuma foto para girar.", "warning");
-      return;
-    }
-
-    const img = await loadImgData(current);
-
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-
-    canvas.width = img.height;
-    canvas.height = img.width;
-
-    ctx.translate(canvas.width / 2, canvas.height / 2);
-    ctx.rotate(Math.PI / 2);
-    ctx.drawImage(img, -img.width / 2, -img.height / 2);
-
-    const rotated = canvas.toDataURL("image/jpeg", 0.92);
-
-    if (isBobina) {
-      camCurrentPhotoBobina = rotated;
-      document.getElementById("camPhotoImgBobina").src = rotated;
-    } else {
-      camCurrentPhotoEtiqueta = rotated;
-      document.getElementById("camPhotoImgEtiqueta").src = rotated;
-    }
-  } catch (e) {
-    console.error(e);
-    notify("Não foi possível girar a foto.", "warning");
-  }
-}
+        const isBobina = tipo === "bobina";
+        if (isBobina) camCurrentPhotoBobina = null;
+        else camCurrentPhotoEtiqueta = null;
+        document.getElementById(
+          isBobina ? "camPhotoPreviewBobina" : "camPhotoPreviewEtiqueta",
+        ).style.display = "none";
+        const btn = document.getElementById(
+          isBobina ? "camPhotoBtnBobina" : "camPhotoBtnEtiqueta",
+        );
+        btn.classList.remove("has-photo");
+        btn.innerHTML = isBobina
+          ? '📷 Tirar foto da bobina<input type="file" id="camPhotoInputBobina" accept="image/*" capture="environment" onchange="camHandlePhoto(event,\'bobina\')">'
+          : '📷 Tirar foto da etiqueta<input type="file" id="camPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="camHandlePhoto(event,\'etiqueta\')">';
+        const inp = document.getElementById(
+          isBobina ? "camPhotoInputBobina" : "camPhotoInputEtiqueta",
+        );
+        if (inp) inp.value = "";
+      }
       function camViewPhoto(code) {
         const photo = getPhoto(code);
         if (photo) {
@@ -24301,49 +24142,6 @@ async function camRotatePhoto(tipo) {
           }
         }
       })();
-<div class="cam-photo-view" id="camPhotoEditModal">
-  <div
-    style="
-      width: 100%;
-      max-width: 520px;
-      background: #111827;
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 16px;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    "
-  >
-    <div style="color:#fff;font-weight:700;text-align:center">
-      Ajustar foto antes de salvar
-    </div>
-
-    <img
-      id="camPhotoEditImg"
-      src=""
-      style="
-        width: 100%;
-        max-height: 60vh;
-        object-fit: contain;
-        border-radius: 12px;
-        background: #000;
-      "
-    />
-
-    <div style="display:flex; gap:8px; flex-wrap:wrap">
-      <button class="cam-loc-btn cam-cancel" onclick="camRotateEditorPhoto()">
-        ↻ Girar
-      </button>
-      <button class="cam-loc-btn cam-cancel" onclick="camRefazerEditorPhoto()">
-        🔁 Refazer
-      </button>
-      <button class="cam-loc-btn cam-confirm" onclick="camConfirmEditorPhoto()">
-        ✅ Usar foto
-      </button>
-    </div>
-  </div>
-</div>
     </script>
   </body>
 </html>
