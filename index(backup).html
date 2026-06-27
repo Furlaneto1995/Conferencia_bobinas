@@ -23317,23 +23317,26 @@
           let csv = "Código;Hora;Localização;Foto Combinada\n",
             countFotos = 0;
           extrasUniq.forEach((code) => {
-            const scan = S.scanned.find(
-                (s) => s.code === code && s.status === "not-found",
-              ),
-              loc = scan?.location || "",
-              time = scan?.time || "";
-            let fotoName = "";
-            const photo = getPhoto(code),
-              base = photo?.split(",")[1];
-            if (base) {
-              fotosFolder.file(`${code}_etiqueta_bobina.jpg`, base, {
-                base64: true,
-              });
-              fotoName = `fotos/${code}_etiqueta_bobina.jpg`;
-              countFotos++;
-            }
-            csv += `${code};${time};${loc};${fotoName}\n`;
-          });
+  const scan = S.scanned.find(
+    (s) => s.code === code && s.status === "not-found"
+  );
+
+  const loc = scan?.location || "";
+  const time = scan?.time || "";
+
+  let fotoName = "";
+  const photo = getPhoto(code);
+  const base =
+    photo && photo.includes(",") ? photo.split(",")[1] : null;
+
+  if (base) {
+    fotosFolder.file(`${code}_etiqueta_bobina.jpg`, base, { base64: true });
+    fotoName = `fotos/${code}_etiqueta_bobina.jpg`;
+    countFotos++;
+  }
+
+  csv += `${code};${time};${loc};${fotoName}\n`;
+});
           const total = S.db.length,
             chk = S.checked.size,
             pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0;
@@ -23438,49 +23441,66 @@
         ctx.drawImage(img, x + (w - nw) / 2, y + (h - nh) / 2, nw, nh);
       }
       async function combinePhotosHalf(code, photoEtiqueta, photoBobina) {
-        const [etq, bob] = await Promise.all([
-          loadImgData(photoEtiqueta),
-          loadImgData(photoBobina),
-        ]);
-        const maxW = Math.min(1600, Math.max(etq.width, bob.width));
-        const labelH = 54;
-        const etqH = Math.round(etq.height * (maxW / etq.width));
-        const bobH = Math.round(bob.height * (maxW / bob.width));
-        const canvas = document.createElement("canvas");
-        canvas.width = maxW;
-        canvas.height = labelH + etqH + labelH + bobH;
-        const ctx = canvas.getContext("2d");
-        ctx.fillStyle = "#fff";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        drawContain(ctx, etq, 0, labelH, maxW, etqH);
-        drawContain(ctx, bob, 0, labelH + etqH + labelH, maxW, bobH);
-        ctx.fillStyle = "rgba(0,0,0,.72)";
-        ctx.fillRect(0, 0, maxW, labelH);
-        ctx.fillRect(0, labelH + etqH, maxW, labelH);
-        ctx.fillStyle = "#fff";
-        ctx.font = "bold 26px Arial";
-        ctx.fillText("ETIQUETA  •  Código: " + code, 18, 36);
-        ctx.fillText("BOBINA  •  Código: " + code, 18, labelH + etqH + 36);
-        return canvas.toDataURL("image/jpeg", 0.95);
-      }
+  const [etq, bob] = await Promise.all([
+    loadImgData(photoEtiqueta),
+    loadImgData(photoBobina),
+  ]);
+
+  const maxW = 900; // antes estava muito grande
+  const labelH = 44;
+
+  const etqRatio = Math.min(maxW / etq.width, 1);
+  const bobRatio = Math.min(maxW / bob.width, 1);
+
+  const etqW = Math.round(etq.width * etqRatio);
+  const etqH = Math.round(etq.height * etqRatio);
+
+  const bobW = Math.round(bob.width * bobRatio);
+  const bobH = Math.round(bob.height * bobRatio);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = maxW;
+  canvas.height = labelH + etqH + labelH + bobH;
+
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  drawContain(ctx, etq, 0, labelH, maxW, etqH);
+  drawContain(ctx, bob, 0, labelH + etqH + labelH, maxW, bobH);
+
+  ctx.fillStyle = "rgba(0,0,0,.75)";
+  ctx.fillRect(0, 0, maxW, labelH);
+  ctx.fillRect(0, labelH + etqH, maxW, labelH);
+
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 22px Arial";
+  ctx.fillText("ETIQUETA • " + code, 16, 28);
+  ctx.fillText("BOBINA • " + code, 16, labelH + etqH + 28);
+
+  return canvas.toDataURL("image/jpeg", 0.72);
+}
       async function savePhotosExtra(code, photoEtiqueta, photoBobina) {
-        try {
-          const combined = await combinePhotosHalf(
-            code,
-            photoEtiqueta,
-            photoBobina,
-          );
-          localStorage.setItem("photo_" + code, combined);
-          localStorage.removeItem("photo_bobina_" + code);
-          return combined;
-        } catch (e) {
-          console.warn("Erro ao combinar fotos", e);
-          try {
-            localStorage.setItem("photo_" + code, photoEtiqueta);
-          } catch (err) {}
-          return photoEtiqueta;
-        }
-      }
+  try {
+    const combined = await combinePhotosHalf(code, photoEtiqueta, photoBobina);
+    localStorage.setItem("photo_" + code, combined);
+
+    const saved = localStorage.getItem("photo_" + code);
+    if (!saved) throw new Error("Falha ao salvar foto combinada");
+
+    return true;
+  } catch (e) {
+    console.error("Erro ao salvar foto:", e);
+
+    try {
+      localStorage.setItem("photo_" + code, photoEtiqueta);
+      return !!localStorage.getItem("photo_" + code);
+    } catch (err) {
+      console.error("Fallback também falhou:", err);
+      return false;
+    }
+  }
+}
 
       async function startIntegratedScanner() {
         load();
@@ -23866,57 +23886,70 @@
           return;
         }
         if (camManualMode === "manualFound" && camManualSelectedCode) {
-          const code = camManualSelectedCode,
-            time = new Date().toLocaleTimeString("pt-BR");
-          S.checked.add(code);
-          S.scanned.unshift({
-            code,
-            time,
-            status: "found",
-            manual: true,
-            location: loc,
-            hasPhoto: true,
-            hasPhotoEtiqueta: true,
-            hasPhotoBobina: true,
-          });
-          await savePhotosExtra(
-            code,
-            camCurrentPhotoEtiqueta,
-            camCurrentPhotoBobina,
-          );
-          camShowResult("green", `📸 MANUAL — "${code}"`);
-          save();
-          camUpdateCounters();
-          camUpdateHistory();
-          updateStats();
-          updateHistory();
-          updateDBUI();
-          camManualSelectedCode = null;
-        } else if (camPendingExtra) {
-          S.extras.push(camPendingExtra.code);
-          S.scanned.unshift({
-            code: camPendingExtra.code,
-            time: camPendingExtra.time,
-            status: "not-found",
-            location: loc,
-            hasPhoto: true,
-            hasPhotoEtiqueta: true,
-            hasPhotoBobina: true,
-          });
-          await savePhotosExtra(
-            camPendingExtra.code,
-            camCurrentPhotoEtiqueta,
-            camCurrentPhotoBobina,
-          );
-          camShowResult("red", `⚠️ "${camPendingExtra.code}" — 📌 ${loc} 🏷️📦`);
-          save();
-          camUpdateCounters();
-          camUpdateHistory();
-          updateStats();
-          updateHistory();
-          updateDBUI();
-          camPendingExtra = null;
-        }
+  const code = camManualSelectedCode;
+  const time = new Date().toLocaleTimeString("pt-BR");
+
+  const savedPhoto = await savePhotosExtra(
+    code,
+    camCurrentPhotoEtiqueta,
+    camCurrentPhotoBobina
+  );
+
+  S.checked.add(code);
+  S.scanned.unshift({
+    code,
+    time,
+    status: "found",
+    manual: true,
+    location: loc,
+    hasPhoto: savedPhoto,
+    hasPhotoEtiqueta: savedPhoto,
+    hasPhotoBobina: savedPhoto,
+  });
+
+  if (!savedPhoto) {
+    notify("Foto não foi salva. Não vai sair no exportador.", "warning");
+  }
+
+  camShowResult("green", `📸 MANUAL — "${code}"`);
+  save();
+  camUpdateCounters();
+  camUpdateHistory();
+  updateStats();
+  updateHistory();
+  updateDBUI();
+  camManualSelectedCode = null;
+} else if (camPendingExtra) {
+  const savedPhoto = await savePhotosExtra(
+    camPendingExtra.code,
+    camCurrentPhotoEtiqueta,
+    camCurrentPhotoBobina
+  );
+
+  S.extras.push(camPendingExtra.code);
+  S.scanned.unshift({
+    code: camPendingExtra.code,
+    time: camPendingExtra.time,
+    status: "not-found",
+    location: loc,
+    hasPhoto: savedPhoto,
+    hasPhotoEtiqueta: savedPhoto,
+    hasPhotoBobina: savedPhoto,
+  });
+
+  if (!savedPhoto) {
+    notify("Foto não foi salva. Não vai sair no exportador.", "warning");
+  }
+
+  camShowResult("red", `⚠️ "${camPendingExtra.code}" — 📌 ${loc} 🏷️`);
+  save();
+  camUpdateCounters();
+  camUpdateHistory();
+  updateStats();
+  updateHistory();
+  updateDBUI();
+  camPendingExtra = null;
+}
         camCurrentPhotoEtiqueta = null;
         camCurrentPhotoBobina = null;
         camManualMode = "extra";
