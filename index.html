@@ -2025,6 +2025,58 @@
   .cloud-detail-stats { grid-template-columns: repeat(4, 1fr); }
 }
 
+
+
+.cloud-current-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.7em;
+  font-weight: 900;
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--accent-green);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  margin-left: 6px;
+}
+.cloud-item.current {
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.08) inset;
+}
+.cloud-filters,
+.cloud-detail-filters {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.cloud-filter-btn {
+  padding: 6px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 0.78em;
+  font-weight: 800;
+  cursor: pointer;
+}
+.cloud-filter-btn.active {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #fff;
+}
+.cloud-export-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.cloud-export-modal-grid .btn {
+  justify-content: center;
+}
+@media (max-width: 520px) {
+  .cloud-export-modal-grid { grid-template-columns: 1fr; }
+}
+
     </style>
   </head>
   <body>
@@ -2373,6 +2425,12 @@
               placeholder="Buscar por operador, data ou tipo..."
               oninput="renderCloudConsult(this.value)"
             />
+          </div>
+
+          <div class="cloud-filters">
+            <button class="cloud-filter-btn active" id="cloudFilterAll" onclick="cloudSetListFilter('all')">Todas</button>
+            <button class="cloud-filter-btn" id="cloudFilterOpen" onclick="cloudSetListFilter('em_andamento')">Em andamento</button>
+            <button class="cloud-filter-btn" id="cloudFilterDone" onclick="cloudSetListFilter('finalizada')">Finalizadas</button>
           </div>
 
           <div class="export-progress" id="exportProgress">
@@ -2999,6 +3057,11 @@
         cloudSummaryTimer = null,
         cloudConsultUnsub = null,
         cloudConsultDocs = [],
+        cloudListStatusFilter = "all",
+        cloudDetailRows = [],
+        cloudDetailFilter = "all",
+        cloudDetailSearch = "",
+        cloudDetailConfId = "",
         cloudSessionUnsub = null,
         cloudLeaderUnlocked = false,
         cloudSecretTimer = null;
@@ -3371,6 +3434,22 @@
         cloudRenderConsultList(q);
       }
 
+
+      function cloudSetListFilter(filter) {
+        cloudListStatusFilter = filter || "all";
+        document.querySelectorAll(".cloud-filters .cloud-filter-btn").forEach((b) =>
+          b.classList.remove("active"),
+        );
+        const id =
+          cloudListStatusFilter === "finalizada"
+            ? "cloudFilterDone"
+            : cloudListStatusFilter === "em_andamento"
+              ? "cloudFilterOpen"
+              : "cloudFilterAll";
+        document.getElementById(id)?.classList.add("active");
+        cloudRenderConsultList(document.getElementById("cloudSearch")?.value || "");
+      }
+
       function cloudRenderConsultList(search = "") {
         const box = document.getElementById("cloudConsultBox");
         if (!box) return;
@@ -3384,6 +3463,9 @@
               .includes(q),
           );
         }
+        if (cloudListStatusFilter !== "all") {
+          docs = docs.filter((d) => (d.status || "em_andamento") === cloudListStatusFilter);
+        }
         if (!docs.length) {
           box.innerHTML = '<div class="empty">Nenhuma conferência encontrada.</div>';
           return;
@@ -3392,14 +3474,15 @@
           .map((d) => {
             const r = d.resumo || {};
             const status = d.status || "em_andamento";
-            return `<div class="cloud-item">
+            const isCurrent = d.id === S.cloudSessionId;
+            return `<div class="cloud-item ${isCurrent ? "current" : ""}">
               <div class="cloud-item-head">
-                <div class="cloud-item-title">${esc(d.operador || "-")} • ${esc(d.data || "-")}</div>
+                <div class="cloud-item-title">${esc(d.operador || "-")} • ${esc(d.data || "-")}${isCurrent ? '<span class="cloud-current-badge">Atual</span>' : ""}</div>
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end">
                   <div class="cloud-item-status ${status === "finalizada" ? "finalizada" : ""}">${esc(status)}</div>
-                  <button class="cloud-report-btn" onclick="cloudOpenConference('${esc(d.id).replace(/'/g, "&#39;")}')">👁️ Abrir</button>
-                  <button class="cloud-report-btn" onclick="cloudExportConference('${esc(d.id).replace(/'/g, "&#39;")}', 'csv')">📄 CSV</button>
-                  <button class="cloud-report-btn" onclick="cloudExportConference('${esc(d.id).replace(/'/g, "&#39;")}', 'txt')">📝 TXT</button>
+                  <button class="cloud-report-btn" onclick="cloudOpenConference('${esc(d.id).replace(/'/g, "&#39;")}')">Visualizar</button>
+                  <button class="cloud-report-btn" onclick="cloudShowExportModal('${esc(d.id).replace(/'/g, "&#39;")}')">Exportar</button>
+                  ${status !== "finalizada" ? `<button class="cloud-report-btn" onclick="cloudFinishConferenceById('${esc(d.id).replace(/'/g, "&#39;")}')">Finalizar</button>` : ""}
                   <button class="cloud-delete-btn" onclick="cloudDeleteConference('${esc(d.id).replace(/'/g, "&#39;")}')">🗑️ Excluir</button>
                 </div>
               </div>
@@ -3448,7 +3531,55 @@
           );
       }
 
-      async function cloudExportConference(confId, fmt) {
+      function cloudShowExportModal(confId) {
+        if (!cloudLeaderUnlocked) return;
+        let modal = document.getElementById("cloudExportModal");
+        if (!modal) {
+          modal = document.createElement("div");
+          modal.id = "cloudExportModal";
+          modal.className = "modal-bg";
+          modal.innerHTML = `<div class="modal">
+            <h2>📤 Exportar relatório</h2>
+            <p>Escolha o conteúdo e o formato que deseja exportar:</p>
+            <div class="cloud-export-modal-grid">
+              <button class="btn btn-primary" id="ceAllCsv">Completo CSV</button>
+              <button class="btn btn-outline" id="ceAllTxt">Completo TXT</button>
+              <button class="btn btn-primary" id="cePendingCsv">Pendentes CSV</button>
+              <button class="btn btn-outline" id="cePendingTxt">Pendentes TXT</button>
+              <button class="btn btn-primary" id="ceExtraCsv">Não previstas CSV</button>
+              <button class="btn btn-outline" id="ceExtraTxt">Não previstas TXT</button>
+              <button class="btn btn-primary" id="ceCheckedCsv">Conferidas CSV</button>
+              <button class="btn btn-outline" id="ceCheckedTxt">Conferidas TXT</button>
+            </div>
+            <div class="btn-group" style="margin-top: 12px">
+              <button class="btn btn-outline" onclick="cloudCloseExportModal()">Cancelar</button>
+            </div>
+          </div>`;
+          document.body.appendChild(modal);
+        }
+        const bind = (id, fmt, scope) => {
+          const btn = document.getElementById(id);
+          if (btn) btn.onclick = () => {
+            cloudCloseExportModal();
+            cloudExportConference(confId, fmt, scope);
+          };
+        };
+        bind("ceAllCsv", "csv", "all");
+        bind("ceAllTxt", "txt", "all");
+        bind("cePendingCsv", "csv", "pending");
+        bind("cePendingTxt", "txt", "pending");
+        bind("ceExtraCsv", "csv", "extra");
+        bind("ceExtraTxt", "txt", "extra");
+        bind("ceCheckedCsv", "csv", "checked");
+        bind("ceCheckedTxt", "txt", "checked");
+        modal.classList.add("show");
+      }
+
+      function cloudCloseExportModal() {
+        document.getElementById("cloudExportModal")?.classList.remove("show");
+      }
+
+      async function cloudExportConference(confId, fmt, scope = "all") {
         if (!cloudLeaderUnlocked) return;
         try {
           cloudSetStatus("sync", "☁️ Gerando relatório da nuvem...");
@@ -3519,26 +3650,47 @@
               });
             });
 
+          const scopeLabelMap = {
+            all: "completo",
+            pending: "pendentes",
+            extra: "nao_previstas",
+            checked: "conferidas",
+          };
+          const scopeTitleMap = {
+            all: "COMPLETO",
+            pending: "PENDENTES",
+            extra: "NÃO PREVISTAS",
+            checked: "CONFERIDAS",
+          };
+          const exportItems = items.filter((i) => {
+            if (scope === "pending") return i.status === "Pendente";
+            if (scope === "extra") return i.status === "Não Prevista";
+            if (scope === "checked") return i.status.startsWith("Conferido");
+            return true;
+          });
+          const scopeLabel = scopeLabelMap[scope] || "completo";
+          const scopeTitle = scopeTitleMap[scope] || "COMPLETO";
+
           if (fmt === "csv") {
-            let csv = `RELATÓRIO DE CONFERÊNCIA - NUVEM\nData;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente;${operador}\nTipo de Conferência;${tipo}\nID;${conf.id}\nStatus;${conf.status || "-"}\n\nRESUMO\nTotal;${total}\nConferidos;${chk}\nPendentes;${total - chk}\nNão Previstas;${extras}\nPercentual;${pct}%\n\nRESUMO POR OP\nOP;Encontradas;Percentual\n`;
+            let csv = `RELATÓRIO DE CONFERÊNCIA - NUVEM (${scopeTitle})\nData;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente;${operador}\nTipo de Conferência;${tipo}\nID;${conf.id}\nStatus;${conf.status || "-"}\n\nRESUMO\nTotal;${total}\nConferidos;${chk}\nPendentes;${total - chk}\nNão Previstas;${extras}\nPercentual;${pct}%\n\nRESUMO POR OP\nOP;Encontradas;Percentual\n`;
             csv += opSummary
               .map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`)
               .join("\n");
             csv += `\n\nBOBINAS\nCódigo;OP;Peso;Status;Hora;Localização;Observação;Fotos\n`;
-            csv += items
+            csv += exportItems
               .map((i) => `${i.code};${i.op};${i.peso};${i.status};${i.time};${i.location};${i.observation};${i.hasPhoto ? "Sim" : "Não"}`)
               .join("\n");
-            download(csv, `conferencia_nuvem_${conf.id}_${dateStr}.csv`, "text/csv");
+            download(csv, `${scopeLabel}_conferencia_nuvem_${conf.id}_${dateStr}.csv`, "text/csv");
           } else {
-            let txt = `RELATÓRIO DE CONFERÊNCIA - NUVEM\nData: ${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente: ${operador}\nTipo de Conferência: ${tipo}\nID: ${conf.id}\nStatus: ${conf.status || "-"}\n${"=".repeat(95)}\n\nTotal: ${total}\nConferidos: ${chk}\nPendentes: ${total - chk}\nNão Previstas: ${extras}\nPercentual: ${pct}%\n\n${"=".repeat(95)}\nRESUMO POR OP\n${"=".repeat(95)}\n`;
+            let txt = `RELATÓRIO DE CONFERÊNCIA - NUVEM (${scopeTitle})\nData: ${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente: ${operador}\nTipo de Conferência: ${tipo}\nID: ${conf.id}\nStatus: ${conf.status || "-"}\n${"=".repeat(95)}\n\nTotal: ${total}\nConferidos: ${chk}\nPendentes: ${total - chk}\nNão Previstas: ${extras}\nPercentual: ${pct}%\n\n${"=".repeat(95)}\nRESUMO POR OP\n${"=".repeat(95)}\n`;
             txt += opSummary
               .map((op) => `OP: ${String(op.op || "-").padEnd(15)} | Encontradas: ${String(op.checked + "/" + op.total).padEnd(8)} | ${op.pct}%`)
               .join("\n");
             txt += `\n\n${"=".repeat(95)}\nBOBINAS\n${"=".repeat(95)}\n\n`;
-            txt += items
+            txt += exportItems
               .map((i) => `${i.code.padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${i.status.padEnd(16)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.hasPhoto ? "📸 Sim" : "—"}`)
               .join("\n");
-            download(txt, `conferencia_nuvem_${conf.id}_${dateStr}.txt`, "text/plain");
+            download(txt, `${scopeLabel}_conferencia_nuvem_${conf.id}_${dateStr}.txt`, "text/plain");
           }
           cloudSetStatus("ok", "☁️ Relatório da nuvem gerado");
           notify("Relatório da nuvem exportado!");
@@ -3629,7 +3781,10 @@
                 .join("")
             : '<div class="empty">Nenhuma OP encontrada.</div>';
 
-          const detailRows = rows.slice(0, 700);
+          cloudDetailRows = rows;
+          cloudDetailFilter = "all";
+          cloudDetailSearch = "";
+          cloudDetailConfId = conf.id;
           box.innerHTML = `<div class="cloud-detail-head">
             <div>
               <div class="cloud-detail-title">${esc(conf.operador || "-")} • ${esc(conf.data || "-")}</div>
@@ -3645,23 +3800,25 @@
           </div>
           <div class="cloud-detail-section-title">📦 Resumo por OP</div>
           <div class="op-summary-list" style="max-height:220px;overflow:auto;padding-right:4px">${opHtml}</div>
-          <div class="cloud-detail-section-title">📋 Bobinas e leituras ${rows.length > 700 ? `(mostrando 700 de ${rows.length})` : ""}</div>
-          <div class="cloud-detail-scroll">
+          <div class="cloud-detail-section-title">📋 Bobinas e leituras</div>
+          <div class="search-wrap" style="margin-bottom: 8px">
+            <span class="si">🔍</span>
+            <input class="search-input" id="cloudDetailSearch" placeholder="Buscar código, OP, status ou observação..." oninput="cloudDetailSearch=this.value; cloudRenderDetailRows()" />
+          </div>
+          <div class="cloud-detail-filters">
+            <button class="cloud-filter-btn active" id="cloudDetailFilterAll" onclick="cloudSetDetailFilter('all')">Todos</button>
+            <button class="cloud-filter-btn" id="cloudDetailFilterChecked" onclick="cloudSetDetailFilter('checked')">Conferidos</button>
+            <button class="cloud-filter-btn" id="cloudDetailFilterPending" onclick="cloudSetDetailFilter('pending')">Pendentes</button>
+            <button class="cloud-filter-btn" id="cloudDetailFilterExtra" onclick="cloudSetDetailFilter('extra')">Não previstas</button>
+            <button class="cloud-report-btn" onclick="cloudShowExportModal(cloudDetailConfId)">Exportar</button>
+          </div>
+          <div class="cloud-detail-scroll" style="margin-top: 8px">
             <table class="dtbl">
               <thead><tr><th>#</th><th>Código</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Obs.</th><th>📸</th></tr></thead>
-              <tbody>${detailRows.map((r, i) => `<tr>
-                <td>${i + 1}</td>
-                <td class="cc">${esc(r.code)}</td>
-                <td>${esc(r.op)}</td>
-                <td>${esc(r.peso)}</td>
-                <td>${esc(r.status)}</td>
-                <td>${esc(r.time || "")}</td>
-                <td>${esc(r.location || "")}</td>
-                <td>${esc(r.observation || "")}</td>
-                <td>${r.hasPhoto ? "📸" : "—"}</td>
-              </tr>`).join("")}</tbody>
+              <tbody id="cloudDetailRowsBody"></tbody>
             </table>
           </div>`;
+          cloudRenderDetailRows();
           box.scrollIntoView({ behavior: "smooth", block: "start" });
           cloudSetStatus("ok", "☁️ Conferência aberta");
         } catch (e) {
@@ -3671,11 +3828,96 @@
         }
       }
 
+
+      function cloudSetDetailFilter(filter) {
+        cloudDetailFilter = filter || "all";
+        document.querySelectorAll(".cloud-detail-filters .cloud-filter-btn").forEach((b) =>
+          b.classList.remove("active"),
+        );
+        const id =
+          cloudDetailFilter === "checked"
+            ? "cloudDetailFilterChecked"
+            : cloudDetailFilter === "pending"
+              ? "cloudDetailFilterPending"
+              : cloudDetailFilter === "extra"
+                ? "cloudDetailFilterExtra"
+                : "cloudDetailFilterAll";
+        document.getElementById(id)?.classList.add("active");
+        cloudRenderDetailRows();
+      }
+
+      function cloudRenderDetailRows() {
+        const tbody = document.getElementById("cloudDetailRowsBody");
+        if (!tbody) return;
+        const q = String(cloudDetailSearch || "").trim().toLowerCase();
+        let rows = cloudDetailRows || [];
+        if (cloudDetailFilter === "checked") rows = rows.filter((r) => String(r.status).includes("Conferid") || String(r.status).includes("Manual"));
+        if (cloudDetailFilter === "pending") rows = rows.filter((r) => String(r.status).includes("Pendente"));
+        if (cloudDetailFilter === "extra") rows = rows.filter((r) => String(r.status).includes("Não prevista"));
+        if (q) {
+          rows = rows.filter((r) =>
+            [r.code, r.op, r.peso, r.status, r.time, r.location, r.observation]
+              .join(" ")
+              .toLowerCase()
+              .includes(q),
+          );
+        }
+        const limited = rows.slice(0, 700);
+        if (!limited.length) {
+          tbody.innerHTML = '<tr><td colspan="9">Nenhum item encontrado</td></tr>';
+          return;
+        }
+        tbody.innerHTML = limited
+          .map((r, i) => `<tr>
+            <td>${i + 1}</td>
+            <td class="cc">${esc(r.code)}</td>
+            <td>${esc(r.op)}</td>
+            <td>${esc(r.peso)}</td>
+            <td>${esc(r.status)}</td>
+            <td>${esc(r.time || "")}</td>
+            <td>${esc(r.location || "")}</td>
+            <td>${esc(r.observation || "")}</td>
+            <td>${r.hasPhoto ? "📸" : "—"}</td>
+          </tr>`)
+          .join("");
+        if (rows.length > 700) {
+          tbody.innerHTML += `<tr><td colspan="9">Mostrando 700 de ${rows.length} itens</td></tr>`;
+        }
+      }
+
       function cloudCloseConferenceDetail() {
         const box = document.getElementById("cloudDetailBox");
         if (!box) return;
         box.className = "cloud-detail";
         box.innerHTML = "";
+      }
+
+
+      async function cloudFinishConferenceById(confId) {
+        if (!cloudLeaderUnlocked) return;
+        if (!confirm(`Finalizar a conferência ${confId}?`)) return;
+        try {
+          cloudSetStatus("sync", "☁️ Finalizando conferência...");
+          if (!(await cloudInit())) throw new Error("Firebase indisponível");
+          const ref = cloudDb.collection("conferencias").doc(confId);
+          const snap = await ref.get();
+          if (!snap.exists) throw new Error("Conferência não encontrada");
+          await ref.set(
+            {
+              status: "finalizada",
+              finalizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+              atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true },
+          );
+          if (confId === S.cloudSessionId) cloudSetStatus("ok", "☁️ Conferência atual finalizada");
+          else cloudSetStatus("ok", "☁️ Conferência finalizada");
+          notify("Conferência finalizada.");
+        } catch (e) {
+          console.error(e);
+          cloudSetStatus("error", "☁️ Erro ao finalizar");
+          notify("Erro ao finalizar: " + (e.message || e), "error");
+        }
       }
 
       async function cloudDeleteSubcollection(confRef, name) {
@@ -5641,5 +5883,5 @@ async function camRotatePhoto(tipo) {
       }
       init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a140a149eeaf0f15',t:'MTc4Mjg1ODc3OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a140b7a48a91f2e4',t:'MTc4Mjg1OTY5NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
