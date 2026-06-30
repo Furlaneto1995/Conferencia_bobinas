@@ -21713,6 +21713,35 @@
         color: #e2e8f0;
         font-weight: 600;
       }
+
+/* Ajuste do modal de não previstas para não cortar o topo */
+#camLocModal.cam-loc-modal.show {
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  padding-top: max(env(safe-area-inset-top, 12px), 12px);
+  padding-bottom: max(env(safe-area-inset-bottom, 12px), 12px);
+}
+
+#camLocModal .cam-loc-box {
+  margin: 0 auto;
+  max-height: none;
+}
+
+/* Mantém o título e o código visíveis durante a rolagem */
+#camLocModal .cam-loc-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #1a2332;
+  padding: 6px 0 10px;
+}
+
+#camLocModal .cam-loc-code {
+  position: sticky;
+  top: 38px;
+  z-index: 9;
+}
     </style>
   </head>
   <body>
@@ -22000,11 +22029,13 @@
                 <tr>
                   <th>#</th>
                   <th>Código</th>
-                  <th>OP</th>
-                  <th>Status</th>
-                  <th>Hora</th>
-                  <th>Local</th>
-                  <th>📸</th>
+<th>OP</th>
+<th>Peso</th>
+<th>Status</th>
+<th>Hora</th>
+<th>Local</th>
+<th>Observação</th>
+<th>📸</th>
                 </tr>
               </thead>
               <tbody id="rptBody"></tbody>
@@ -22083,6 +22114,17 @@
               placeholder="Ex: A2, E17, 240..."
               autocomplete="off"
             />
+
+<div class="cam-loc-label" style="margin-top: 12px">
+  📝 Observação:
+</div>
+
+<textarea
+  class="cam-loc-input"
+  id="camObsInput"
+  placeholder="Ex: etiqueta rasgada, bobina sem identificação, divergência visual..."
+  style="min-height: 78px; resize: vertical; font-family: inherit"
+></textarea>
             <div class="cam-error" id="camLocError">
               ⚠️ Localização obrigatória!
             </div>
@@ -22812,6 +22854,11 @@
         ];
         const idx = {};
         expected.forEach((col) => (idx[col] = hdr.indexOf(col)));
+idx.PESO = hdr.findIndex((h) => h.includes("PESO"));
+
+if (idx.PESO < 0) {
+  idx.PESO = 8; // Coluna I
+}
         const hasMain = idx.BARRAS_ORIGEM >= 0 && idx.ETAPA >= 0;
         const hasAll = expected.every((col) => idx[col] >= 0);
         return hasMain ? { idx, hasAll } : null;
@@ -22928,9 +22975,10 @@
           return;
         }
         const bIdx = S.fileLayout.idx.BARRAS_ORIGEM,
-          eIdx = S.fileLayout.idx.ETAPA,
-          mIdx = S.fileLayout.idx.MATERIAL,
-          opIdx = S.fileLayout.idx.OP;
+  eIdx = S.fileLayout.idx.ETAPA,
+  mIdx = S.fileLayout.idx.MATERIAL,
+  opIdx = S.fileLayout.idx.OP,
+  pIdx = S.fileLayout.idx.PESO;
         const rows = S.fileData.slice(1);
         const codes = [];
         let matched = 0;
@@ -22953,10 +23001,11 @@
           if (code) {
             codes.push(code);
             S.meta[code] = {
-              op: String(r[opIdx] || "").trim(),
-              etapa: String(r[eIdx] || "").trim(),
-              material: String(r[mIdx] || "").trim(),
-            };
+  op: String(r[opIdx] || "").trim(),
+  etapa: String(r[eIdx] || "").trim(),
+  material: String(r[mIdx] || "").trim(),
+  peso: String(r[pIdx] || "").trim(),
+};
           }
         });
         const uniq = [...new Set(codes)];
@@ -23210,6 +23259,11 @@
           ? S.meta[code].op
           : "-";
       }
+function getPeso(code) {
+  return S.meta && S.meta[code] && S.meta[code].peso
+    ? S.meta[code].peso
+    : "-";
+}
       function getReportItems() {
         let items = [];
         [...new Set(S.extras)].forEach((code) => {
@@ -23217,14 +23271,16 @@
             (s) => s.code === code && s.status === "not-found",
           );
           items.push({
-            code,
-            op: "-",
-            status: "extra",
-            manual: false,
-            time: scan ? scan.time : "-",
-            location: scan?.location || "-",
-            hasPhoto: scan?.hasPhoto || false,
-          });
+  code,
+  op: "-",
+  peso: "-",
+  status: "extra",
+  manual: false,
+  time: scan ? scan.time : "-",
+  location: scan?.location || "-",
+  observation: scan?.observation || "",
+  hasPhoto: scan?.hasPhoto || false,
+});
         });
         S.db.forEach((code) => {
           const chk = S.checked.has(code),
@@ -23232,14 +23288,16 @@
               (s) => s.code === code && s.status === "found",
             );
           items.push({
-            code,
-            op: getOP(code),
-            status: chk ? "checked" : "pending",
-            manual: !!scan?.manual,
-            time: scan ? scan.time : "-",
-            location: scan?.location || "",
-            hasPhoto: !!scan?.hasPhoto,
-          });
+  code,
+  op: getOP(code),
+  peso: getPeso(code),
+  status: chk ? "checked" : "pending",
+  manual: !!scan?.manual,
+  time: scan ? scan.time : "-",
+  location: scan?.location || "",
+  observation: scan?.observation || "",
+  hasPhoto: !!scan?.hasPhoto,
+});
         });
         return items;
       }
@@ -23267,13 +23325,28 @@
                 : it.status === "pending"
                   ? "⏳"
                   : "⚠️";
-            return `<tr><td>${i + 1}</td><td>${esc(it.code)}</td><td>${esc(it.op || "-")}</td><td>${bt}</td><td>${esc(it.time)}</td><td>${it.status === "extra" ? "📌 " + esc(it.location) : "—"}</td><td>${it.hasPhoto ? `<button class="icon-btn" onclick="showPhotoModal('${esc(it.code).replace(/'/g, "&#39;")}')">📸</button>` : "—"}</td></tr>`;
+            return `<tr>
+  <td>${i + 1}</td>
+  <td>${esc(it.code)}</td>
+  <td>${esc(it.op || "-")}</td>
+  <td>${esc(it.peso || "-")}</td>
+  <td>${bt}</td>
+  <td>${esc(it.time)}</td>
+  <td>${it.status === "extra" ? "📌 " + esc(it.location) : "—"}</td>
+  <td>${it.observation ? esc(it.observation) : "—"}</td>
+  <td>${
+    it.hasPhoto
+      ? ` <button class="icon-btn" onclick="showPhotoModal('${esc(it.code).replace(/'/g, "&#39;")}')">📸</button> `
+      : "—"
+  }</td>
+</tr>`;
           })
           .join("");
         if (items.length > 500)
-          tbody.innerHTML += `<tr><td colspan="7">... +${items.length - 500}</td></tr>`;
-        if (!items.length)
-          tbody.innerHTML = '<tr><td colspan="7">Nenhum item</td></tr>';
+  tbody.innerHTML += `<tr><td colspan="9">... +${items.length - 500}</td></tr>`;
+
+if (!items.length)
+  tbody.innerHTML = '<tr><td colspan="9">Nenhum item</td></tr>';
       }
       function filterRpt(f, btn) {
         S.filter = f;
@@ -23288,132 +23361,224 @@
         renderRpt();
       }
       function exportRpt(fmt) {
-        const items = getReportItems().map((i) => ({
-          code: i.code,
-          op: i.op || "-",
-          status:
-            i.status === "checked"
-              ? i.manual
-                ? "Conferido Manual"
-                : "Conferido"
-              : i.status === "pending"
-                ? "Pendente"
-                : "Não Prevista",
-          time: i.time === "-" ? "" : i.time,
-          location: i.location === "-" ? "" : i.location,
-          hasPhoto: i.hasPhoto,
-        }));
-        const total = S.db.length,
-          chk = S.checked.size,
-          pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0,
-          date = new Date(),
-          tipo = S.confType || "-",
-          conferente = S.checkerName || "-",
-          extras = [...new Set(S.extras)].length;
-        if (fmt === "csv") {
-          let csv = `RELATÓRIO DE CONFERÊNCIA\nData;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente;${conferente}\nTipo de Conferência;${tipo}\n\nRESUMO\nTotal;${total}\nConferidos;${chk}\nPendentes;${total - chk}\nNão Previstas;${extras}\nPercentual;${pct}%\n\nBOBINAS\nCódigo;OP;Status;Hora;Localização;Fotos\n`;
-          csv += items
-            .map(
-              (i) =>
-                `${i.code};${i.op};${i.status};${i.time};${i.location};${i.hasPhoto ? "Combinada etiqueta+bobina" : "Não"}`,
-            )
-            .join("\n");
-          download(
-            csv,
-            `conferencia_${date.toISOString().slice(0, 10)}.csv`,
-            "text/csv",
-          );
-        } else {
-          let txt = `RELATÓRIO DE CONFERÊNCIA\nData: ${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente: ${conferente}\nTipo de Conferência: ${tipo}\n${"=".repeat(95)}\n\nTotal: ${total}\nConferidos: ${chk}\nPendentes: ${total - chk}\nNão Previstas: ${extras}\nPercentual: ${pct}%\n\n${"=".repeat(95)}\nBOBINAS\n${"=".repeat(95)}\n\n`;
-          txt += items
-            .map(
-              (i) =>
-                `${i.code.padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | ${i.status.padEnd(15)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | ${i.hasPhoto ? "📸 Combinada" : "—"}`,
-            )
-            .join("\n");
-          download(
-            txt,
-            `conferencia_${date.toISOString().slice(0, 10)}.txt`,
-            "text/plain",
-          );
-        }
-        notify("Relatório exportado!");
-      }
-      async function exportZip() {
-        const extrasUniq = [...new Set(S.extras)];
-        if (extrasUniq.length === 0) {
-          notify("Nenhuma bobina não prevista para exportar!", "warning");
-          return;
-        }
-        const progress = document.getElementById("exportProgress");
-        progress.classList.add("show");
-        progress.textContent = "⏳ Gerando arquivo ZIP...";
-        try {
-          const zip = new JSZip(),
-            fotosFolder = zip.folder("fotos"),
-            dateStr = new Date().toISOString().slice(0, 10),
-            timeStr = new Date().toLocaleTimeString("pt-BR");
-          let csv = "Código;Hora;Localização;Foto Combinada\n",
-            countFotos = 0;
-          extrasUniq.forEach((code) => {
-  const scan = S.scanned.find(
-    (s) => s.code === code && s.status === "not-found"
-  );
+  const items = getReportItems().map((i) => ({
+    code: i.code,
+    op: i.op || "-",
+    peso: i.peso || "-",
+    status:
+      i.status === "checked"
+        ? i.manual
+          ? "Conferido Manual"
+          : "Conferido"
+        : i.status === "pending"
+          ? "Pendente"
+          : "Não Prevista",
+    time: i.time === "-" ? "" : i.time,
+    location: i.location === "-" ? "" : i.location,
+    observation: i.observation || "",
+    hasPhoto: i.hasPhoto,
+  }));
 
-  const loc = scan?.location || "";
-  const time = scan?.time || "";
+  const total = S.db.length;
+  const chk = S.checked.size;
+  const pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0;
+  const date = new Date();
+  const tipo = S.confType || "-";
+  const conferente = S.checkerName || "-";
+  const extras = [...new Set(S.extras)].length;
 
-  let fotoName = "";
-  const photo = getPhoto(code);
-  const base =
-    photo && photo.includes(",") ? photo.split(",")[1] : null;
+  if (fmt === "csv") {
+    let csv = `RELATÓRIO DE CONFERÊNCIA
+Data;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}
+Conferente;${conferente}
+Tipo de Conferência;${tipo}
 
-  if (base) {
-    fotosFolder.file(`${code}_etiqueta_bobina.jpg`, base, { base64: true });
-    fotoName = `fotos/${code}_etiqueta_bobina.jpg`;
-    countFotos++;
+RESUMO
+Total;${total}
+Conferidos;${chk}
+Pendentes;${total - chk}
+Não Previstas;${extras}
+Percentual;${pct}%
+
+BOBINAS
+Código;OP;Peso;Status;Hora;Localização;Observação;Fotos
+`;
+
+    csv += items
+      .map(
+        (i) =>
+          `${i.code};${i.op};${i.peso};${i.status};${i.time};${i.location};${i.observation};${i.hasPhoto ? "Combinada etiqueta+bobina" : "Não"}`
+      )
+      .join("\n");
+
+    download(
+      csv,
+      `conferencia_${date.toISOString().slice(0, 10)}.csv`,
+      "text/csv"
+    );
+  } else {
+    let txt = `RELATÓRIO DE CONFERÊNCIA
+Data: ${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}
+Conferente: ${conferente}
+Tipo de Conferência: ${tipo}
+${"=".repeat(95)}
+
+Total: ${total}
+Conferidos: ${chk}
+Pendentes: ${total - chk}
+Não Previstas: ${extras}
+Percentual: ${pct}%
+
+${"=".repeat(95)}
+BOBINAS
+${"=".repeat(95)}
+
+`;
+
+    txt += items
+      .map(
+        (i) =>
+          `${i.code.padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${i.status.padEnd(15)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.hasPhoto ? "📸 Combinada" : "—"}`
+      )
+      .join("\n");
+
+    download(
+      txt,
+      `conferencia_${date.toISOString().slice(0, 10)}.txt`,
+      "text/plain"
+    );
   }
 
-  csv += `${code};${time};${loc};${fotoName}\n`;
-});
-          const total = S.db.length,
-            chk = S.checked.size,
-            pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0;
-          csv += `\n;RESUMO;\n;Conferente;${S.checkerName || ""}\n;Tipo de Conferência;${S.confType || ""}\n;Total no sistema;${total}\n;Conferidos;${chk}\n;Pendentes;${total - chk}\n;Não Previstas;${extrasUniq.length}\n;Fotos anexadas;${countFotos}\n;Percentual conferido;${pct}%\n;Data;${dateStr} ${timeStr}`;
-          zip.file(`nao_previstas_${dateStr}.csv`, "\uFEFF" + csv);
-          let txt = `RELATÓRIO DE BOBINAS NÃO PREVISTAS\nData: ${new Date().toLocaleDateString("pt-BR")} ${timeStr}\nConferente: ${S.checkerName || "-"}\nTipo de Conferência: ${S.confType || "-"}\n${"=".repeat(70)}\n\nTotal não previstas: ${extrasUniq.length}\nFotos anexadas: ${countFotos}\n\n${"=".repeat(70)}\n\n`;
-          extrasUniq.forEach((code) => {
-            const scan = S.scanned.find(
-              (s) => s.code === code && s.status === "not-found",
-            );
-            txt += `Código: ${code}\nHora: ${scan?.time || "-"}\nLocal: ${scan?.location || "-"}\nFoto combinada: ${getPhoto(code) ? "📸 Sim" : "—"}\n${"─".repeat(40)}\n`;
-          });
-          zip.file(`nao_previstas_${dateStr}.txt`, "\uFEFF" + txt);
-          const blob = await zip.generateAsync(
-            {
-              type: "blob",
-              compression: "DEFLATE",
-              compressionOptions: { level: 6 },
-            },
-            (m) => {
-              progress.textContent = `⏳ ${Math.round(m.percent)}% concluído...`;
-            },
-          );
-          const a = document.createElement("a");
-          a.href = URL.createObjectURL(blob);
-          a.download = `nao_previstas_${dateStr}.zip`;
-          a.click();
-          URL.revokeObjectURL(a.href);
-          progress.classList.remove("show");
-          notify(
-            `✅ ZIP exportado! ${extrasUniq.length} bobinas + ${countFotos} fotos`,
-          );
-        } catch (err) {
-          console.error(err);
-          progress.classList.remove("show");
-          notify("Erro ao gerar ZIP: " + err.message, "error");
-        }
+  notify("Relatório exportado!");
+}
+
+async function exportZip() {
+  const extrasUniq = [...new Set(S.extras)];
+
+  if (extrasUniq.length === 0) {
+    notify("Nenhuma bobina não prevista para exportar!", "warning");
+    return;
+  }
+
+  const progress = document.getElementById("exportProgress");
+
+  progress.classList.add("show");
+  progress.textContent = "⏳ Gerando arquivo ZIP...";
+
+  try {
+    const zip = new JSZip();
+    const fotosFolder = zip.folder("fotos");
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const timeStr = new Date().toLocaleTimeString("pt-BR");
+
+    let csv = "Código;Hora;Localização;Observação;Foto Combinada\n";
+    let countFotos = 0;
+
+    for (const code of extrasUniq) {
+      const scan = S.scanned.find(
+        (s) => s.code === code && s.status === "not-found"
+      );
+
+      const loc = scan?.location || "";
+      const time = scan?.time || "";
+      const obs = scan?.observation || "";
+      let fotoName = "";
+
+      const photo = await getPhoto(code);
+      const base = photo && photo.includes(",") ? photo.split(",")[1] : null;
+
+      if (base) {
+        fotosFolder.file(`${code}_etiqueta_bobina.jpg`, base, {
+          base64: true,
+        });
+
+        fotoName = `fotos/${code}_etiqueta_bobina.jpg`;
+        countFotos++;
       }
+
+      csv += `${code};${time};${loc};${obs};${fotoName}\n`;
+    }
+
+    const total = S.db.length;
+    const chk = S.checked.size;
+    const pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0;
+
+    csv += `
+;RESUMO;
+;Conferente;${S.checkerName || ""}
+;Tipo de Conferência;${S.confType || ""}
+;Total no sistema;${total}
+;Conferidos;${chk}
+;Pendentes;${total - chk}
+;Não Previstas;${extrasUniq.length}
+;Fotos anexadas;${countFotos}
+;Percentual conferido;${pct}%
+;Data;${dateStr} ${timeStr}`;
+
+    zip.file(`nao_previstas_${dateStr}.csv`, "\uFEFF" + csv);
+
+    let txt = `RELATÓRIO DE BOBINAS NÃO PREVISTAS
+Data: ${new Date().toLocaleDateString("pt-BR")} ${timeStr}
+Conferente: ${S.checkerName || "-"}
+Tipo de Conferência: ${S.confType || "-"}
+${"=".repeat(70)}
+
+Total não previstas: ${extrasUniq.length}
+Fotos anexadas: ${countFotos}
+
+${"=".repeat(70)}
+
+`;
+
+    for (const code of extrasUniq) {
+      const scan = S.scanned.find(
+        (s) => s.code === code && s.status === "not-found"
+      );
+
+      const hasPhoto = await getPhoto(code);
+
+      txt += `Código: ${code}
+Hora: ${scan?.time || "-"}
+Local: ${scan?.location || "-"}
+Observação: ${scan?.observation || "—"}
+Foto combinada: ${hasPhoto ? "📸 Sim" : "—"}
+${"─".repeat(40)}
+`;
+    }
+
+    zip.file(`nao_previstas_${dateStr}.txt`, "\uFEFF" + txt);
+
+    const blob = await zip.generateAsync(
+      {
+        type: "blob",
+        compression: "DEFLATE",
+        compressionOptions: { level: 6 },
+      },
+      (m) => {
+        progress.textContent = `⏳ ${Math.round(m.percent)}% concluído...`;
+      }
+    );
+
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `nao_previstas_${dateStr}.zip`;
+    a.click();
+
+    URL.revokeObjectURL(a.href);
+
+    progress.classList.remove("show");
+
+    notify(
+      `✅ ZIP exportado! ${extrasUniq.length} bobinas + ${countFotos} fotos`
+    );
+  } catch (err) {
+    console.error(err);
+
+    progress.classList.remove("show");
+
+    notify("Erro ao gerar ZIP: " + (err.message || err), "error");
+  }
+}
 
       let camScanner = null,
         camVideoTrack = null,
@@ -23879,6 +24044,7 @@
         document.getElementById("camLocModal").classList.add("show");
         document.getElementById("camLocCode").textContent = code;
         document.getElementById("camLocInput").value = "";
+document.getElementById("camObsInput").value = "";
         document.getElementById("camLocError").style.display = "none";
         document.getElementById("camPhotoErrorEtiqueta").style.display = "none";
         document.getElementById("camPhotoErrorBobina").style.display = "none";
@@ -23900,7 +24066,8 @@
       }
       async function camConfirmLocation() {
         const input = document.getElementById("camLocInput"),
-          loc = input.value.trim();
+  loc = input.value.trim(),
+  obs = document.getElementById("camObsInput").value.trim();
         let hasError = false;
         if (camManualMode !== "manualFound" && !loc) {
           document.getElementById("camLocError").style.display = "block";
@@ -23936,15 +24103,16 @@
 
   S.checked.add(code);
   S.scanned.unshift({
-    code,
-    time,
-    status: "found",
-    manual: true,
-    location: loc,
-    hasPhoto: savedPhoto,
-    hasPhotoEtiqueta: savedPhoto,
-    hasPhotoBobina: savedPhoto,
-  });
+  code,
+  time,
+  status: "found",
+  manual: true,
+  location: loc,
+  observation: obs,
+  hasPhoto: savedPhoto,
+  hasPhotoEtiqueta: savedPhoto,
+  hasPhotoBobina: savedPhoto,
+});
 
   if (!savedPhoto) {
     notify("Foto não foi salva. Não vai sair no exportador.", "warning");
@@ -23966,15 +24134,16 @@
   );
 
   S.extras.push(camPendingExtra.code);
-  S.scanned.unshift({
-    code: camPendingExtra.code,
-    time: camPendingExtra.time,
-    status: "not-found",
-    location: loc,
-    hasPhoto: savedPhoto,
-    hasPhotoEtiqueta: savedPhoto,
-    hasPhotoBobina: savedPhoto,
-  });
+S.scanned.unshift({
+  code: camPendingExtra.code,
+  time: camPendingExtra.time,
+  status: "not-found",
+  location: loc,
+  observation: obs,
+  hasPhoto: savedPhoto,
+  hasPhotoEtiqueta: savedPhoto,
+  hasPhotoBobina: savedPhoto,
+});
 
   if (!savedPhoto) {
     notify("Foto não foi salva. Não vai sair no exportador.", "warning");
