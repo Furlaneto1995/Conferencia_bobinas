@@ -1949,6 +1949,82 @@
 }
 .cloud-report-btn:active { transform: scale(0.96); }
 
+
+
+.cloud-detail {
+  display: none;
+  margin-top: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  box-shadow: var(--shadow);
+}
+.cloud-detail.show { display: block; }
+.cloud-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.cloud-detail-title {
+  font-weight: 900;
+  color: var(--text-primary);
+  font-size: 0.98em;
+}
+.cloud-detail-sub {
+  color: var(--text-secondary);
+  font-size: 0.8em;
+  margin-top: 3px;
+  word-break: break-all;
+}
+.cloud-detail-close {
+  border: 1px solid rgba(100, 116, 139, 0.25);
+  background: rgba(100, 116, 139, 0.12);
+  color: var(--text-secondary);
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.cloud-detail-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.cloud-detail-stat {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 10px;
+  font-size: 0.82em;
+  color: var(--text-secondary);
+}
+.cloud-detail-stat strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 1.15em;
+  margin-top: 2px;
+}
+.cloud-detail-section-title {
+  margin: 12px 0 6px;
+  font-size: 0.88em;
+  font-weight: 900;
+  color: var(--text-primary);
+}
+.cloud-detail-scroll {
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  -webkit-overflow-scrolling: touch;
+}
+@media (min-width: 769px) {
+  .cloud-detail-stats { grid-template-columns: repeat(4, 1fr); }
+}
+
     </style>
   </head>
   <body>
@@ -2302,6 +2378,8 @@
           <div class="export-progress" id="exportProgress">
             ⏳ Gerando arquivo ZIP...
           </div>
+
+          <div id="cloudDetailBox" class="cloud-detail"></div>
 
           <div id="cloudConsultBox" class="cloud-list" style="margin-top: 12px">
             <div class="empty">Clique em atualizar para consultar.</div>
@@ -3319,6 +3397,7 @@
                 <div class="cloud-item-title">${esc(d.operador || "-")} • ${esc(d.data || "-")}</div>
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end">
                   <div class="cloud-item-status ${status === "finalizada" ? "finalizada" : ""}">${esc(status)}</div>
+                  <button class="cloud-report-btn" onclick="cloudOpenConference('${esc(d.id).replace(/'/g, "&#39;")}')">👁️ Abrir</button>
                   <button class="cloud-report-btn" onclick="cloudExportConference('${esc(d.id).replace(/'/g, "&#39;")}', 'csv')">📄 CSV</button>
                   <button class="cloud-report-btn" onclick="cloudExportConference('${esc(d.id).replace(/'/g, "&#39;")}', 'txt')">📝 TXT</button>
                   <button class="cloud-delete-btn" onclick="cloudDeleteConference('${esc(d.id).replace(/'/g, "&#39;")}')">🗑️ Excluir</button>
@@ -3468,6 +3547,135 @@
           cloudSetStatus("error", "☁️ Erro no relatório");
           notify("Erro ao exportar relatório da nuvem: " + (e.message || e), "error");
         }
+      }
+
+
+      async function cloudOpenConference(confId) {
+        const box = document.getElementById("cloudDetailBox");
+        if (!box) return;
+        if (!cloudLeaderUnlocked) return;
+        box.className = "cloud-detail show";
+        box.innerHTML = '<div class="empty">☁️ Abrindo conferência...</div>';
+        try {
+          if (!(await cloudInit())) throw new Error("Firebase indisponível");
+          const confRef = cloudDb.collection("conferencias").doc(confId);
+          const confSnap = await confRef.get();
+          if (!confSnap.exists) throw new Error("Conferência não encontrada");
+          const conf = { id: confSnap.id, ...confSnap.data() };
+          const [bobinas, leituras, naoPrevistas] = await Promise.all([
+            cloudGetCollectionDocs(confRef, "bobinas"),
+            cloudGetCollectionDocs(confRef, "leituras"),
+            cloudGetCollectionDocs(confRef, "nao_previstas"),
+          ]);
+
+          const leiturasMap = new Map();
+          leituras.forEach((l) => leiturasMap.set(String(l.codigo || l.id), l));
+          const opSummary = cloudBuildOpSummary(bobinas, leiturasMap);
+          const resumo = conf.resumo || {};
+          const total = resumo.total ?? bobinas.length;
+          const conferidos = resumo.conferidos ?? leituras.filter((l) => l.status !== "not-found").length;
+          const naoPrev = resumo.naoPrevistas ?? naoPrevistas.length;
+          const pendentes = resumo.pendentes ?? Math.max(0, total - conferidos);
+          const pct = resumo.percentual ?? (total > 0 ? ((conferidos / total) * 100).toFixed(1) : "0.0");
+
+          const extraCodes = new Set(naoPrevistas.map((n) => String(n.codigo || n.id)));
+          leituras.forEach((l) => {
+            if (l.status === "not-found") extraCodes.add(String(l.codigo || l.id));
+          });
+
+          const rows = [];
+          Array.from(extraCodes).sort().forEach((code) => {
+            const n = naoPrevistas.find((x) => String(x.codigo || x.id) === code) || {};
+            const l = leiturasMap.get(code) || {};
+            rows.push({
+              code,
+              op: "-",
+              peso: "-",
+              status: "⚠️ Não prevista",
+              time: l.horaLocal || n.horaLocal || "",
+              location: l.location || n.location || "",
+              observation: l.observation || n.observation || "",
+              hasPhoto: !!(l.hasPhoto || n.hasPhoto),
+            });
+          });
+          bobinas
+            .slice()
+            .sort((a, b) => String(a.codigo || a.id).localeCompare(String(b.codigo || b.id), "pt-BR", { numeric: true }))
+            .forEach((b) => {
+              const code = String(b.codigo || b.id);
+              const l = leiturasMap.get(code);
+              const checked = !!(l && l.status !== "not-found");
+              rows.push({
+                code,
+                op: b.op || "-",
+                peso: b.peso || "-",
+                status: checked ? (l.manual ? "📸 Manual" : "✅ Conferida") : "⏳ Pendente",
+                time: checked ? (l.horaLocal || "") : "",
+                location: l?.location || "",
+                observation: l?.observation || "",
+                hasPhoto: !!l?.hasPhoto,
+              });
+            });
+
+          const opHtml = opSummary.length
+            ? opSummary
+                .map((op) => `<div class="op-summary-item">
+                  <div class="op-summary-op">OP ${esc(op.op || "-")}</div>
+                  <div class="op-summary-info">
+                    <span>✅ Encontradas: <strong>${op.checked}/${op.total}</strong></span>
+                    <span>📊 <strong>${op.pct}%</strong></span>
+                  </div>
+                </div>`)
+                .join("")
+            : '<div class="empty">Nenhuma OP encontrada.</div>';
+
+          const detailRows = rows.slice(0, 700);
+          box.innerHTML = `<div class="cloud-detail-head">
+            <div>
+              <div class="cloud-detail-title">${esc(conf.operador || "-")} • ${esc(conf.data || "-")}</div>
+              <div class="cloud-detail-sub">${esc(conf.tipo || "-")}<br>${esc(conf.id || "")}</div>
+            </div>
+            <button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">✕ Fechar</button>
+          </div>
+          <div class="cloud-detail-stats">
+            <div class="cloud-detail-stat">Total<strong>${total}</strong></div>
+            <div class="cloud-detail-stat">Conferidos<strong>${conferidos}</strong></div>
+            <div class="cloud-detail-stat">Pendentes<strong>${pendentes}</strong></div>
+            <div class="cloud-detail-stat">Não previstas<strong>${naoPrev}</strong></div>
+          </div>
+          <div class="cloud-detail-section-title">📦 Resumo por OP</div>
+          <div class="op-summary-list" style="max-height:220px;overflow:auto;padding-right:4px">${opHtml}</div>
+          <div class="cloud-detail-section-title">📋 Bobinas e leituras ${rows.length > 700 ? `(mostrando 700 de ${rows.length})` : ""}</div>
+          <div class="cloud-detail-scroll">
+            <table class="dtbl">
+              <thead><tr><th>#</th><th>Código</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Obs.</th><th>📸</th></tr></thead>
+              <tbody>${detailRows.map((r, i) => `<tr>
+                <td>${i + 1}</td>
+                <td class="cc">${esc(r.code)}</td>
+                <td>${esc(r.op)}</td>
+                <td>${esc(r.peso)}</td>
+                <td>${esc(r.status)}</td>
+                <td>${esc(r.time || "")}</td>
+                <td>${esc(r.location || "")}</td>
+                <td>${esc(r.observation || "")}</td>
+                <td>${r.hasPhoto ? "📸" : "—"}</td>
+              </tr>`).join("")}</tbody>
+            </table>
+          </div>`;
+          box.scrollIntoView({ behavior: "smooth", block: "start" });
+          cloudSetStatus("ok", "☁️ Conferência aberta");
+        } catch (e) {
+          console.error(e);
+          box.innerHTML = '<div class="empty">Erro ao abrir conferência. Veja o console.</div>';
+          cloudSetStatus("error", "☁️ Erro ao abrir");
+        }
+      }
+
+      function cloudCloseConferenceDetail() {
+        const box = document.getElementById("cloudDetailBox");
+        if (!box) return;
+        box.className = "cloud-detail";
+        box.innerHTML = "";
       }
 
       async function cloudDeleteSubcollection(confRef, name) {
@@ -5433,5 +5641,5 @@ async function camRotatePhoto(tipo) {
       }
       init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a14094a42f4b0ad0',t:'MTc4Mjg1ODI2MQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a140a149eeaf0f15',t:'MTc4Mjg1ODc3OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
