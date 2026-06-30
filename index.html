@@ -1759,6 +1759,65 @@
   min-height: 52px !important;
 }
 
+
+
+/* STATUS GRANDE DA LEITURA NO SCANNER */
+.s-big-status {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%) scale(0.96);
+  z-index: 90;
+  min-width: min(86vw, 430px);
+  max-width: 92vw;
+  padding: 18px 20px;
+  border-radius: 18px;
+  color: #fff;
+  text-align: center;
+  font-weight: 900;
+  pointer-events: none;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.s-big-status.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.s-big-status.green {
+  background: rgba(16, 185, 129, 0.94);
+  border: 2px solid rgba(187, 247, 208, 0.8);
+}
+
+.s-big-status.yellow {
+  background: rgba(245, 158, 11, 0.95);
+  border: 2px solid rgba(254, 240, 138, 0.8);
+}
+
+.s-big-status.red {
+  background: rgba(239, 68, 68, 0.96);
+  border: 2px solid rgba(254, 202, 202, 0.85);
+}
+
+.s-big-status .big-main {
+  display: block;
+  font-size: 1.3em;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+}
+
+.s-big-status .big-code {
+  display: block;
+  margin-top: 8px;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.9em;
+  word-break: break-all;
+  opacity: 0.96;
+}
+
     </style>
   </head>
   <body>
@@ -3753,6 +3812,7 @@ ${"─".repeat(40)}
         camCurrentPhotoEtiqueta = null,
         camCurrentPhotoBobina = null,
         camActx = null;
+      const CAM_SCAN_DELAY_MS = 1800;
       function camVibrate(type) {
         if (!navigator.vibrate) return;
         if (type === "found") navigator.vibrate(200);
@@ -3913,7 +3973,7 @@ ${"─".repeat(40)}
               camCooldown = true;
               camProcessScan(String(text).trim());
               if (!camPendingExtra)
-                setTimeout(() => (camCooldown = false), 700);
+                setTimeout(() => (camCooldown = false), CAM_SCAN_DELAY_MS);
             },
             () => {},
           );
@@ -4095,7 +4155,7 @@ ${"─".repeat(40)}
       function camFlash(cls) {
         const f = document.getElementById("camFlash");
         f.className = "s-flash " + cls;
-        setTimeout(() => (f.className = "s-flash"), 300);
+        setTimeout(() => (f.className = "s-flash"), 450);
       }
       function camShowResult(cls, msg, ms = 3000) {
         const r = document.getElementById("camResult");
@@ -4103,12 +4163,30 @@ ${"─".repeat(40)}
         r.textContent = msg;
         setTimeout(() => r.classList.remove("show"), ms);
       }
+      function camShowBigStatus(cls, main, code = "", ms = 1450) {
+        const page = document.querySelector("#scannerOverlay .scanner-page");
+        if (!page) return;
+        let box = document.getElementById("camBigStatus");
+        if (!box) {
+          box = document.createElement("div");
+          box.id = "camBigStatus";
+          page.appendChild(box);
+        }
+        box.className = "s-big-status " + cls;
+        box.innerHTML = `<span class="big-main">${esc(main)}</span>${code ? `<span class="big-code">${esc(code)}</span>` : ""}`;
+        clearTimeout(box._hideTimer);
+        requestAnimationFrame(() => box.classList.add("show"));
+        box._hideTimer = setTimeout(() => {
+          box.classList.remove("show");
+        }, ms);
+      }
       function camProcessScan(code) {
         const time = new Date().toLocaleTimeString("pt-BR"),
           err = document.getElementById("camErrorOverlay"),
           warn = document.getElementById("camWarnOverlay");
         if (!/^(500|700)\d{8,9}$/.test(code)) {
           camFlash("red");
+          camShowBigStatus("red", "❌ ERRO DE LEITURA", code, 1500);
           err.classList.add("show");
           setTimeout(() => err.classList.remove("show"), 900);
           camVibrate("notfound");
@@ -4117,13 +4195,15 @@ ${"─".repeat(40)}
         }
         if (S.checked.has(code)) {
           camFlash("yellow");
-          camShowResult("yellow", `✅ "${code}" — já conferido`, 1200);
+          camShowBigStatus("yellow", "⚠️ JÁ LIDA", code, 1500);
+          camShowResult("yellow", `⚠️ "${code}" — já conferido`, 1500);
           camVibrate("already");
           camBeep("warning");
           return;
         }
         if (S.extras.includes(code)) {
           camFlash("yellow");
+          camShowBigStatus("yellow", "⚠️ JÁ REGISTRADA", code, 1700);
           warn.classList.add("show");
           setTimeout(() => warn.classList.remove("show"), 2000);
           camShowResult(
@@ -4139,7 +4219,8 @@ ${"─".repeat(40)}
           S.checked.add(code);
           S.scanned.unshift({ code, time, status: "found" });
           camFlash("green");
-          camShowResult("green", `✅ CONFERIDO — "${code}"`);
+          camShowBigStatus("green", "✅ LIDA", code, 1450);
+          camShowResult("green", `✅ CONFERIDO — "${code}"`, 1800);
           camVibrate("found");
           camBeep("found");
           save();
@@ -4150,6 +4231,7 @@ ${"─".repeat(40)}
           updateDBUI();
         } else {
           camFlash("red");
+          camShowBigStatus("red", "⚠️ NÃO PREVISTA", code, 1200);
           camVibrate("notfound");
           camBeep("notfound");
           camPendingExtra = { code, time };
@@ -4564,5 +4646,5 @@ async function camRotatePhoto(tipo) {
       }
       init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a13fe7d98b30876b',t:'MTc4Mjg1MTE4Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a13fea04ae2e876b',t:'MTc4Mjg1MTI3Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
