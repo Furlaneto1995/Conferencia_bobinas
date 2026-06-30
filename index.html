@@ -1942,7 +1942,16 @@
       <div class="header">
         <h1>📦 Conferência de Bobinas</h1>
         <p>Sistema de conferência por código de barras</p>
-        <div id="cloudStatus" class="cloud-status">☁️ Nuvem: local</div>
+        <div
+          id="cloudStatus"
+          class="cloud-status"
+          title="Menu do líder: segure por 2 segundos"
+          onpointerdown="cloudStartSecretPress(event)"
+          onpointerup="cloudCancelSecretPress()"
+          onpointerleave="cloudCancelSecretPress()"
+          onpointercancel="cloudCancelSecretPress()"
+          oncontextmenu="return false"
+        >☁️ Nuvem: local</div>
       </div>
       <div class="tabs">
         <button class="tab active" onclick="switchTab('import')" id="tabImport">
@@ -1955,18 +1964,7 @@
         <button class="tab" onclick="switchTab('report')" id="tabReport">
           <span class="t-icon">📊</span><span class="t-text">Relatório</span>
         </button>
-        <button
-          class="tab"
-          id="tabCloud"
-          title="Menu do líder: segure por 2 segundos"
-          onpointerdown="cloudStartSecretPress(event)"
-          onpointerup="cloudCancelSecretPress()"
-          onpointerleave="cloudCancelSecretPress()"
-          onpointercancel="cloudCancelSecretPress()"
-          oncontextmenu="return false"
-        >
-          <span class="t-icon">☁️</span><span class="t-text">Nuvem</span>
-        </button>
+
       </div>
       <!-- IMPORT -->
       <div class="section active" id="sectionImport">
@@ -3425,12 +3423,14 @@
         document
           .querySelectorAll(".section")
           .forEach((s) => s.classList.remove("active"));
-        document
-          .getElementById("tab" + t.charAt(0).toUpperCase() + t.slice(1))
-          .classList.add("active");
-        document
-          .getElementById("section" + t.charAt(0).toUpperCase() + t.slice(1))
-          .classList.add("active");
+        const tabEl = document.getElementById(
+          "tab" + t.charAt(0).toUpperCase() + t.slice(1),
+        );
+        if (tabEl) tabEl.classList.add("active");
+        const sectionEl = document.getElementById(
+          "section" + t.charAt(0).toUpperCase() + t.slice(1),
+        );
+        if (sectionEl) sectionEl.classList.add("active");
         if (t === "scan") {
           updateStats();
           ensureCheckerName();
@@ -5302,5 +5302,5 @@ async function camRotatePhoto(tipo) {
       }
       init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a14054a64e57de31',t:'MTc4Mjg1NTY0MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1405b360867a429',t:'MTc4Mjg1NTkwOA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
