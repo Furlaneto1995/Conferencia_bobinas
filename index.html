@@ -23479,14 +23479,14 @@
           nh = img.height * r;
         ctx.drawImage(img, x + (w - nw) / 2, y + (h - nh) / 2, nw, nh);
       }
-      async function combinePhotosHalf(code, photoEtiqueta, photoBobina) {
+async function combinePhotosHalf(code, photoEtiqueta, photoBobina) {
   const [etq, bob] = await Promise.all([
     loadImgData(photoEtiqueta),
     loadImgData(photoBobina),
   ]);
 
-  const maxW = 900; // antes estava muito grande
-  const labelH = 44;
+  const maxW = 650;
+  const labelH = 36;
 
   const etqRatio = Math.min(maxW / etq.width, 1);
   const bobRatio = Math.min(maxW / bob.width, 1);
@@ -23502,6 +23502,7 @@
   canvas.height = labelH + etqH + labelH + bobH;
 
   const ctx = canvas.getContext("2d");
+
   ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -23513,31 +23514,35 @@
   ctx.fillRect(0, labelH + etqH, maxW, labelH);
 
   ctx.fillStyle = "#fff";
-  ctx.font = "bold 22px Arial";
-  ctx.fillText("ETIQUETA • " + code, 16, 28);
-  ctx.fillText("BOBINA • " + code, 16, labelH + etqH + 28);
+  ctx.font = "bold 18px Arial";
+  ctx.fillText("ETIQUETA • " + code, 12, 24);
+  ctx.fillText("BOBINA • " + code, 12, labelH + etqH + 24);
 
-  return canvas.toDataURL("image/jpeg", 0.72);
+  return canvas.toDataURL("image/jpeg", 0.55);
 }
-      async function savePhotosExtra(code, photoEtiqueta, photoBobina) {
+async function savePhotosExtra(code, photoEtiqueta, photoBobina) {
   try {
     const combined = await combinePhotosHalf(code, photoEtiqueta, photoBobina);
+
+    localStorage.removeItem("photo_" + code);
     localStorage.setItem("photo_" + code, combined);
 
     const saved = localStorage.getItem("photo_" + code);
-    if (!saved) throw new Error("Falha ao salvar foto combinada");
+
+    if (!saved || saved.length < 1000) {
+      throw new Error("Foto não foi gravada corretamente.");
+    }
 
     return true;
   } catch (e) {
     console.error("Erro ao salvar foto:", e);
 
-    try {
-      localStorage.setItem("photo_" + code, photoEtiqueta);
-      return !!localStorage.getItem("photo_" + code);
-    } catch (err) {
-      console.error("Fallback também falhou:", err);
-      return false;
-    }
+    notify(
+      "Não foi possível salvar a foto. A memória do navegador pode estar cheia. Exporte o ZIP e depois reinicie a conferência, ou remova fotos antigas.",
+      "error"
+    );
+
+    return false;
   }
 }
 
@@ -23929,22 +23934,34 @@
   const time = new Date().toLocaleTimeString("pt-BR");
 
   const savedPhoto = await savePhotosExtra(
-    code,
-    camCurrentPhotoEtiqueta,
-    camCurrentPhotoBobina
-  );
+  camPendingExtra.code,
+  camCurrentPhotoEtiqueta,
+  camCurrentPhotoBobina
+);
 
-  S.checked.add(code);
-  S.scanned.unshift({
-    code,
-    time,
-    status: "found",
-    manual: true,
-    location: loc,
-    hasPhoto: savedPhoto,
-    hasPhotoEtiqueta: savedPhoto,
-    hasPhotoBobina: savedPhoto,
-  });
+if (!savedPhoto) {
+  document.getElementById("camPhotoErrorEtiqueta").style.display = "block";
+  document.getElementById("camPhotoErrorEtiqueta").textContent =
+    "⚠️ A foto não foi salva. Tire novamente ou exporte/limpe fotos antigas.";
+
+  document.getElementById("camPhotoErrorBobina").style.display = "block";
+  document.getElementById("camPhotoErrorBobina").textContent =
+    "⚠️ A foto não foi salva. Não é possível confirmar sem foto.";
+
+  camVibrate("notfound");
+  return;
+}
+
+S.extras.push(camPendingExtra.code);
+S.scanned.unshift({
+  code: camPendingExtra.code,
+  time: camPendingExtra.time,
+  status: "not-found",
+  location: loc,
+  hasPhoto: true,
+  hasPhotoEtiqueta: true,
+  hasPhotoBobina: true,
+});
 
   if (!savedPhoto) {
     notify("Foto não foi salva. Não vai sair no exportador.", "warning");
@@ -23960,21 +23977,35 @@
   camManualSelectedCode = null;
 } else if (camPendingExtra) {
   const savedPhoto = await savePhotosExtra(
-    camPendingExtra.code,
-    camCurrentPhotoEtiqueta,
-    camCurrentPhotoBobina
-  );
+  code,
+  camCurrentPhotoEtiqueta,
+  camCurrentPhotoBobina
+);
 
-  S.extras.push(camPendingExtra.code);
-  S.scanned.unshift({
-    code: camPendingExtra.code,
-    time: camPendingExtra.time,
-    status: "not-found",
-    location: loc,
-    hasPhoto: savedPhoto,
-    hasPhotoEtiqueta: savedPhoto,
-    hasPhotoBobina: savedPhoto,
-  });
+if (!savedPhoto) {
+  document.getElementById("camPhotoErrorEtiqueta").style.display = "block";
+  document.getElementById("camPhotoErrorEtiqueta").textContent =
+    "⚠️ A foto não foi salva. Tire novamente ou exporte/limpe fotos antigas.";
+
+  document.getElementById("camPhotoErrorBobina").style.display = "block";
+  document.getElementById("camPhotoErrorBobina").textContent =
+    "⚠️ A foto não foi salva. Não é possível confirmar sem foto.";
+
+  camVibrate("notfound");
+  return;
+}
+
+S.checked.add(code);
+S.scanned.unshift({
+  code,
+  time,
+  status: "found",
+  manual: true,
+  location: loc,
+  hasPhoto: true,
+  hasPhotoEtiqueta: true,
+  hasPhotoBobina: true,
+});
 
   if (!savedPhoto) {
     notify("Foto não foi salva. Não vai sair no exportador.", "warning");
