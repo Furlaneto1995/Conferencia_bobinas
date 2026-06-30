@@ -19,6 +19,10 @@
     <title>Conferência de Bobinas</title>
     <script src="./jszip.min.js"></script>
         <script src="./html5-qrcode.local.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
 
     <script>
       if ("serviceWorker" in navigator && location.protocol !== "file:") {
@@ -2700,6 +2704,7 @@
         filter: "all",
         rptSearch: "",
         checkerName: "",
+        cloudSessionId: "",
       };
       let pendingExtraMain = null;
       let checkerStartCallback = null;
@@ -2721,6 +2726,7 @@
             S.meta = s.meta || {};
             S.confType = s.confType || "";
             S.checkerName = s.checkerName || "";
+            S.cloudSessionId = s.cloudSessionId || "";
           }
         } catch (e) {}
       }
@@ -2736,9 +2742,265 @@
               meta: S.meta,
               confType: S.confType,
               checkerName: S.checkerName,
+              cloudSessionId: S.cloudSessionId,
             }),
           );
         } catch (e) {}
+      }
+
+
+      /* =========================
+         FIREBASE CLOUD SYNC
+         Preencha FIREBASE_CONFIG para ativar.
+         Dados: Firestore. Fotos: Firebase Storage.
+      ========================= */
+      const FIREBASE_CONFIG = {
+        apiKey: "",
+        authDomain: "",
+        projectId: "",
+        storageBucket: "",
+        appId: "",
+      };
+
+      let cloudReady = false,
+        cloudDb = null,
+        cloudStorage = null,
+        cloudSummaryTimer = null;
+
+      function cloudIsConfigured() {
+        return !!(
+          FIREBASE_CONFIG.apiKey &&
+          FIREBASE_CONFIG.projectId &&
+          FIREBASE_CONFIG.appId
+        );
+      }
+
+      function cloudOperatorKey(name = S.checkerName) {
+        return String(name || "sem-operador")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "") || "sem-operador";
+      }
+
+      function cloudDateKey(d = new Date()) {
+        return d.toISOString().slice(0, 10);
+      }
+
+      function cloudMakeSessionId() {
+        const d = new Date();
+        const hhmmss = d.toTimeString().slice(0, 8).replace(/:/g, "");
+        return `${cloudDateKey(d)}_${cloudOperatorKey()}_${hhmmss}`;
+      }
+
+      async function cloudInit() {
+        try {
+          if (!cloudIsConfigured()) return false;
+          if (typeof firebase === "undefined") {
+            console.warn("Firebase SDK não carregado.");
+            return false;
+          }
+          if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+          if (firebase.auth) {
+            try {
+              if (!firebase.auth().currentUser) {
+                await firebase.auth().signInAnonymously();
+              }
+            } catch (e) {
+              console.warn("Auth anônimo falhou. Verifique regras/Auth.", e);
+            }
+          }
+          cloudDb = firebase.firestore();
+          cloudStorage = firebase.storage ? firebase.storage() : null;
+          cloudReady = true;
+          return true;
+        } catch (e) {
+          console.error("Erro ao iniciar Firebase:", e);
+          cloudReady = false;
+          return false;
+        }
+      }
+
+      async function cloudEnsureSession() {
+        if (!(await cloudInit())) return null;
+        if (!S.checkerName) return null;
+        if (!S.cloudSessionId) {
+          S.cloudSessionId = cloudMakeSessionId();
+          save();
+        }
+        await cloudSaveConferenceHeader();
+        return S.cloudSessionId;
+      }
+
+      function cloudConferenceRef() {
+        if (!cloudReady || !S.cloudSessionId) return null;
+        return cloudDb.collection("conferencias").doc(S.cloudSessionId);
+      }
+
+      function cloudSummary() {
+        const total = S.db.length;
+        const checked = S.checked.size;
+        return {
+          total,
+          conferidos: checked,
+          pendentes: total - checked,
+          naoPrevistas: [...new Set(S.extras)].length,
+          percentual: total > 0 ? Number(((checked / total) * 100).toFixed(1)) : 0,
+        };
+      }
+
+      async function cloudSaveConferenceHeader() {
+        const ref = cloudConferenceRef();
+        if (!ref) return;
+        const now = new Date();
+        await ref.set(
+          {
+            id: S.cloudSessionId,
+            operador: S.checkerName || "",
+            operadorKey: cloudOperatorKey(),
+            data: cloudDateKey(now),
+            tipo: S.confType || "",
+            status: "em_andamento",
+            resumo: cloudSummary(),
+            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            criadoEmLocal: now.toISOString(),
+          },
+          { merge: true },
+        );
+      }
+
+      function cloudUpdateSummaryDebounced() {
+        if (!cloudIsConfigured() || !S.cloudSessionId) return;
+        clearTimeout(cloudSummaryTimer);
+        cloudSummaryTimer = setTimeout(async () => {
+          try {
+            await cloudEnsureSession();
+            const ref = cloudConferenceRef();
+            if (ref) {
+              await ref.set(
+                {
+                  resumo: cloudSummary(),
+                  atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+                },
+                { merge: true },
+              );
+            }
+          } catch (e) {
+            console.warn("Falha ao atualizar resumo na nuvem:", e);
+          }
+        }, 800);
+      }
+
+      async function cloudSyncDatabase() {
+        try {
+          await cloudEnsureSession();
+          const ref = cloudConferenceRef();
+          if (!ref) return;
+          const batch = cloudDb.batch();
+          S.db.forEach((code) => {
+            const meta = S.meta && S.meta[code] ? S.meta[code] : {};
+            batch.set(
+              ref.collection("bobinas").doc(String(code)),
+              {
+                codigo: String(code),
+                op: meta.op || "-",
+                peso: meta.peso || "-",
+                etapa: meta.etapa || "",
+                material: meta.material || "",
+                atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+              },
+              { merge: true },
+            );
+          });
+          await batch.commit();
+          await cloudSaveConferenceHeader();
+        } catch (e) {
+          console.warn("Falha ao sincronizar banco na nuvem:", e);
+        }
+      }
+
+      async function cloudSyncReading(scan) {
+        try {
+          await cloudEnsureSession();
+          const ref = cloudConferenceRef();
+          if (!ref || !scan || !scan.code) return;
+          const meta = S.meta && S.meta[scan.code] ? S.meta[scan.code] : {};
+          await ref.collection("leituras").doc(String(scan.code)).set(
+            {
+              codigo: String(scan.code),
+              status: scan.status || "found",
+              op: meta.op || "-",
+              peso: meta.peso || "-",
+              manual: !!scan.manual,
+              location: scan.location || "",
+              observation: scan.observation || "",
+              hasPhoto: !!scan.hasPhoto,
+              horaLocal: scan.time || "",
+              criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true },
+          );
+          if (scan.status === "not-found") {
+            await ref.collection("nao_previstas").doc(String(scan.code)).set(
+              {
+                codigo: String(scan.code),
+                location: scan.location || "",
+                observation: scan.observation || "",
+                hasPhoto: !!scan.hasPhoto,
+                horaLocal: scan.time || "",
+                atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+              },
+              { merge: true },
+            );
+          }
+          cloudUpdateSummaryDebounced();
+        } catch (e) {
+          console.warn("Falha ao sincronizar leitura na nuvem:", e);
+        }
+      }
+
+      function cloudDataUrlToBlob(dataUrl) {
+        const parts = String(dataUrl || "").split(",");
+        const mime = (parts[0].match(/:(.*?);/) || [])[1] || "image/jpeg";
+        const bin = atob(parts[1] || "");
+        const arr = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        return new Blob([arr], { type: mime });
+      }
+
+      async function cloudUploadPhoto(code, dataUrl) {
+        try {
+          await cloudEnsureSession();
+          if (!cloudStorage || !S.cloudSessionId || !dataUrl) return null;
+          const path = `fotos/${cloudOperatorKey()}/${cloudDateKey()}/${S.cloudSessionId}/${code}_etiqueta_bobina.jpg`;
+          const blob = cloudDataUrlToBlob(dataUrl);
+          await cloudStorage.ref(path).put(blob, {
+            contentType: "image/jpeg",
+            customMetadata: {
+              conferenciaId: S.cloudSessionId,
+              operador: S.checkerName || "",
+              codigo: String(code),
+            },
+          });
+          const ref = cloudConferenceRef();
+          if (ref) {
+            await ref.collection("fotos").doc(String(code)).set(
+              {
+                codigo: String(code),
+                path,
+                size: blob.size,
+                atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+              },
+              { merge: true },
+            );
+          }
+          return path;
+        } catch (e) {
+          console.warn("Falha ao enviar foto para Firebase Storage:", e);
+          return null;
+        }
       }
       function getPhoto(code) {
         try {
@@ -2830,6 +3092,7 @@
         }
         S.checkerName = name;
         save();
+        cloudEnsureSession();
         document.getElementById("checkerModal").classList.remove("show");
         if (document.getElementById("rCheckerName"))
           document.getElementById("rCheckerName").textContent = name;
@@ -2909,6 +3172,7 @@
         S.fileLayout = null;
         S.meta = {};
         S.confType = "";
+        S.cloudSessionId = "";
         S.db = [];
         S.scanned = [];
         S.checked = new Set();
@@ -3120,6 +3384,7 @@ if (idx.PESO < 0) {
         S.db = [...new Set([...S.db, ...uniq])];
         S.confType = labels;
         save();
+        cloudEnsureSession().then(() => cloudSyncDatabase());
         updateDBUI();
         closeConferenceTypeModal();
         notify(
@@ -3160,6 +3425,7 @@ if (idx.PESO < 0) {
         S.db = [...new Set([...S.db, ...uniq])];
         S.confType = S.confType || "Importação por arquivo";
         save();
+        cloudEnsureSession().then(() => cloudSyncDatabase());
         updateDBUI();
         document.getElementById("colSel").style.display = "none";
         notify(`✅ ${uniq.length} códigos importados!`);
@@ -3230,6 +3496,7 @@ if (idx.PESO < 0) {
             S.meta = {};
             S.confType = "";
             S.checkerName = "";
+            S.cloudSessionId = "";
             Object.keys(localStorage)
               .filter((k) => k.startsWith("photo_"))
               .forEach((k) => localStorage.removeItem(k));
@@ -3913,6 +4180,7 @@ ${"─".repeat(40)}
 
     const saved = localStorage.getItem("photo_" + code);
     if (!saved) throw new Error("Falha ao salvar foto combinada");
+    cloudUploadPhoto(code, combined);
 
     return true;
   } catch (e) {
@@ -4217,13 +4485,15 @@ ${"─".repeat(40)}
         }
         if (S.db.includes(code)) {
           S.checked.add(code);
-          S.scanned.unshift({ code, time, status: "found" });
+          const scanItem = { code, time, status: "found" };
+          S.scanned.unshift(scanItem);
           camFlash("green");
           camShowBigStatus("green", "✅ LIDA", code, 1450);
           camShowResult("green", `✅ CONFERIDO — "${code}"`, 1800);
           camVibrate("found");
           camBeep("found");
           save();
+          cloudSyncReading(scanItem);
           camUpdateCounters();
           camUpdateHistory();
           updateStats();
@@ -4406,6 +4676,7 @@ document.getElementById("camObsInput").value = "";
 
   camShowResult("green", `📸 MANUAL — "${code}"`);
   save();
+  cloudSyncReading(S.scanned[0]);
   camUpdateCounters();
   camUpdateHistory();
   updateStats();
@@ -4437,6 +4708,7 @@ S.scanned.unshift({
 
   camShowResult("red", `⚠️ "${camPendingExtra.code}" — 📌 ${loc} 🏷️`);
   save();
+  cloudSyncReading(S.scanned[0]);
   camUpdateCounters();
   camUpdateHistory();
   updateStats();
@@ -4643,8 +4915,9 @@ async function camRotatePhoto(tipo) {
         updateHistory();
         updateReport();
         document.getElementById("btnUndo").disabled = !S.scanned.length;
+        cloudEnsureSession();
       }
       init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a13fea04ae2e876b',t:'MTc4Mjg1MTI3Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
