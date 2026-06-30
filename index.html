@@ -21743,6 +21743,65 @@
   top: 38px;
   z-index: 9;
 }
+.op-summary-list {
+  display: grid;
+  gap: 8px;
+}
+
+.op-summary-item {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.op-summary-op {
+  font-weight: 800;
+  font-size: 0.92em;
+  color: var(--text-primary);
+  margin-bottom: 5px;
+}
+
+.op-summary-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.82em;
+  color: var(--text-secondary);
+}
+
+.op-summary-info strong {
+  color: var(--text-primary);
+}
+
+.op-summary-scroll {
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.op-summary-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.op-summary-scroll::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+/* Compacta um pouco para caber cerca de 10 OPs */
+.op-summary-item {
+  padding: 8px 10px;
+}
+
+.op-summary-op {
+  margin-bottom: 3px;
+}
+
+.op-summary-info {
+  font-size: 0.8em;
+}
     </style>
   </head>
   <body>
@@ -22000,6 +22059,24 @@
             </div>
           </div>
         </div>
+<div class="card">
+  <div class="card-title">📦 Resumo por OP</div>
+  <div class="card-sub">Bobinas encontradas em relação ao total de cada OP</div>
+
+  <div class="search-wrap" style="margin-top: 10px">
+    <span class="si">🔍</span>
+    <input
+      class="search-input"
+      id="opSummarySearch"
+      placeholder="Buscar OP..."
+      oninput="renderOpSummary(this.value)"
+    />
+  </div>
+
+  <div class="op-summary-scroll">
+    <div id="opSummaryBody"></div>
+  </div>
+</div>
         <div class="card">
           <div class="card-title">📋 Lista Detalhada</div>
           <div class="filters">
@@ -22053,9 +22130,9 @@
               📝 TXT
             </button>
             <button class="btn btn-zip" onclick="exportZip()">
-              📦 ZIP + Fotos
-            </button>
-            <button class="btn btn-outline" onclick="window.print()">🖨️</button>
+  📦 Não previstas c/ fotos
+</button>
+            
           </div>
         </div>
       </div>
@@ -23254,12 +23331,57 @@ if (idx.PESO < 0) {
         document.getElementById("rConferenceType").textContent =
           S.confType || "—";
         renderRpt();
+renderOpSummary(document.getElementById("opSummarySearch")?.value || "");
       }
       function getOP(code) {
         return S.meta && S.meta[code] && S.meta[code].op
           ? S.meta[code].op
           : "-";
       }
+function getOpSummaryItems() {
+  const map = new Map();
+
+  S.db.forEach((code) => {
+    const op = getOP(code) || "-";
+
+    if (!map.has(op)) {
+      map.set(op, {
+        op,
+        total: 0,
+        checked: 0,
+        pending: 0,
+        pct: 0,
+      });
+    }
+
+    const item = map.get(op);
+
+    item.total++;
+
+    if (S.checked.has(code)) {
+      item.checked++;
+    }
+  });
+
+  const arr = Array.from(map.values()).map((item) => {
+    item.pending = item.total - item.checked;
+    item.pct =
+      item.total > 0
+        ? ((item.checked / item.total) * 100).toFixed(1)
+        : "0.0";
+
+    return item;
+  });
+
+  arr.sort((a, b) =>
+    String(a.op).localeCompare(String(b.op), "pt-BR", {
+      numeric: true,
+      sensitivity: "base",
+    })
+  );
+
+  return arr;
+}
 function getPeso(code) {
   return S.meta && S.meta[code] && S.meta[code].peso
     ? S.meta[code].peso
@@ -23302,6 +23424,50 @@ function getPeso(code) {
         });
         return items;
       }
+
+function renderOpSummary(search = "") {
+  const box = document.getElementById("opSummaryBody");
+  if (!box) return;
+
+  let ops = getOpSummaryItems();
+
+  const q = String(search || "").trim().toLowerCase();
+
+  if (q) {
+    ops = ops.filter((op) =>
+      String(op.op || "")
+        .toLowerCase()
+        .includes(q)
+    );
+  }
+
+  if (!ops.length) {
+    box.innerHTML = '<div class="empty">Nenhuma OP encontrada</div>';
+    return;
+  }
+
+  box.innerHTML =
+    '<div class="op-summary-list">' +
+    ops
+      .map((op) => {
+        const cls =
+          op.checked === op.total
+            ? "done"
+            : op.checked > 0
+              ? "partial"
+              : "empty";
+
+        return `<div class="op-summary-item ${cls}">
+          <div class="op-summary-op">OP ${esc(op.op || "-")}</div>
+          <div class="op-summary-info">
+            <span>✅ Encontradas: <strong>${op.checked}/${op.total}</strong></span>
+            
+          </div>
+        </div>`;
+      })
+      .join("") +
+    "</div>";
+}
       function renderRpt() {
         const tbody = document.getElementById("rptBody");
         let items = getReportItems();
@@ -23387,6 +23553,7 @@ if (!items.length)
   const tipo = S.confType || "-";
   const conferente = S.checkerName || "-";
   const extras = [...new Set(S.extras)].length;
+  const opSummary = getOpSummaryItems();
 
   if (fmt === "csv") {
     let csv = `RELATÓRIO DE CONFERÊNCIA
@@ -23400,6 +23567,16 @@ Conferidos;${chk}
 Pendentes;${total - chk}
 Não Previstas;${extras}
 Percentual;${pct}%
+
+RESUMO POR OP
+OP;Encontradas;Percentual
+`;
+
+    csv += opSummary
+      .map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`)
+      .join("\n");
+
+    csv += `
 
 BOBINAS
 Código;OP;Peso;Status;Hora;Localização;Observação;Fotos
@@ -23429,6 +23606,20 @@ Conferidos: ${chk}
 Pendentes: ${total - chk}
 Não Previstas: ${extras}
 Percentual: ${pct}%
+
+${"=".repeat(95)}
+RESUMO POR OP
+${"=".repeat(95)}
+`;
+
+    txt += opSummary
+      .map(
+        (op) =>
+          `OP: ${String(op.op || "-").padEnd(15)} | Encontradas: ${String(op.checked + "/" + op.total).padEnd(8)} | ${op.pct}%`
+      )
+      .join("\n");
+
+    txt += `
 
 ${"=".repeat(95)}
 BOBINAS
@@ -23570,8 +23761,8 @@ ${"─".repeat(40)}
     progress.classList.remove("show");
 
     notify(
-      `✅ ZIP exportado! ${extrasUniq.length} bobinas + ${countFotos} fotos`
-    );
+  `✅ Não previstas exportadas: ${extrasUniq.length} itens, ${countFotos} fotos`
+);
   } catch (err) {
     console.error(err);
 
