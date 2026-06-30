@@ -3612,45 +3612,295 @@
           modal = document.createElement("div");
           modal.id = "cloudExportModal";
           modal.className = "modal-bg";
-          modal.innerHTML = `<div class="modal">
-            <h2>📤 Exportar relatório</h2>
-            <p>Escolha o conteúdo e o formato que deseja exportar:</p>
-            <div class="cloud-export-modal-grid">
-              <button class="btn btn-primary" id="ceAllCsv">Completo CSV</button>
-              <button class="btn btn-outline" id="ceAllTxt">Completo TXT</button>
-              <button class="btn btn-primary" id="cePendingCsv">Pendentes CSV</button>
-              <button class="btn btn-outline" id="cePendingTxt">Pendentes TXT</button>
-              <button class="btn btn-primary" id="ceExtraCsv">Não previstas CSV</button>
-              <button class="btn btn-outline" id="ceExtraTxt">Não previstas TXT</button>
-              <button class="btn btn-primary" id="ceCheckedCsv">Conferidas CSV</button>
-              <button class="btn btn-outline" id="ceCheckedTxt">Conferidas TXT</button>
+          modal.innerHTML = `<div class="modal" style="max-height: calc(100dvh - 32px); overflow: auto">
+            <h2>📤 Exportar conferência</h2>
+            <p>Escolha formato e conteúdo:</p>
+
+            <div style="font-weight:900;margin:8px 0 6px;color:var(--text-primary)">Formato</div>
+            <div style="display:grid;gap:8px">
+              <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+                <input type="checkbox" id="exFmtCsv" checked style="width:18px;height:18px;accent-color:var(--accent-blue)"> CSV
+              </label>
+              <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+                <input type="checkbox" id="exFmtTxt" style="width:18px;height:18px;accent-color:var(--accent-blue)"> TXT
+              </label>
+              <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+                <input type="checkbox" id="exFmtZip" style="width:18px;height:18px;accent-color:var(--accent-blue)"> ZIP
+              </label>
             </div>
-            <div class="btn-group" style="margin-top: 12px">
+
+            <div style="font-weight:900;margin:12px 0 6px;color:var(--text-primary)">Conteúdo</div>
+            <div style="display:grid;gap:8px">
+              <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+                <input type="checkbox" id="exSummary" checked style="width:18px;height:18px;accent-color:var(--accent-blue)"> Resumo geral
+              </label>
+              <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+                <input type="checkbox" id="exOps" checked style="width:18px;height:18px;accent-color:var(--accent-blue)"> Resumo por OP
+              </label>
+              <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+                <input type="checkbox" id="exChecked" checked style="width:18px;height:18px;accent-color:var(--accent-blue)"> Bobinas conferidas
+              </label>
+              <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+                <input type="checkbox" id="exPending" checked style="width:18px;height:18px;accent-color:var(--accent-blue)"> Bobinas pendentes
+              </label>
+              <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+                <input type="checkbox" id="exExtra" checked style="width:18px;height:18px;accent-color:var(--accent-blue)"> Bobinas não previstas
+              </label>
+              <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+                <input type="checkbox" id="exObs" checked style="width:18px;height:18px;accent-color:var(--accent-blue)"> Observações
+              </label>
+              <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+                <input type="checkbox" id="exPhotoLinks" checked style="width:18px;height:18px;accent-color:var(--accent-blue)"> Links das fotos
+              </label>
+              <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+                <input type="checkbox" id="exPhotosZip" onchange="document.getElementById('exFmtZip').checked = this.checked || document.getElementById('exFmtZip').checked" style="width:18px;height:18px;accent-color:var(--accent-blue)"> Fotos no ZIP
+              </label>
+            </div>
+            <p style="font-size:.82em;margin-top:10px">Baixar fotos no ZIP pode demorar em conferências grandes.</p>
+
+            <div class="btn-group">
+              <button class="btn btn-primary" id="cloudExportConfirmBtn">📤 Exportar selecionado</button>
               <button class="btn btn-outline" onclick="cloudCloseExportModal()">Cancelar</button>
             </div>
           </div>`;
           document.body.appendChild(modal);
         }
-        const bind = (id, fmt, scope) => {
-          const btn = document.getElementById(id);
-          if (btn) btn.onclick = () => {
-            cloudCloseExportModal();
-            cloudExportConference(confId, fmt, scope);
-          };
-        };
-        bind("ceAllCsv", "csv", "all");
-        bind("ceAllTxt", "txt", "all");
-        bind("cePendingCsv", "csv", "pending");
-        bind("cePendingTxt", "txt", "pending");
-        bind("ceExtraCsv", "csv", "extra");
-        bind("ceExtraTxt", "txt", "extra");
-        bind("ceCheckedCsv", "csv", "checked");
-        bind("ceCheckedTxt", "txt", "checked");
+        document.getElementById("cloudExportConfirmBtn").onclick = () => cloudExportSelected(confId);
         modal.classList.add("show");
       }
 
       function cloudCloseExportModal() {
         document.getElementById("cloudExportModal")?.classList.remove("show");
+      }
+
+      function cloudGetExportOptions() {
+        return {
+          csv: !!document.getElementById("exFmtCsv")?.checked,
+          txt: !!document.getElementById("exFmtTxt")?.checked,
+          zip: !!document.getElementById("exFmtZip")?.checked,
+          summary: !!document.getElementById("exSummary")?.checked,
+          ops: !!document.getElementById("exOps")?.checked,
+          checked: !!document.getElementById("exChecked")?.checked,
+          pending: !!document.getElementById("exPending")?.checked,
+          extra: !!document.getElementById("exExtra")?.checked,
+          obs: !!document.getElementById("exObs")?.checked,
+          photoLinks: !!document.getElementById("exPhotoLinks")?.checked,
+          photosZip: !!document.getElementById("exPhotosZip")?.checked,
+        };
+      }
+
+      async function cloudBuildExportData(confId) {
+        if (confId === "__merged__") {
+          if (!cloudMergedReport) throw new Error("Nenhum consolidado aberto");
+          return {
+            id: cloudMergedReport.id || "consolidado",
+            title: "RELATÓRIO CONSOLIDADO",
+            operador: "Consolidado",
+            tipo: cloudMergedReport.title || "Consolidado",
+            status: "consolidado",
+            resumo: cloudMergedReport.resumo || {},
+            opSummary: cloudMergedReport.opSummary || [],
+            rows: cloudMergedReport.rows || [],
+            confIds: cloudMergedReport.ids || [],
+          };
+        }
+
+        if (!(await cloudInit())) throw new Error("Firebase indisponível");
+        const confRef = cloudDb.collection("conferencias").doc(confId);
+        const confSnap = await confRef.get();
+        if (!confSnap.exists) throw new Error("Conferência não encontrada");
+        const conf = { id: confSnap.id, ...confSnap.data() };
+        const [bobinas, leituras, naoPrevistas, fotos] = await Promise.all([
+          cloudGetCollectionDocs(confRef, "bobinas"),
+          cloudGetCollectionDocs(confRef, "leituras"),
+          cloudGetCollectionDocs(confRef, "nao_previstas"),
+          cloudGetCollectionDocs(confRef, "fotos"),
+        ]);
+
+        const leiturasMap = new Map();
+        leituras.forEach((l) => leiturasMap.set(String(l.codigo || l.id), l));
+        const fotoMap = new Map();
+        fotos.forEach((f) => fotoMap.set(String(f.codigo || f.id), f));
+        const opSummary = cloudBuildOpSummary(bobinas, leiturasMap);
+        const resumo = conf.resumo || {};
+        const total = resumo.total ?? bobinas.length;
+        const chk = resumo.conferidos ?? bobinas.filter((b) => {
+          const l = leiturasMap.get(String(b.codigo || b.id));
+          return l && l.status !== "not-found";
+        }).length;
+        const extras = resumo.naoPrevistas ?? naoPrevistas.length;
+        const pct = resumo.percentual ?? (total > 0 ? ((chk / total) * 100).toFixed(1) : "0.0");
+
+        const extraCodes = new Set(naoPrevistas.map((n) => String(n.codigo || n.id)));
+        leituras.forEach((l) => {
+          if (l.status === "not-found") extraCodes.add(String(l.codigo || l.id));
+        });
+
+        const rows = [];
+        Array.from(extraCodes).sort().forEach((code) => {
+          const n = naoPrevistas.find((x) => String(x.codigo || x.id) === code) || {};
+          const l = leiturasMap.get(code) || {};
+          rows.push({
+            code,
+            op: "-",
+            peso: "-",
+            status: "Não Prevista",
+            time: l.horaLocal || n.horaLocal || "",
+            location: l.location || n.location || "",
+            observation: l.observation || n.observation || "",
+            hasPhoto: !!(l.hasPhoto || n.hasPhoto || fotoMap.get(code)),
+            fotoUrl: l.fotoUrl || n.fotoUrl || fotoMap.get(code)?.url || "",
+          });
+        });
+        bobinas
+          .slice()
+          .sort((a, b) => String(a.codigo || a.id).localeCompare(String(b.codigo || b.id), "pt-BR", { numeric: true }))
+          .forEach((b) => {
+            const code = String(b.codigo || b.id);
+            const l = leiturasMap.get(code);
+            const checked = !!(l && l.status !== "not-found");
+            rows.push({
+              code,
+              op: b.op || "-",
+              peso: b.peso || "-",
+              status: checked ? (l.manual ? "Conferido Manual" : "Conferido") : "Pendente",
+              time: checked ? (l.horaLocal || "") : "",
+              location: l?.location || "",
+              observation: l?.observation || "",
+              hasPhoto: !!(l?.hasPhoto || fotoMap.get(code)),
+              fotoUrl: l?.fotoUrl || fotoMap.get(code)?.url || "",
+            });
+          });
+
+        return {
+          id: conf.id,
+          title: "RELATÓRIO DE CONFERÊNCIA - NUVEM",
+          operador: conf.operador || "-",
+          tipo: conf.tipo || "-",
+          status: conf.status || "-",
+          resumo: { total, conferidos: chk, pendentes: total - chk, naoPrevistas: extras, percentual: pct },
+          opSummary,
+          rows,
+          confIds: [conf.id],
+        };
+      }
+
+      function cloudFilterRowsForExport(rows, opt) {
+        return (rows || []).filter((i) => {
+          const st = String(i.status || "");
+          if (st === "Pendente") return opt.pending;
+          if (st === "Não Prevista" || st.includes("Não prevista")) return opt.extra;
+          if (st.startsWith("Conferido") || st.includes("Conferid") || st.includes("Manual")) return opt.checked;
+          return true;
+        });
+      }
+
+      function cloudBuildCsvReport(data, opt) {
+        const date = new Date();
+        const r = data.resumo || {};
+        let csv = `${data.title}\nData;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente;${data.operador}\nTipo;${data.tipo}\nID;${data.id}\nStatus;${data.status}\n`;
+        if (opt.summary) {
+          csv += `\nRESUMO\nTotal;${r.total ?? 0}\nConferidos;${r.conferidos ?? 0}\nPendentes;${r.pendentes ?? 0}\nNão Previstas;${r.naoPrevistas ?? 0}\nPercentual;${r.percentual ?? 0}%\n`;
+        }
+        if (opt.ops) {
+          csv += `\nRESUMO POR OP\nOP;Encontradas;Percentual\n`;
+          csv += (data.opSummary || []).map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`).join("\n") + "\n";
+        }
+        const cols = ["Código", "OP", "Peso", "Status", "Hora", "Localização"];
+        if (opt.obs) cols.push("Observação");
+        if (opt.photoLinks) cols.push("Foto");
+        csv += `\nBOBINAS\n${cols.join(";")}\n`;
+        csv += cloudFilterRowsForExport(data.rows, opt).map((i) => {
+          const row = [i.code, i.op, i.peso, i.status, i.time || "", i.location || ""];
+          if (opt.obs) row.push(i.observation || "");
+          if (opt.photoLinks) row.push(i.fotoUrl || (i.hasPhoto ? "Sim" : "Não"));
+          return row.join(";");
+        }).join("\n");
+        return csv;
+      }
+
+      function cloudBuildTxtReport(data, opt) {
+        const date = new Date();
+        const r = data.resumo || {};
+        let txt = `${data.title}\nData: ${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente: ${data.operador}\nTipo: ${data.tipo}\nID: ${data.id}\nStatus: ${data.status}\n${"=".repeat(95)}\n`;
+        if (opt.summary) {
+          txt += `\nTotal: ${r.total ?? 0}\nConferidos: ${r.conferidos ?? 0}\nPendentes: ${r.pendentes ?? 0}\nNão Previstas: ${r.naoPrevistas ?? 0}\nPercentual: ${r.percentual ?? 0}%\n`;
+        }
+        if (opt.ops) {
+          txt += `\n${"=".repeat(95)}\nRESUMO POR OP\n${"=".repeat(95)}\n`;
+          txt += (data.opSummary || []).map((op) => `OP: ${String(op.op || "-").padEnd(15)} | Encontradas: ${String(op.checked + "/" + op.total).padEnd(8)} | ${op.pct}%`).join("\n");
+        }
+        txt += `\n\n${"=".repeat(95)}\nBOBINAS\n${"=".repeat(95)}\n\n`;
+        txt += cloudFilterRowsForExport(data.rows, opt).map((i) => {
+          let line = `${String(i.code).padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${String(i.status).padEnd(16)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)}`;
+          if (opt.obs) line += ` | Obs: ${(i.observation || "—").padEnd(20)}`;
+          if (opt.photoLinks) line += ` | ${i.fotoUrl ? "📸 " + i.fotoUrl : (i.hasPhoto ? "📸 Sim" : "—")}`;
+          return line;
+        }).join("\n");
+        return txt;
+      }
+
+      async function cloudExportSelected(confId) {
+        const opt = cloudGetExportOptions();
+        if (!opt.csv && !opt.txt && !opt.zip) {
+          notify("Selecione pelo menos um formato.", "warning");
+          return;
+        }
+        if (opt.photosZip && !opt.zip) {
+          notify("Para incluir fotos, selecione o formato ZIP.", "warning");
+          return;
+        }
+        try {
+          cloudCloseExportModal();
+          cloudSetStatus("sync", "☁️ Gerando exportação...");
+          const data = await cloudBuildExportData(confId);
+          const dateStr = new Date().toISOString().slice(0, 10);
+          const safeId = String(data.id || "relatorio").replace(/[^a-zA-Z0-9_-]/g, "_");
+          const csv = opt.csv || opt.zip ? cloudBuildCsvReport(data, opt) : null;
+          const txt = opt.txt || opt.zip ? cloudBuildTxtReport(data, opt) : null;
+
+          if (opt.zip) {
+            const zip = new JSZip();
+            if (csv) zip.file(`relatorio_${safeId}.csv`, "\uFEFF" + csv);
+            if (txt) zip.file(`relatorio_${safeId}.txt`, "\uFEFF" + txt);
+            if (opt.photosZip) {
+              const fotosFolder = zip.folder("fotos");
+              const rows = cloudFilterRowsForExport(data.rows, opt).filter((r) => r.fotoUrl);
+              for (let idx = 0; idx < rows.length; idx++) {
+                const r = rows[idx];
+                try {
+                  const resp = await fetch(r.fotoUrl);
+                  if (!resp.ok) throw new Error("HTTP " + resp.status);
+                  const blob = await resp.blob();
+                  fotosFolder.file(`${r.code}_etiqueta_bobina.jpg`, blob);
+                  const progress = document.getElementById("exportProgress");
+                  if (progress) {
+                    progress.classList.add("show");
+                    progress.textContent = `⏳ Baixando fotos ${idx + 1}/${rows.length}...`;
+                  }
+                } catch (e) {
+                  console.warn("Falha ao baixar foto para ZIP:", r.code, e);
+                }
+              }
+            }
+            const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = `exportacao_${safeId}_${dateStr}.zip`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+            document.getElementById("exportProgress")?.classList.remove("show");
+          } else {
+            if (opt.csv && csv) download(csv, `exportacao_${safeId}_${dateStr}.csv`, "text/csv");
+            if (opt.txt && txt) download(txt, `exportacao_${safeId}_${dateStr}.txt`, "text/plain");
+          }
+          cloudSetStatus("ok", "☁️ Exportação gerada");
+          notify("Exportação gerada!");
+        } catch (e) {
+          console.error(e);
+          cloudSetStatus("error", "☁️ Erro na exportação");
+          notify("Erro ao exportar: " + (e.message || e), "error");
+        }
       }
 
       async function cloudExportConference(confId, fmt, scope = "all") {
@@ -6230,5 +6480,5 @@ async function camRotatePhoto(tipo) {
       }
       init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a141140c1c6d02f2',t:'MTc4Mjg2MzQ3OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1411dc06db4a4a8',t:'MTc4Mjg2Mzg3Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
