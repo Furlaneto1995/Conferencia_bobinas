@@ -4235,6 +4235,37 @@
         cloudShowExportModal("__merged__");
       }
 
+
+      async function cloudDeleteSupabasePhotos(confRef) {
+        try {
+          if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return;
+          const snap = await confRef.collection("fotos").get();
+          const paths = snap.docs
+            .map((doc) => doc.data() && doc.data().path)
+            .filter(Boolean);
+          if (!paths.length) return;
+
+          for (let i = 0; i < paths.length; i += 100) {
+            const prefixes = paths.slice(i, i + 100);
+            const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}`, {
+              method: "DELETE",
+              headers: {
+                apikey: SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ prefixes }),
+            });
+            if (!res.ok) {
+              const txt = await res.text().catch(() => "");
+              console.warn("Falha ao excluir fotos no Supabase:", res.status, txt);
+            }
+          }
+        } catch (e) {
+          console.warn("Falha ao excluir fotos no Supabase:", e);
+        }
+      }
+
       async function cloudDeleteSubcollection(confRef, name) {
         const snap = await confRef.collection(name).limit(450).get();
         if (snap.empty) return 0;
@@ -4256,6 +4287,7 @@
           cloudSetStatus("sync", "☁️ Excluindo conferência...");
           if (!(await cloudInit())) throw new Error("Firebase indisponível");
           const ref = cloudDb.collection("conferencias").doc(confId);
+          await cloudDeleteSupabasePhotos(ref);
           for (const sub of ["bobinas", "leituras", "nao_previstas", "fotos"]) {
             let removed = 0;
             do {
@@ -6198,5 +6230,5 @@ async function camRotatePhoto(tipo) {
       }
       init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a140e8c548d5d8a2',t:'MTc4Mjg2MTcwNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a141140c1c6d02f2',t:'MTc4Mjg2MzQ3OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
