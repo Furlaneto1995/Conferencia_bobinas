@@ -22,7 +22,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
 
     <script>
       if ("serviceWorker" in navigator && location.protocol !== "file:") {
@@ -2751,15 +2750,16 @@
 
       /* =========================
          FIREBASE CLOUD SYNC
-         Preencha FIREBASE_CONFIG para ativar.
-         Dados: Firestore. Fotos: Firebase Storage.
+         Plano free: dados no Firestore.
+         Fotos permanecem locais e saem no ZIP.
       ========================= */
       const FIREBASE_CONFIG = {
-        apiKey: "",
-        authDomain: "",
-        projectId: "",
-        storageBucket: "",
-        appId: "",
+        apiKey: "AIzaSyCJTpQfv3pTOXHvV4TpQl2h2tF0TdtWiNw",
+        authDomain: "conferencia-bobinas.firebaseapp.com",
+        projectId: "conferencia-bobinas",
+        storageBucket: "conferencia-bobinas.firebasestorage.app",
+        messagingSenderId: "915961990064",
+        appId: "1:915961990064:web:23791d2464a8a5202aa475",
       };
 
       let cloudReady = false,
@@ -2813,7 +2813,7 @@
             }
           }
           cloudDb = firebase.firestore();
-          cloudStorage = firebase.storage ? firebase.storage() : null;
+          cloudStorage = null; // Storage desativado no plano free. Fotos ficam locais.
           cloudReady = true;
           return true;
         } catch (e) {
@@ -2971,36 +2971,9 @@
       }
 
       async function cloudUploadPhoto(code, dataUrl) {
-        try {
-          await cloudEnsureSession();
-          if (!cloudStorage || !S.cloudSessionId || !dataUrl) return null;
-          const path = `fotos/${cloudOperatorKey()}/${cloudDateKey()}/${S.cloudSessionId}/${code}_etiqueta_bobina.jpg`;
-          const blob = cloudDataUrlToBlob(dataUrl);
-          await cloudStorage.ref(path).put(blob, {
-            contentType: "image/jpeg",
-            customMetadata: {
-              conferenciaId: S.cloudSessionId,
-              operador: S.checkerName || "",
-              codigo: String(code),
-            },
-          });
-          const ref = cloudConferenceRef();
-          if (ref) {
-            await ref.collection("fotos").doc(String(code)).set(
-              {
-                codigo: String(code),
-                path,
-                size: blob.size,
-                atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-              },
-              { merge: true },
-            );
-          }
-          return path;
-        } catch (e) {
-          console.warn("Falha ao enviar foto para Firebase Storage:", e);
-          return null;
-        }
+        // Plano free: não envia fotos para Storage.
+        // As fotos continuam salvas localmente e entram no ZIP.
+        return null;
       }
       function getPhoto(code) {
         try {
@@ -4919,5 +4892,5 @@ async function camRotatePhoto(tipo) {
       }
       init();
     </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a140310c985fdfae',t:'MTc4Mjg1NDE4MQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
