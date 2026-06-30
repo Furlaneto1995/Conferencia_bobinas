@@ -2077,6 +2077,20 @@
   .cloud-export-modal-grid { grid-template-columns: 1fr; }
 }
 
+
+
+.cloud-select-check {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent-blue);
+  flex-shrink: 0;
+}
+.cloud-merge-note {
+  color: var(--text-muted);
+  font-size: 0.78em;
+  margin-top: 6px;
+}
+
     </style>
   </head>
   <body>
@@ -2431,7 +2445,10 @@
             <button class="cloud-filter-btn active" id="cloudFilterAll" onclick="cloudSetListFilter('all')">Todas</button>
             <button class="cloud-filter-btn" id="cloudFilterOpen" onclick="cloudSetListFilter('em_andamento')">Em andamento</button>
             <button class="cloud-filter-btn" id="cloudFilterDone" onclick="cloudSetListFilter('finalizada')">Finalizadas</button>
+            <button class="cloud-report-btn" onclick="cloudMergeSelectedConferences()">Juntar selecionadas</button>
+            <button class="cloud-filter-btn" onclick="cloudClearMergeSelection()">Limpar seleção</button>
           </div>
+          <div class="cloud-merge-note">Marque duas ou mais conferências abaixo e clique em “Juntar selecionadas”.</div>
 
           <div class="export-progress" id="exportProgress">
             ⏳ Gerando arquivo ZIP...
@@ -3062,6 +3079,8 @@
         cloudDetailFilter = "all",
         cloudDetailSearch = "",
         cloudDetailConfId = "",
+        cloudMergeSelectedIds = new Set(),
+        cloudMergedReport = null,
         cloudSessionUnsub = null,
         cloudLeaderUnlocked = false,
         cloudSecretTimer = null;
@@ -3477,7 +3496,10 @@
             const isCurrent = d.id === S.cloudSessionId;
             return `<div class="cloud-item ${isCurrent ? "current" : ""}">
               <div class="cloud-item-head">
-                <div class="cloud-item-title">${esc(d.operador || "-")} • ${esc(d.data || "-")}${isCurrent ? '<span class="cloud-current-badge">Atual</span>' : ""}</div>
+                <div class="cloud-item-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <input class="cloud-select-check" type="checkbox" ${cloudMergeSelectedIds.has(d.id) ? "checked" : ""} onclick="event.stopPropagation()" onchange="cloudToggleMergeSelection('${esc(d.id).replace(/'/g, "&#39;")}', this.checked)" />
+                  <span>${esc(d.operador || "-")} • ${esc(d.data || "-")}${isCurrent ? '<span class="cloud-current-badge">Atual</span>' : ""}</span>
+                </div>
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end">
                   <div class="cloud-item-status ${status === "finalizada" ? "finalizada" : ""}">${esc(status)}</div>
                   <button class="cloud-report-btn" onclick="cloudOpenConference('${esc(d.id).replace(/'/g, "&#39;")}')">Visualizar</button>
@@ -3581,6 +3603,10 @@
 
       async function cloudExportConference(confId, fmt, scope = "all") {
         if (!cloudLeaderUnlocked) return;
+        if (confId === "__merged__") {
+          cloudExportMergedReport(fmt, scope);
+          return;
+        }
         try {
           cloudSetStatus("sync", "☁️ Gerando relatório da nuvem...");
           if (!(await cloudInit())) throw new Error("Firebase indisponível");
@@ -3918,6 +3944,233 @@
           cloudSetStatus("error", "☁️ Erro ao finalizar");
           notify("Erro ao finalizar: " + (e.message || e), "error");
         }
+      }
+
+
+      function cloudToggleMergeSelection(confId, checked) {
+        if (checked) cloudMergeSelectedIds.add(confId);
+        else cloudMergeSelectedIds.delete(confId);
+      }
+
+      function cloudClearMergeSelection() {
+        cloudMergeSelectedIds.clear();
+        cloudRenderConsultList(document.getElementById("cloudSearch")?.value || "");
+      }
+
+      function cloudBuildOpSummaryFromMaps(bobinaMap, checkedMap) {
+        const map = new Map();
+        bobinaMap.forEach((b, code) => {
+          const op = b.op || "-";
+          if (!map.has(op)) map.set(op, { op, total: 0, checked: 0, pct: "0.0" });
+          const item = map.get(op);
+          item.total++;
+          if (checkedMap.has(String(code))) item.checked++;
+        });
+        return Array.from(map.values())
+          .map((op) => {
+            op.pct = op.total > 0 ? ((op.checked / op.total) * 100).toFixed(1) : "0.0";
+            return op;
+          })
+          .sort((a, b) => String(a.op).localeCompare(String(b.op), "pt-BR", { numeric: true, sensitivity: "base" }));
+      }
+
+
+      function cloudExportMergedReport(fmt, scope = "all") {
+        if (!cloudMergedReport) {
+          notify("Nenhum consolidado aberto para exportar.", "warning");
+          return;
+        }
+        const date = new Date();
+        const dateStr = date.toISOString().slice(0, 10);
+        const r = cloudMergedReport.resumo || {};
+        const opSummary = cloudMergedReport.opSummary || [];
+        const scopeLabelMap = {
+          all: "completo",
+          pending: "pendentes",
+          extra: "nao_previstas",
+          checked: "conferidas",
+        };
+        const scopeTitleMap = {
+          all: "COMPLETO",
+          pending: "PENDENTES",
+          extra: "NÃO PREVISTAS",
+          checked: "CONFERIDAS",
+        };
+        const exportItems = (cloudMergedReport.rows || []).filter((i) => {
+          if (scope === "pending") return String(i.status).includes("Pendente");
+          if (scope === "extra") return String(i.status).includes("Não prevista");
+          if (scope === "checked") return String(i.status).includes("Conferid") || String(i.status).includes("Manual");
+          return true;
+        });
+        const scopeLabel = scopeLabelMap[scope] || "completo";
+        const scopeTitle = scopeTitleMap[scope] || "COMPLETO";
+        const id = cloudMergedReport.id || "consolidado";
+
+        if (fmt === "csv") {
+          let csv = `RELATÓRIO CONSOLIDADO (${scopeTitle})\nData;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferências;${(cloudMergedReport.ids || []).join(", ")}\n\nRESUMO\nTotal;${r.total ?? 0}\nConferidos;${r.conferidos ?? 0}\nPendentes;${r.pendentes ?? 0}\nNão Previstas;${r.naoPrevistas ?? 0}\nPercentual;${r.percentual ?? 0}%\n\nRESUMO POR OP\nOP;Encontradas;Percentual\n`;
+          csv += opSummary.map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`).join("\n");
+          csv += `\n\nBOBINAS\nCódigo;OP;Peso;Status;Hora;Localização;Observação;Fotos\n`;
+          csv += exportItems.map((i) => `${i.code};${i.op};${i.peso};${i.status};${i.time || ""};${i.location || ""};${i.observation || ""};${i.hasPhoto ? "Sim" : "Não"}`).join("\n");
+          download(csv, `${scopeLabel}_${id}_${dateStr}.csv`, "text/csv");
+        } else {
+          let txt = `RELATÓRIO CONSOLIDADO (${scopeTitle})\nData: ${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferências: ${(cloudMergedReport.ids || []).join(", ")}\n${"=".repeat(95)}\n\nTotal: ${r.total ?? 0}\nConferidos: ${r.conferidos ?? 0}\nPendentes: ${r.pendentes ?? 0}\nNão Previstas: ${r.naoPrevistas ?? 0}\nPercentual: ${r.percentual ?? 0}%\n\n${"=".repeat(95)}\nRESUMO POR OP\n${"=".repeat(95)}\n`;
+          txt += opSummary.map((op) => `OP: ${String(op.op || "-").padEnd(15)} | Encontradas: ${String(op.checked + "/" + op.total).padEnd(8)} | ${op.pct}%`).join("\n");
+          txt += `\n\n${"=".repeat(95)}\nBOBINAS\n${"=".repeat(95)}\n\n`;
+          txt += exportItems.map((i) => `${String(i.code).padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${String(i.status).padEnd(16)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.hasPhoto ? "📸 Sim" : "—"}`).join("\n");
+          download(txt, `${scopeLabel}_${id}_${dateStr}.txt`, "text/plain");
+        }
+        notify("Relatório consolidado exportado!");
+      }
+
+      async function cloudMergeSelectedConferences() {
+        if (!cloudLeaderUnlocked) return;
+        const ids = Array.from(cloudMergeSelectedIds);
+        if (ids.length < 2) {
+          notify("Selecione pelo menos 2 conferências para juntar.", "warning");
+          return;
+        }
+        const box = document.getElementById("cloudDetailBox");
+        if (box) {
+          box.className = "cloud-detail show";
+          box.innerHTML = '<div class="empty">☁️ Juntando conferências...</div>';
+        }
+        try {
+          if (!(await cloudInit())) throw new Error("Firebase indisponível");
+          const bobinaMap = new Map();
+          const checkedMap = new Map();
+          const extraMap = new Map();
+          const confs = [];
+
+          for (const confId of ids) {
+            const confRef = cloudDb.collection("conferencias").doc(confId);
+            const confSnap = await confRef.get();
+            if (confSnap.exists) confs.push({ id: confSnap.id, ...confSnap.data() });
+            const [bobinas, leituras, naoPrevistas] = await Promise.all([
+              cloudGetCollectionDocs(confRef, "bobinas"),
+              cloudGetCollectionDocs(confRef, "leituras"),
+              cloudGetCollectionDocs(confRef, "nao_previstas"),
+            ]);
+            bobinas.forEach((b) => {
+              const code = String(b.codigo || b.id || "");
+              if (code && !bobinaMap.has(code)) bobinaMap.set(code, b);
+            });
+            leituras.forEach((l) => {
+              const code = String(l.codigo || l.id || "");
+              if (!code) return;
+              if (l.status === "not-found") {
+                if (!extraMap.has(code)) extraMap.set(code, l);
+              } else if (!checkedMap.has(code)) {
+                checkedMap.set(code, l);
+              }
+            });
+            naoPrevistas.forEach((n) => {
+              const code = String(n.codigo || n.id || "");
+              if (code && !extraMap.has(code)) extraMap.set(code, n);
+            });
+          }
+
+          const opSummary = cloudBuildOpSummaryFromMaps(bobinaMap, checkedMap);
+          const rows = [];
+          Array.from(extraMap.keys()).sort().forEach((code) => {
+            const x = extraMap.get(code) || {};
+            rows.push({
+              code,
+              op: "-",
+              peso: "-",
+              status: "⚠️ Não prevista",
+              time: x.horaLocal || "",
+              location: x.location || "",
+              observation: x.observation || "",
+              hasPhoto: !!x.hasPhoto,
+            });
+          });
+          Array.from(bobinaMap.keys()).sort((a, b) => String(a).localeCompare(String(b), "pt-BR", { numeric: true })).forEach((code) => {
+            const b = bobinaMap.get(code) || {};
+            const l = checkedMap.get(code);
+            rows.push({
+              code,
+              op: b.op || "-",
+              peso: b.peso || "-",
+              status: l ? (l.manual ? "📸 Manual" : "✅ Conferida") : "⏳ Pendente",
+              time: l?.horaLocal || "",
+              location: l?.location || "",
+              observation: l?.observation || "",
+              hasPhoto: !!l?.hasPhoto,
+            });
+          });
+
+          const total = bobinaMap.size;
+          const conferidos = checkedMap.size;
+          const naoPrev = extraMap.size;
+          const pendentes = Math.max(0, total - conferidos);
+          const pct = total > 0 ? ((conferidos / total) * 100).toFixed(1) : "0.0";
+          cloudMergedReport = {
+            id: `consolidado_${new Date().toISOString().slice(0, 10)}_${ids.length}_conferencias`,
+            title: `Consolidado de ${ids.length} conferências`,
+            subtitle: confs.map((c) => `${c.operador || "-"} • ${c.data || "-"}`).join(" | "),
+            ids,
+            rows,
+            opSummary,
+            resumo: { total, conferidos, pendentes, naoPrevistas: naoPrev, percentual: pct },
+          };
+          cloudRenderMergedReport();
+          cloudSetStatus("ok", "☁️ Conferências juntadas");
+          notify("Conferências juntadas para visualização/exportação.");
+        } catch (e) {
+          console.error(e);
+          if (box) box.innerHTML = '<div class="empty">Erro ao juntar conferências. Veja o console.</div>';
+          cloudSetStatus("error", "☁️ Erro ao juntar");
+          notify("Erro ao juntar: " + (e.message || e), "error");
+        }
+      }
+
+      function cloudRenderMergedReport() {
+        const box = document.getElementById("cloudDetailBox");
+        if (!box || !cloudMergedReport) return;
+        const r = cloudMergedReport.resumo || {};
+        cloudDetailRows = cloudMergedReport.rows || [];
+        cloudDetailFilter = "all";
+        cloudDetailSearch = "";
+        cloudDetailConfId = "__merged__";
+        const opHtml = (cloudMergedReport.opSummary || []).length
+          ? cloudMergedReport.opSummary.map((op) => `<div class="op-summary-item">
+              <div class="op-summary-op">OP ${esc(op.op || "-")}</div>
+              <div class="op-summary-info"><span>✅ Encontradas: <strong>${op.checked}/${op.total}</strong></span><span>📊 <strong>${op.pct}%</strong></span></div>
+            </div>`).join("")
+          : '<div class="empty">Nenhuma OP encontrada.</div>';
+        box.className = "cloud-detail show";
+        box.innerHTML = `<div class="cloud-detail-head">
+          <div>
+            <div class="cloud-detail-title">${esc(cloudMergedReport.title)}</div>
+            <div class="cloud-detail-sub">${esc(cloudMergedReport.subtitle || "")}</div>
+          </div>
+          <button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">✕ Fechar</button>
+        </div>
+        <div class="cloud-detail-stats">
+          <div class="cloud-detail-stat">Total<strong>${r.total ?? 0}</strong></div>
+          <div class="cloud-detail-stat">Conferidos<strong>${r.conferidos ?? 0}</strong></div>
+          <div class="cloud-detail-stat">Pendentes<strong>${r.pendentes ?? 0}</strong></div>
+          <div class="cloud-detail-stat">Não previstas<strong>${r.naoPrevistas ?? 0}</strong></div>
+        </div>
+        <div class="cloud-detail-section-title">📦 Resumo por OP</div>
+        <div class="op-summary-list" style="max-height:220px;overflow:auto;padding-right:4px">${opHtml}</div>
+        <div class="cloud-detail-section-title">📋 Bobinas e leituras</div>
+        <div class="search-wrap" style="margin-bottom: 8px"><span class="si">🔍</span><input class="search-input" id="cloudDetailSearch" placeholder="Buscar código, OP, status ou observação..." oninput="cloudDetailSearch=this.value; cloudRenderDetailRows()" /></div>
+        <div class="cloud-detail-filters">
+          <button class="cloud-filter-btn active" id="cloudDetailFilterAll" onclick="cloudSetDetailFilter('all')">Todos</button>
+          <button class="cloud-filter-btn" id="cloudDetailFilterChecked" onclick="cloudSetDetailFilter('checked')">Conferidos</button>
+          <button class="cloud-filter-btn" id="cloudDetailFilterPending" onclick="cloudSetDetailFilter('pending')">Pendentes</button>
+          <button class="cloud-filter-btn" id="cloudDetailFilterExtra" onclick="cloudSetDetailFilter('extra')">Não previstas</button>
+          <button class="cloud-report-btn" onclick="cloudShowMergedExportModal()">Exportar consolidado</button>
+        </div>
+        <div class="cloud-detail-scroll" style="margin-top: 8px"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>`;
+        cloudRenderDetailRows();
+        box.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+
+      function cloudShowMergedExportModal() {
+        if (!cloudMergedReport) return;
+        cloudShowExportModal("__merged__");
       }
 
       async function cloudDeleteSubcollection(confRef, name) {
@@ -5883,5 +6136,5 @@ async function camRotatePhoto(tipo) {
       }
       init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a140b7a48a91f2e4',t:'MTc4Mjg1OTY5NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a140c232bf345c96',t:'MTc4Mjg2MDEyNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
