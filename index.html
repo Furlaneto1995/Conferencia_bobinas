@@ -1632,7 +1632,7 @@
 /* AJUSTE FINAL AREA FOTOS NAO PREVISTAS */
 #camLocModal .cam-photo-section {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px;
   align-items: start;
   margin-top: 8px;
@@ -1697,7 +1697,7 @@
 }
 
 #camLocModal .cam-photo-preview {
-  --photo-square: clamp(130px, 42vw, 190px);
+  --photo-square: clamp(130px, 40vw, 210px);
   width: var(--photo-square);
   height: var(--photo-square);
   max-width: 100%;
@@ -1739,6 +1739,15 @@
   font-size: 0.68em;
   line-height: 1.2;
   margin-top: 3px;
+}
+
+
+#camLocModal .cam-loc-box {
+  max-width: min(520px, calc(100vw - 16px));
+}
+
+#camLocModal #camObsInput {
+  min-height: 52px !important;
 }
 
     </style>
@@ -3715,6 +3724,9 @@ ${"─".repeat(40)}
         camVideoTrack = null,
         camTorchOn = false,
         camZoomValue = null,
+        camZoomMin = 1,
+        camZoomMax = 1,
+        camZoomApplyTimer = null,
         camCooldown = false,
         camPendingExtra = null,
         camManualMode = "extra",
@@ -3942,27 +3954,34 @@ ${"─".repeat(40)}
         const settings = camVideoTrack.getSettings
           ? camVideoTrack.getSettings()
           : {};
-        camZoomValue = settings.zoom || caps.zoom?.min || 1;
         const torchBtn = document.getElementById("camTorchBtn"),
           zoomControl = document.getElementById("camZoomControl"),
           slider = document.getElementById("camZoomSlider");
+
         if (caps.zoom && slider) {
-          slider.min = caps.zoom.min;
-          slider.max = caps.zoom.max;
-          slider.step = caps.zoom.step || 0.1;
-          if (camZoomValue <= caps.zoom.min + 0.01) {
-            camZoomValue = Math.min(
-              caps.zoom.max,
-              Math.max(caps.zoom.min, 1.6),
-            );
-            camVideoTrack
-              .applyConstraints({ advanced: [{ zoom: camZoomValue }] })
-              .catch(() => {});
+          camZoomMin = Number(caps.zoom.min || 1);
+          camZoomMax = Math.min(Number(caps.zoom.max || 4), 4);
+          if (camZoomMax <= camZoomMin) {
+            camZoomMax = Number(caps.zoom.max || camZoomMin);
           }
-          slider.value = camZoomValue;
+          camZoomValue = Number(settings.zoom || camZoomMin);
+          if (camZoomValue < camZoomMin) camZoomValue = camZoomMin;
+          if (camZoomValue > camZoomMax) camZoomValue = camZoomMax;
+
+          slider.min = 0;
+          slider.max = 100;
+          slider.step = 1;
+          slider.value = Math.round(
+            camZoomMax > camZoomMin
+              ? ((camZoomValue - camZoomMin) / (camZoomMax - camZoomMin)) * 100
+              : 0,
+          );
+          slider.title = `Zoom: ${camZoomValue.toFixed(1)}x`;
           zoomControl && zoomControl.classList.remove("unsupported");
           slider.disabled = false;
-          slider.title = "Arraste para ajustar o zoom";
+          camVideoTrack
+            .applyConstraints({ advanced: [{ zoom: camZoomValue }] })
+            .catch(() => {});
         } else {
           zoomControl && zoomControl.classList.add("unsupported");
           if (slider) {
@@ -3988,13 +4007,31 @@ ${"─".repeat(40)}
             notify("Zoom não suportado neste aparelho.", "warning");
             return;
           }
-          camZoomValue = Math.max(
-            caps.zoom.min,
-            Math.min(caps.zoom.max, parseFloat(value)),
-          );
-          await camVideoTrack.applyConstraints({
-            advanced: [{ zoom: camZoomValue }],
-          });
+
+          const sliderPercent = Number(value);
+          const zoom =
+            camZoomMin + (sliderPercent / 100) * (camZoomMax - camZoomMin);
+          camZoomValue = Math.max(camZoomMin, Math.min(camZoomMax, zoom));
+
+          const slider = document.getElementById("camZoomSlider");
+          if (slider) slider.title = `Zoom: ${camZoomValue.toFixed(1)}x`;
+
+          clearTimeout(camZoomApplyTimer);
+          camZoomApplyTimer = setTimeout(async () => {
+            try {
+              await camVideoTrack.applyConstraints({
+                advanced: [{ zoom: camZoomValue }],
+              });
+              const settings = camVideoTrack.getSettings
+                ? camVideoTrack.getSettings()
+                : {};
+              if (settings.zoom && slider) {
+                slider.title = `Zoom: ${Number(settings.zoom).toFixed(1)}x`;
+              }
+            } catch (e) {
+              console.warn("Erro ao aplicar zoom:", e);
+            }
+          }, 80);
         } catch (e) {
           notify("Não foi possível ajustar o zoom.", "warning");
         }
@@ -4491,5 +4528,5 @@ async function camRotatePhoto(tipo) {
       }
       init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a13fc403db9ca474',t:'MTc4Mjg0OTcxNQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a13fe128eeef2788',t:'MTc4Mjg1MDkwOQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
