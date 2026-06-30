@@ -2266,18 +2266,23 @@
           <div class="export-progress" id="exportProgress">
             ⏳ Gerando arquivo ZIP...
           </div>
-          <div class="btn-group">
-            <button class="btn btn-primary" onclick="exportRpt('csv')">
-              📄 CSV
-            </button>
-            <button class="btn btn-outline" onclick="exportRpt('txt')">
-              📝 TXT
-            </button>
-            <button class="btn btn-zip" onclick="exportZip()">
-  📦 Não previstas c/ fotos
-</button>
-            
-          </div>
+         <div class="btn-group">
+  <button class="btn btn-primary" onclick="finishConference()">
+    ✅ Finalizar conferência
+  </button>
+
+  <button class="btn btn-primary" onclick="exportRpt('csv')">
+    📄 CSV
+  </button>
+
+  <button class="btn btn-outline" onclick="exportRpt('txt')">
+    📝 TXT
+  </button>
+
+  <button class="btn btn-zip" onclick="exportZip()">
+    📦 Não previstas c/ fotos
+  </button>
+</div>
         </div>
       </div>
 
