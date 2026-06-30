@@ -1935,6 +1935,20 @@
   }
 }
 
+
+
+.cloud-report-btn {
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.28);
+  color: var(--accent-blue);
+  border-radius: 8px;
+  padding: 6px 9px;
+  font-size: 0.78em;
+  font-weight: 900;
+  cursor: pointer;
+}
+.cloud-report-btn:active { transform: scale(0.96); }
+
     </style>
   </head>
   <body>
@@ -3323,6 +3337,8 @@
                 <div class="cloud-item-title">${esc(d.operador || "-")} • ${esc(d.data || "-")}</div>
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end">
                   <div class="cloud-item-status ${status === "finalizada" ? "finalizada" : ""}">${esc(status)}</div>
+                  <button class="cloud-report-btn" onclick="cloudExportConference('${esc(d.id).replace(/'/g, "&#39;")}', 'csv')">📄 CSV</button>
+                  <button class="cloud-report-btn" onclick="cloudExportConference('${esc(d.id).replace(/'/g, "&#39;")}', 'txt')">📝 TXT</button>
                   <button class="cloud-delete-btn" onclick="cloudDeleteConference('${esc(d.id).replace(/'/g, "&#39;")}')">🗑️ Excluir</button>
                 </div>
               </div>
@@ -3338,6 +3354,138 @@
             </div>`;
           })
           .join("");
+      }
+
+
+      async function cloudGetCollectionDocs(confRef, name) {
+        const snap = await confRef.collection(name).get();
+        return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      }
+
+      function cloudBuildOpSummary(bobinas, leiturasMap) {
+        const map = new Map();
+        bobinas.forEach((b) => {
+          const op = b.op || "-";
+          if (!map.has(op)) {
+            map.set(op, { op, total: 0, checked: 0, pct: "0.0" });
+          }
+          const item = map.get(op);
+          item.total++;
+          const l = leiturasMap.get(String(b.codigo || b.id));
+          if (l && l.status !== "not-found") item.checked++;
+        });
+        return Array.from(map.values())
+          .map((op) => {
+            op.pct = op.total > 0 ? ((op.checked / op.total) * 100).toFixed(1) : "0.0";
+            return op;
+          })
+          .sort((a, b) =>
+            String(a.op).localeCompare(String(b.op), "pt-BR", {
+              numeric: true,
+              sensitivity: "base",
+            }),
+          );
+      }
+
+      async function cloudExportConference(confId, fmt) {
+        if (!cloudLeaderUnlocked) return;
+        try {
+          cloudSetStatus("sync", "☁️ Gerando relatório da nuvem...");
+          if (!(await cloudInit())) throw new Error("Firebase indisponível");
+          const confRef = cloudDb.collection("conferencias").doc(confId);
+          const confSnap = await confRef.get();
+          if (!confSnap.exists) throw new Error("Conferência não encontrada");
+          const conf = { id: confSnap.id, ...confSnap.data() };
+          const [bobinas, leituras, naoPrevistas] = await Promise.all([
+            cloudGetCollectionDocs(confRef, "bobinas"),
+            cloudGetCollectionDocs(confRef, "leituras"),
+            cloudGetCollectionDocs(confRef, "nao_previstas"),
+          ]);
+
+          const leiturasMap = new Map();
+          leituras.forEach((l) => leiturasMap.set(String(l.codigo || l.id), l));
+          const opSummary = cloudBuildOpSummary(bobinas, leiturasMap);
+          const resumo = conf.resumo || {};
+          const date = new Date();
+          const dateStr = date.toISOString().slice(0, 10);
+          const operador = conf.operador || "-";
+          const tipo = conf.tipo || "-";
+          const total = resumo.total ?? bobinas.length;
+          const chk = resumo.conferidos ?? bobinas.filter((b) => {
+            const l = leiturasMap.get(String(b.codigo || b.id));
+            return l && l.status !== "not-found";
+          }).length;
+          const extras = resumo.naoPrevistas ?? naoPrevistas.length;
+          const pct = resumo.percentual ?? (total > 0 ? ((chk / total) * 100).toFixed(1) : "0.0");
+
+          const extraCodes = new Set(naoPrevistas.map((n) => String(n.codigo || n.id)));
+          leituras.forEach((l) => {
+            if (l.status === "not-found") extraCodes.add(String(l.codigo || l.id));
+          });
+
+          const items = [];
+          Array.from(extraCodes).sort().forEach((code) => {
+            const n = naoPrevistas.find((x) => String(x.codigo || x.id) === code) || {};
+            const l = leiturasMap.get(code) || {};
+            items.push({
+              code,
+              op: "-",
+              peso: "-",
+              status: "Não Prevista",
+              time: l.horaLocal || n.horaLocal || "",
+              location: l.location || n.location || "",
+              observation: l.observation || n.observation || "",
+              hasPhoto: !!(l.hasPhoto || n.hasPhoto),
+            });
+          });
+
+          bobinas
+            .slice()
+            .sort((a, b) => String(a.codigo || a.id).localeCompare(String(b.codigo || b.id), "pt-BR", { numeric: true }))
+            .forEach((b) => {
+              const code = String(b.codigo || b.id);
+              const l = leiturasMap.get(code);
+              const checked = !!(l && l.status !== "not-found");
+              items.push({
+                code,
+                op: b.op || "-",
+                peso: b.peso || "-",
+                status: checked ? (l.manual ? "Conferido Manual" : "Conferido") : "Pendente",
+                time: checked ? (l.horaLocal || "") : "",
+                location: l?.location || "",
+                observation: l?.observation || "",
+                hasPhoto: !!l?.hasPhoto,
+              });
+            });
+
+          if (fmt === "csv") {
+            let csv = `RELATÓRIO DE CONFERÊNCIA - NUVEM\nData;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente;${operador}\nTipo de Conferência;${tipo}\nID;${conf.id}\nStatus;${conf.status || "-"}\n\nRESUMO\nTotal;${total}\nConferidos;${chk}\nPendentes;${total - chk}\nNão Previstas;${extras}\nPercentual;${pct}%\n\nRESUMO POR OP\nOP;Encontradas;Percentual\n`;
+            csv += opSummary
+              .map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`)
+              .join("\n");
+            csv += `\n\nBOBINAS\nCódigo;OP;Peso;Status;Hora;Localização;Observação;Fotos\n`;
+            csv += items
+              .map((i) => `${i.code};${i.op};${i.peso};${i.status};${i.time};${i.location};${i.observation};${i.hasPhoto ? "Sim" : "Não"}`)
+              .join("\n");
+            download(csv, `conferencia_nuvem_${conf.id}_${dateStr}.csv`, "text/csv");
+          } else {
+            let txt = `RELATÓRIO DE CONFERÊNCIA - NUVEM\nData: ${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente: ${operador}\nTipo de Conferência: ${tipo}\nID: ${conf.id}\nStatus: ${conf.status || "-"}\n${"=".repeat(95)}\n\nTotal: ${total}\nConferidos: ${chk}\nPendentes: ${total - chk}\nNão Previstas: ${extras}\nPercentual: ${pct}%\n\n${"=".repeat(95)}\nRESUMO POR OP\n${"=".repeat(95)}\n`;
+            txt += opSummary
+              .map((op) => `OP: ${String(op.op || "-").padEnd(15)} | Encontradas: ${String(op.checked + "/" + op.total).padEnd(8)} | ${op.pct}%`)
+              .join("\n");
+            txt += `\n\n${"=".repeat(95)}\nBOBINAS\n${"=".repeat(95)}\n\n`;
+            txt += items
+              .map((i) => `${i.code.padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${i.status.padEnd(16)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.hasPhoto ? "📸 Sim" : "—"}`)
+              .join("\n");
+            download(txt, `conferencia_nuvem_${conf.id}_${dateStr}.txt`, "text/plain");
+          }
+          cloudSetStatus("ok", "☁️ Relatório da nuvem gerado");
+          notify("Relatório da nuvem exportado!");
+        } catch (e) {
+          console.error(e);
+          cloudSetStatus("error", "☁️ Erro no relatório");
+          notify("Erro ao exportar relatório da nuvem: " + (e.message || e), "error");
+        }
       }
 
       async function cloudDeleteSubcollection(confRef, name) {
@@ -5303,5 +5451,5 @@ async function camRotatePhoto(tipo) {
       }
       init();
     </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1408e291a98c0df',t:'MTc4Mjg1Nzk5NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
