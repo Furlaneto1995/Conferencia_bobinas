@@ -1627,6 +1627,120 @@
 .op-summary-info {
   font-size: 0.8em;
 }
+
+
+/* AJUSTE FINAL AREA FOTOS NAO PREVISTAS */
+#camLocModal .cam-photo-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: start;
+  margin-top: 8px;
+  padding-top: 8px;
+}
+
+#camLocModal .cam-photo-section > .cam-photo-label:nth-child(1) {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+#camLocModal #camPhotoBtnEtiqueta {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+#camLocModal #camPhotoPreviewEtiqueta {
+  grid-column: 1;
+  grid-row: 3;
+}
+
+#camLocModal #camPhotoErrorEtiqueta {
+  grid-column: 1;
+  grid-row: 4;
+}
+
+#camLocModal .cam-photo-section > .cam-photo-label:nth-child(5) {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+#camLocModal #camPhotoBtnBobina {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+#camLocModal #camPhotoPreviewBobina {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+#camLocModal #camPhotoErrorBobina {
+  grid-column: 2;
+  grid-row: 4;
+}
+
+#camLocModal .cam-photo-label {
+  font-size: 0.72em;
+  line-height: 1.2;
+  margin: 0 0 3px 0 !important;
+}
+
+#camLocModal .cam-photo-btn {
+  min-height: 40px;
+  padding: 7px 6px;
+  font-size: 0.72em;
+  line-height: 1.2;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#camLocModal .cam-photo-preview {
+  --photo-square: clamp(88px, 28vw, 116px);
+  width: var(--photo-square);
+  height: var(--photo-square);
+  max-width: 100%;
+  max-height: none;
+  aspect-ratio: 1 / 1;
+  justify-self: center;
+  margin-top: 5px;
+  overflow: hidden;
+  border-radius: 10px;
+  position: relative;
+}
+
+#camLocModal .cam-photo-preview img {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+#camLocModal .cam-photo-remove {
+  width: 24px;
+  height: 24px;
+  font-size: 0.8em;
+  top: 5px;
+  right: 5px;
+}
+
+#camLocModal .cam-photo-rotate {
+  width: 26px;
+  height: 26px;
+  font-size: 0.85em;
+  top: 5px;
+  left: 5px;
+}
+
+#camLocModal .cam-error {
+  font-size: 0.68em;
+  line-height: 1.2;
+  margin-top: 3px;
+}
+
     </style>
   </head>
   <body>
@@ -4377,5 +4491,5 @@ async function camRotatePhoto(tipo) {
       }
       init();
     </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a13fc403db9ca474',t:'MTc4Mjg0OTcxNQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
