@@ -15389,7 +15389,7 @@
                     "",
                     "",
                     "",
-                    " ",
+                    "",
                     "\b",
                     "\t",
                     "\n",
@@ -21550,25 +21550,6 @@
         backdrop-filter: blur(8px);
         overflow-y: auto;
       }
-.cam-photo-rotate {
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  width: 34px;
-  height: 34px;
-  background: rgba(59, 130, 246, 0.95);
-  border: none;
-  border-radius: 50%;
-  color: #fff;
-  font-size: 1.1em;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-}
-
-.cam-photo-rotate:active {
-  transform: scale(0.94);
-}
       .cam-loc-modal.show,
       .cam-photo-view.show {
         display: flex;
@@ -22109,23 +22090,13 @@
                 />
               </div>
               <div class="cam-photo-preview" id="camPhotoPreviewEtiqueta">
-  <img id="camPhotoImgEtiqueta" src="" />
-
-  <button
-    class="cam-photo-rotate"
-    onclick="camRotatePhoto('etiqueta')"
-    title="Girar foto"
-  >
-    ↻
-  </button>
-
-  <button
-    class="cam-photo-remove"
-    onclick="camRemovePhoto('etiqueta')"
-  >
-    ✕
-  </button>
-</div>
+                <img id="camPhotoImgEtiqueta" src="" /><button
+                  class="cam-photo-remove"
+                  onclick="camRemovePhoto('etiqueta')"
+                >
+                  ✕
+                </button>
+              </div>
               <div class="cam-error" id="camPhotoErrorEtiqueta">
                 ⚠️ Foto da etiqueta obrigatória!
               </div>
@@ -22149,23 +22120,13 @@
                 />
               </div>
               <div class="cam-photo-preview" id="camPhotoPreviewBobina">
-  <img id="camPhotoImgBobina" src="" />
-
-  <button
-    class="cam-photo-rotate"
-    onclick="camRotatePhoto('bobina')"
-    title="Girar foto"
-  >
-    ↻
-  </button>
-
-  <button
-    class="cam-photo-remove"
-    onclick="camRemovePhoto('bobina')"
-  >
-    ✕
-  </button>
-</div>
+                <img id="camPhotoImgBobina" src="" /><button
+                  class="cam-photo-remove"
+                  onclick="camRemovePhoto('bobina')"
+                >
+                  ✕
+                </button>
+              </div>
               <div class="cam-error" id="camPhotoErrorBobina">
                 ⚠️ Foto da bobina obrigatória!
               </div>
@@ -23479,14 +23440,14 @@
           nh = img.height * r;
         ctx.drawImage(img, x + (w - nw) / 2, y + (h - nh) / 2, nw, nh);
       }
-async function combinePhotosHalf(code, photoEtiqueta, photoBobina) {
+      async function combinePhotosHalf(code, photoEtiqueta, photoBobina) {
   const [etq, bob] = await Promise.all([
     loadImgData(photoEtiqueta),
     loadImgData(photoBobina),
   ]);
 
-  const maxW = 650;
-  const labelH = 36;
+  const maxW = 900; // antes estava muito grande
+  const labelH = 44;
 
   const etqRatio = Math.min(maxW / etq.width, 1);
   const bobRatio = Math.min(maxW / bob.width, 1);
@@ -23502,7 +23463,6 @@ async function combinePhotosHalf(code, photoEtiqueta, photoBobina) {
   canvas.height = labelH + etqH + labelH + bobH;
 
   const ctx = canvas.getContext("2d");
-
   ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -23514,35 +23474,31 @@ async function combinePhotosHalf(code, photoEtiqueta, photoBobina) {
   ctx.fillRect(0, labelH + etqH, maxW, labelH);
 
   ctx.fillStyle = "#fff";
-  ctx.font = "bold 18px Arial";
-  ctx.fillText("ETIQUETA • " + code, 12, 24);
-  ctx.fillText("BOBINA • " + code, 12, labelH + etqH + 24);
+  ctx.font = "bold 22px Arial";
+  ctx.fillText("ETIQUETA • " + code, 16, 28);
+  ctx.fillText("BOBINA • " + code, 16, labelH + etqH + 28);
 
-  return canvas.toDataURL("image/jpeg", 0.55);
+  return canvas.toDataURL("image/jpeg", 0.72);
 }
-async function savePhotosExtra(code, photoEtiqueta, photoBobina) {
+      async function savePhotosExtra(code, photoEtiqueta, photoBobina) {
   try {
     const combined = await combinePhotosHalf(code, photoEtiqueta, photoBobina);
-
-    localStorage.removeItem("photo_" + code);
     localStorage.setItem("photo_" + code, combined);
 
     const saved = localStorage.getItem("photo_" + code);
-
-    if (!saved || saved.length < 1000) {
-      throw new Error("Foto não foi gravada corretamente.");
-    }
+    if (!saved) throw new Error("Falha ao salvar foto combinada");
 
     return true;
   } catch (e) {
     console.error("Erro ao salvar foto:", e);
 
-    notify(
-      "Não foi possível salvar a foto. A memória do navegador pode estar cheia. Exporte o ZIP e depois reinicie a conferência, ou remova fotos antigas.",
-      "error"
-    );
-
-    return false;
+    try {
+      localStorage.setItem("photo_" + code, photoEtiqueta);
+      return !!localStorage.getItem("photo_" + code);
+    } catch (err) {
+      console.error("Fallback também falhou:", err);
+      return false;
+    }
   }
 }
 
@@ -23934,34 +23890,22 @@ async function savePhotosExtra(code, photoEtiqueta, photoBobina) {
   const time = new Date().toLocaleTimeString("pt-BR");
 
   const savedPhoto = await savePhotosExtra(
-  camPendingExtra.code,
-  camCurrentPhotoEtiqueta,
-  camCurrentPhotoBobina
-);
+    code,
+    camCurrentPhotoEtiqueta,
+    camCurrentPhotoBobina
+  );
 
-if (!savedPhoto) {
-  document.getElementById("camPhotoErrorEtiqueta").style.display = "block";
-  document.getElementById("camPhotoErrorEtiqueta").textContent =
-    "⚠️ A foto não foi salva. Tire novamente ou exporte/limpe fotos antigas.";
-
-  document.getElementById("camPhotoErrorBobina").style.display = "block";
-  document.getElementById("camPhotoErrorBobina").textContent =
-    "⚠️ A foto não foi salva. Não é possível confirmar sem foto.";
-
-  camVibrate("notfound");
-  return;
-}
-
-S.extras.push(camPendingExtra.code);
-S.scanned.unshift({
-  code: camPendingExtra.code,
-  time: camPendingExtra.time,
-  status: "not-found",
-  location: loc,
-  hasPhoto: true,
-  hasPhotoEtiqueta: true,
-  hasPhotoBobina: true,
-});
+  S.checked.add(code);
+  S.scanned.unshift({
+    code,
+    time,
+    status: "found",
+    manual: true,
+    location: loc,
+    hasPhoto: savedPhoto,
+    hasPhotoEtiqueta: savedPhoto,
+    hasPhotoBobina: savedPhoto,
+  });
 
   if (!savedPhoto) {
     notify("Foto não foi salva. Não vai sair no exportador.", "warning");
@@ -23976,38 +23920,22 @@ S.scanned.unshift({
   updateDBUI();
   camManualSelectedCode = null;
 } else if (camPendingExtra) {
-const code = camPendingExtra.code;
-const time = camPendingExtra.time;
   const savedPhoto = await savePhotosExtra(
-  code,
-  camCurrentPhotoEtiqueta,
-  camCurrentPhotoBobina
-);
+    camPendingExtra.code,
+    camCurrentPhotoEtiqueta,
+    camCurrentPhotoBobina
+  );
 
-if (!savedPhoto) {
-  document.getElementById("camPhotoErrorEtiqueta").style.display = "block";
-  document.getElementById("camPhotoErrorEtiqueta").textContent =
-    "⚠️ A foto não foi salva. Tire novamente ou exporte/limpe fotos antigas.";
-
-  document.getElementById("camPhotoErrorBobina").style.display = "block";
-  document.getElementById("camPhotoErrorBobina").textContent =
-    "⚠️ A foto não foi salva. Não é possível confirmar sem foto.";
-
-  camVibrate("notfound");
-  return;
-}
-
-S.checked.add(code);
-S.scanned.unshift({
-  code,
-  time,
-  status: "found",
-  manual: true,
-  location: loc,
-  hasPhoto: true,
-  hasPhotoEtiqueta: true,
-  hasPhotoBobina: true,
-});
+  S.extras.push(camPendingExtra.code);
+  S.scanned.unshift({
+    code: camPendingExtra.code,
+    time: camPendingExtra.time,
+    status: "not-found",
+    location: loc,
+    hasPhoto: savedPhoto,
+    hasPhotoEtiqueta: savedPhoto,
+    hasPhotoBobina: savedPhoto,
+  });
 
   if (!savedPhoto) {
     notify("Foto não foi salva. Não vai sair no exportador.", "warning");
@@ -24084,57 +24012,6 @@ S.scanned.unshift({
         );
         if (inp) inp.value = "";
       }
-
-function rotateDataUrl90(dataUrl) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-
-      canvas.width = img.height;
-      canvas.height = img.width;
-
-      ctx.translate(canvas.width / 2, canvas.height / 2);
-      ctx.rotate(Math.PI / 2);
-      ctx.drawImage(img, -img.width / 2, -img.height / 2);
-
-      resolve(canvas.toDataURL("image/jpeg", 0.85));
-    };
-
-    img.onerror = reject;
-    img.src = dataUrl;
-  });
-}
-
-async function camRotatePhoto(tipo) {
-  const isBobina = tipo === "bobina";
-
-  const currentPhoto = isBobina
-    ? camCurrentPhotoBobina
-    : camCurrentPhotoEtiqueta;
-
-  if (!currentPhoto) {
-    notify("Tire a foto primeiro para poder girar.", "warning");
-    return;
-  }
-
-  try {
-    const rotated = await rotateDataUrl90(currentPhoto);
-
-    if (isBobina) {
-      camCurrentPhotoBobina = rotated;
-      document.getElementById("camPhotoImgBobina").src = rotated;
-    } else {
-      camCurrentPhotoEtiqueta = rotated;
-      document.getElementById("camPhotoImgEtiqueta").src = rotated;
-    }
-  } catch (e) {
-    console.error(e);
-    notify("Não foi possível girar a foto.", "error");
-  }
-}
       function camViewPhoto(code) {
         const photo = getPhoto(code);
         if (photo) {
