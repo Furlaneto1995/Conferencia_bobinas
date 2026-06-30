@@ -22768,11 +22768,9 @@
         S.scanned = [];
         S.checked = new Set();
         S.extras = [];
-        idbClearPhotos();
-
-Object.keys(localStorage)
-  .filter((k) => k.startsWith("photo_"))
-  .forEach((k) => localStorage.removeItem(k));
+        Object.keys(localStorage)
+          .filter((k) => k.startsWith("photo_"))
+          .forEach((k) => localStorage.removeItem(k));
         save();
         updateDBUI();
         updateStats();
@@ -23080,11 +23078,9 @@ Object.keys(localStorage)
             S.meta = {};
             S.confType = "";
             S.checkerName = "";
-            idbClearPhotos();
-
-Object.keys(localStorage)
-  .filter((k) => k.startsWith("photo_"))
-  .forEach((k) => localStorage.removeItem(k));
+            Object.keys(localStorage)
+              .filter((k) => k.startsWith("photo_"))
+              .forEach((k) => localStorage.removeItem(k));
             save();
             updateDBUI();
             updateStats();
@@ -23175,8 +23171,7 @@ Object.keys(localStorage)
           () => {
             S.extras.forEach((code) => {
               try {
-                idbDeletePhoto(code);
-localStorage.removeItem("photo_" + code);
+                localStorage.removeItem("photo_" + code);
               } catch (e) {}
             });
             S.scanned = [];
@@ -23344,130 +23339,81 @@ localStorage.removeItem("photo_" + code);
         }
         notify("Relatório exportado!");
       }
-async function exportZip() {
-  const extrasUniq = [...new Set(S.extras)];
+      async function exportZip() {
+        const extrasUniq = [...new Set(S.extras)];
+        if (extrasUniq.length === 0) {
+          notify("Nenhuma bobina não prevista para exportar!", "warning");
+          return;
+        }
+        const progress = document.getElementById("exportProgress");
+        progress.classList.add("show");
+        progress.textContent = "⏳ Gerando arquivo ZIP...";
+        try {
+          const zip = new JSZip(),
+            fotosFolder = zip.folder("fotos"),
+            dateStr = new Date().toISOString().slice(0, 10),
+            timeStr = new Date().toLocaleTimeString("pt-BR");
+          let csv = "Código;Hora;Localização;Foto Combinada\n",
+            countFotos = 0;
+          extrasUniq.forEach((code) => {
+  const scan = S.scanned.find(
+    (s) => s.code === code && s.status === "not-found"
+  );
 
-  if (extrasUniq.length === 0) {
-    notify("Nenhuma bobina não prevista para exportar!", "warning");
-    return;
+  const loc = scan?.location || "";
+  const time = scan?.time || "";
+
+  let fotoName = "";
+  const photo = getPhoto(code);
+  const base =
+    photo && photo.includes(",") ? photo.split(",")[1] : null;
+
+  if (base) {
+    fotosFolder.file(`${code}_etiqueta_bobina.jpg`, base, { base64: true });
+    fotoName = `fotos/${code}_etiqueta_bobina.jpg`;
+    countFotos++;
   }
 
-  const progress = document.getElementById("exportProgress");
-
-  progress.classList.add("show");
-  progress.textContent = "⏳ Gerando arquivo ZIP...";
-
-  try {
-    const zip = new JSZip();
-    const fotosFolder = zip.folder("fotos");
-    const dateStr = new Date().toISOString().slice(0, 10);
-    const timeStr = new Date().toLocaleTimeString("pt-BR");
-
-    let csv = "Código;Hora;Localização;Foto Combinada\n";
-    let countFotos = 0;
-
-    for (const code of extrasUniq) {
-      const scan = S.scanned.find(
-        (s) => s.code === code && s.status === "not-found"
-      );
-
-      const loc = scan?.location || "";
-      const time = scan?.time || "";
-      let fotoName = "";
-
-      const photo = await getPhoto(code);
-      const base = photo && photo.includes(",") ? photo.split(",")[1] : null;
-
-      if (base) {
-        fotosFolder.file(`${code}_etiqueta_bobina.jpg`, base, {
-          base64: true,
-        });
-
-        fotoName = `fotos/${code}_etiqueta_bobina.jpg`;
-        countFotos++;
+  csv += `${code};${time};${loc};${fotoName}\n`;
+});
+          const total = S.db.length,
+            chk = S.checked.size,
+            pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0;
+          csv += `\n;RESUMO;\n;Conferente;${S.checkerName || ""}\n;Tipo de Conferência;${S.confType || ""}\n;Total no sistema;${total}\n;Conferidos;${chk}\n;Pendentes;${total - chk}\n;Não Previstas;${extrasUniq.length}\n;Fotos anexadas;${countFotos}\n;Percentual conferido;${pct}%\n;Data;${dateStr} ${timeStr}`;
+          zip.file(`nao_previstas_${dateStr}.csv`, "\uFEFF" + csv);
+          let txt = `RELATÓRIO DE BOBINAS NÃO PREVISTAS\nData: ${new Date().toLocaleDateString("pt-BR")} ${timeStr}\nConferente: ${S.checkerName || "-"}\nTipo de Conferência: ${S.confType || "-"}\n${"=".repeat(70)}\n\nTotal não previstas: ${extrasUniq.length}\nFotos anexadas: ${countFotos}\n\n${"=".repeat(70)}\n\n`;
+          extrasUniq.forEach((code) => {
+            const scan = S.scanned.find(
+              (s) => s.code === code && s.status === "not-found",
+            );
+            txt += `Código: ${code}\nHora: ${scan?.time || "-"}\nLocal: ${scan?.location || "-"}\nFoto combinada: ${getPhoto(code) ? "📸 Sim" : "—"}\n${"─".repeat(40)}\n`;
+          });
+          zip.file(`nao_previstas_${dateStr}.txt`, "\uFEFF" + txt);
+          const blob = await zip.generateAsync(
+            {
+              type: "blob",
+              compression: "DEFLATE",
+              compressionOptions: { level: 6 },
+            },
+            (m) => {
+              progress.textContent = `⏳ ${Math.round(m.percent)}% concluído...`;
+            },
+          );
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = `nao_previstas_${dateStr}.zip`;
+          a.click();
+          URL.revokeObjectURL(a.href);
+          progress.classList.remove("show");
+          notify(
+            `✅ ZIP exportado! ${extrasUniq.length} bobinas + ${countFotos} fotos`,
+          );
+        } catch (err) {
+          console.error(err);
+          progress.classList.remove("show");
+          notify("Erro ao gerar ZIP: " + err.message, "error");
+        }
       }
-
-      csv += `${code};${time};${loc};${fotoName}\n`;
-    }
-
-    const total = S.db.length;
-    const chk = S.checked.size;
-    const pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0;
-
-    csv += `\n;RESUMO;
-;Conferente;${S.checkerName || ""}
-;Tipo de Conferência;${S.confType || ""}
-;Total no sistema;${total}
-;Conferidos;${chk}
-;Pendentes;${total - chk}
-;Não Previstas;${extrasUniq.length}
-;Fotos anexadas;${countFotos}
-;Percentual conferido;${pct}%
-;Data;${dateStr} ${timeStr}`;
-
-    zip.file(`nao_previstas_${dateStr}.csv`, "\uFEFF" + csv);
-
-    let txt = `RELATÓRIO DE BOBINAS NÃO PREVISTAS
-Data: ${new Date().toLocaleDateString("pt-BR")} ${timeStr}
-Conferente: ${S.checkerName || "-"}
-Tipo de Conferência: ${S.confType || "-"}
-${"=".repeat(70)}
-
-Total não previstas: ${extrasUniq.length}
-Fotos anexadas: ${countFotos}
-
-${"=".repeat(70)}
-
-`;
-
-    for (const code of extrasUniq) {
-      const scan = S.scanned.find(
-        (s) => s.code === code && s.status === "not-found"
-      );
-
-      const hasPhoto = await getPhoto(code);
-
-      txt += `Código: ${code}
-Hora: ${scan?.time || "-"}
-Local: ${scan?.location || "-"}
-Foto combinada: ${hasPhoto ? "📸 Sim" : "—"}
-${"─".repeat(40)}
-`;
-    }
-
-    zip.file(`nao_previstas_${dateStr}.txt`, "\uFEFF" + txt);
-
-    const blob = await zip.generateAsync(
-      {
-        type: "blob",
-        compression: "DEFLATE",
-        compressionOptions: { level: 6 },
-      },
-      (m) => {
-        progress.textContent = `⏳ ${Math.round(m.percent)}% concluído...`;
-      }
-    );
-
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `nao_previstas_${dateStr}.zip`;
-    a.click();
-
-    URL.revokeObjectURL(a.href);
-
-    progress.classList.remove("show");
-
-    notify(
-      `✅ ZIP exportado! ${extrasUniq.length} bobinas + ${countFotos} fotos`
-    );
-  } catch (err) {
-    console.error(err);
-
-    progress.classList.remove("show");
-
-    notify("Erro ao gerar ZIP: " + (err.message || err), "error");
-  }
-}
 
       let camScanner = null,
         camVideoTrack = null,
@@ -23533,14 +23479,14 @@ ${"─".repeat(40)}
           nh = img.height * r;
         ctx.drawImage(img, x + (w - nw) / 2, y + (h - nh) / 2, nw, nh);
       }
-async function combinePhotosHalf(code, photoEtiqueta, photoBobina) {
+      async function combinePhotosHalf(code, photoEtiqueta, photoBobina) {
   const [etq, bob] = await Promise.all([
     loadImgData(photoEtiqueta),
     loadImgData(photoBobina),
   ]);
 
-  const maxW = 650;
-  const labelH = 36;
+  const maxW = 900; // antes estava muito grande
+  const labelH = 44;
 
   const etqRatio = Math.min(maxW / etq.width, 1);
   const bobRatio = Math.min(maxW / bob.width, 1);
@@ -23556,7 +23502,6 @@ async function combinePhotosHalf(code, photoEtiqueta, photoBobina) {
   canvas.height = labelH + etqH + labelH + bobH;
 
   const ctx = canvas.getContext("2d");
-
   ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -23568,167 +23513,31 @@ async function combinePhotosHalf(code, photoEtiqueta, photoBobina) {
   ctx.fillRect(0, labelH + etqH, maxW, labelH);
 
   ctx.fillStyle = "#fff";
-  ctx.font = "bold 18px Arial";
-  ctx.fillText("ETIQUETA • " + code, 12, 24);
-  ctx.fillText("BOBINA • " + code, 12, labelH + etqH + 24);
+  ctx.font = "bold 22px Arial";
+  ctx.fillText("ETIQUETA • " + code, 16, 28);
+  ctx.fillText("BOBINA • " + code, 16, labelH + etqH + 28);
 
-  return canvas.toDataURL("image/jpeg", 0.55);
+  return canvas.toDataURL("image/jpeg", 0.72);
 }
-async function savePhotosExtra(code, photoEtiqueta, photoBobina) {
+      async function savePhotosExtra(code, photoEtiqueta, photoBobina) {
   try {
-    const combined = await combinePhotosHalf(
-      code,
-      photoEtiqueta,
-      photoBobina
-    );
+    const combined = await combinePhotosHalf(code, photoEtiqueta, photoBobina);
+    localStorage.setItem("photo_" + code, combined);
 
-    const blob = dataUrlToBlob(combined);
-
-    await idbSavePhoto(code, blob);
-
-    const savedBlob = await idbGetPhotoBlob(code);
-
-    if (!savedBlob || savedBlob.size < 1000) {
-      throw new Error("Foto não foi gravada corretamente no IndexedDB.");
-    }
-
-    console.log(
-      "Foto salva no IndexedDB:",
-      code,
-      "Tamanho:",
-      (savedBlob.size / 1024 / 1024).toFixed(2) + " MB"
-    );
+    const saved = localStorage.getItem("photo_" + code);
+    if (!saved) throw new Error("Falha ao salvar foto combinada");
 
     return true;
   } catch (e) {
-    console.error("Erro ao salvar foto no IndexedDB:", e);
-    notify("Erro ao salvar foto: " + (e.message || e), "error");
-    return false;
-  }
-}
+    console.error("Erro ao salvar foto:", e);
 
-function openPhotoDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(PHOTO_DB_NAME, PHOTO_DB_VERSION);
-
-    req.onupgradeneeded = function (event) {
-      const db = event.target.result;
-
-      if (!db.objectStoreNames.contains(PHOTO_STORE)) {
-        db.createObjectStore(PHOTO_STORE, { keyPath: "code" });
-      }
-    };
-
-    req.onsuccess = function () {
-      resolve(req.result);
-    };
-
-    req.onerror = function () {
-      reject(req.error);
-    };
-  });
-}
-
-async function idbSavePhoto(code, blob) {
-  const db = await openPhotoDB();
-
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(PHOTO_STORE, "readwrite");
-    const store = tx.objectStore(PHOTO_STORE);
-
-    store.put({
-      code: code,
-      blob: blob,
-      createdAt: new Date().toISOString(),
-    });
-
-    tx.oncomplete = () => resolve(true);
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-async function idbGetPhotoBlob(code) {
-  const db = await openPhotoDB();
-
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(PHOTO_STORE, "readonly");
-    const store = tx.objectStore(PHOTO_STORE);
-    const req = store.get(code);
-
-    req.onsuccess = () => {
-      resolve(req.result ? req.result.blob : null);
-    };
-
-    req.onerror = () => reject(req.error);
-  });
-}
-
-async function idbDeletePhoto(code) {
-  const db = await openPhotoDB();
-
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(PHOTO_STORE, "readwrite");
-    const store = tx.objectStore(PHOTO_STORE);
-
-    store.delete(code);
-
-    tx.oncomplete = () => resolve(true);
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-async function idbClearPhotos() {
-  const db = await openPhotoDB();
-
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(PHOTO_STORE, "readwrite");
-    const store = tx.objectStore(PHOTO_STORE);
-
-    store.clear();
-
-    tx.oncomplete = () => resolve(true);
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-function dataUrlToBlob(dataUrl) {
-  const parts = dataUrl.split(",");
-  const mimeMatch = parts[0].match(/:(.*?);/);
-  const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
-  const binary = atob(parts[1]);
-  const len = binary.length;
-  const arr = new Uint8Array(len);
-
-  for (let i = 0; i < len; i++) {
-    arr[i] = binary.charCodeAt(i);
-  }
-
-  return new Blob([arr], { type: mime });
-}
-
-function blobToDataUrl(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(reader.error);
-
-    reader.readAsDataURL(blob);
-  });
-}
-
-async function getPhoto(code) {
-  const blob = await idbGetPhotoBlob(code);
-
-  if (blob) {
-    return await blobToDataUrl(blob);
-  }
-
-  // compatibilidade com fotos antigas que ainda estejam no localStorage
-  try {
-    return localStorage.getItem("photo_" + code);
-  } catch (e) {
-    return null;
+    try {
+      localStorage.setItem("photo_" + code, photoEtiqueta);
+      return !!localStorage.getItem("photo_" + code);
+    } catch (err) {
+      console.error("Fallback também falhou:", err);
+      return false;
+    }
   }
 }
 
@@ -24120,34 +23929,22 @@ async function getPhoto(code) {
   const time = new Date().toLocaleTimeString("pt-BR");
 
   const savedPhoto = await savePhotosExtra(
-  camPendingExtra.code,
-  camCurrentPhotoEtiqueta,
-  camCurrentPhotoBobina
-);
+    code,
+    camCurrentPhotoEtiqueta,
+    camCurrentPhotoBobina
+  );
 
-if (!savedPhoto) {
-  document.getElementById("camPhotoErrorEtiqueta").style.display = "block";
-  document.getElementById("camPhotoErrorEtiqueta").textContent =
-    "⚠️ A foto não foi salva. Tire novamente ou exporte/limpe fotos antigas.";
-
-  document.getElementById("camPhotoErrorBobina").style.display = "block";
-  document.getElementById("camPhotoErrorBobina").textContent =
-    "⚠️ A foto não foi salva. Não é possível confirmar sem foto.";
-
-  camVibrate("notfound");
-  return;
-}
-
-S.extras.push(camPendingExtra.code);
-S.scanned.unshift({
-  code: camPendingExtra.code,
-  time: camPendingExtra.time,
-  status: "not-found",
-  location: loc,
-  hasPhoto: true,
-  hasPhotoEtiqueta: true,
-  hasPhotoBobina: true,
-});
+  S.checked.add(code);
+  S.scanned.unshift({
+    code,
+    time,
+    status: "found",
+    manual: true,
+    location: loc,
+    hasPhoto: savedPhoto,
+    hasPhotoEtiqueta: savedPhoto,
+    hasPhotoBobina: savedPhoto,
+  });
 
   if (!savedPhoto) {
     notify("Foto não foi salva. Não vai sair no exportador.", "warning");
@@ -24162,38 +23959,22 @@ S.scanned.unshift({
   updateDBUI();
   camManualSelectedCode = null;
 } else if (camPendingExtra) {
-const code = camPendingExtra.code;
-const time = camPendingExtra.time;
   const savedPhoto = await savePhotosExtra(
-  code,
-  camCurrentPhotoEtiqueta,
-  camCurrentPhotoBobina
-);
+    camPendingExtra.code,
+    camCurrentPhotoEtiqueta,
+    camCurrentPhotoBobina
+  );
 
-if (!savedPhoto) {
-  document.getElementById("camPhotoErrorEtiqueta").style.display = "block";
-  document.getElementById("camPhotoErrorEtiqueta").textContent =
-    "⚠️ A foto não foi salva. Tire novamente ou exporte/limpe fotos antigas.";
-
-  document.getElementById("camPhotoErrorBobina").style.display = "block";
-  document.getElementById("camPhotoErrorBobina").textContent =
-    "⚠️ A foto não foi salva. Não é possível confirmar sem foto.";
-
-  camVibrate("notfound");
-  return;
-}
-
-S.checked.add(code);
-S.scanned.unshift({
-  code,
-  time,
-  status: "found",
-  manual: true,
-  location: loc,
-  hasPhoto: true,
-  hasPhotoEtiqueta: true,
-  hasPhotoBobina: true,
-});
+  S.extras.push(camPendingExtra.code);
+  S.scanned.unshift({
+    code: camPendingExtra.code,
+    time: camPendingExtra.time,
+    status: "not-found",
+    location: loc,
+    hasPhoto: savedPhoto,
+    hasPhotoEtiqueta: savedPhoto,
+    hasPhotoBobina: savedPhoto,
+  });
 
   if (!savedPhoto) {
     notify("Foto não foi salva. Não vai sair no exportador.", "warning");
@@ -24321,16 +24102,13 @@ async function camRotatePhoto(tipo) {
     notify("Não foi possível girar a foto.", "error");
   }
 }
-      async function camViewPhoto(code) {
-  const photo = await getPhoto(code);
-
-  if (photo) {
-    document.getElementById("camPhotoViewImg").src = photo;
-    document.getElementById("camPhotoViewModal").classList.add("show");
-  } else {
-    notify("Foto não encontrada", "warning");
-  }
-}
+      function camViewPhoto(code) {
+        const photo = getPhoto(code);
+        if (photo) {
+          document.getElementById("camPhotoViewImg").src = photo;
+          document.getElementById("camPhotoViewModal").classList.add("show");
+        }
+      }
       function camClosePhotoView() {
         document.getElementById("camPhotoViewModal").classList.remove("show");
       }
@@ -24357,16 +24135,13 @@ async function camRotatePhoto(tipo) {
         });
         box.insertAdjacentHTML("afterbegin", html);
       }
-      async function showPhotoModal(code) {
-  const photo = await getPhoto(code);
-
-  if (photo) {
-    document.getElementById("photoModalImg").src = photo;
-    document.getElementById("photoModal").classList.add("show");
-  } else {
-    notify("Foto não encontrada", "warning");
-  }
-}
+      function showPhotoModal(code) {
+        const photo = getPhoto(code);
+        if (photo) {
+          document.getElementById("photoModalImg").src = photo;
+          document.getElementById("photoModal").classList.add("show");
+        } else notify("Foto não encontrada", "warning");
+      }
       function closePhotoModal() {
         document.getElementById("photoModal").classList.remove("show");
       }
