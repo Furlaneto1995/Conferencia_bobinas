@@ -23976,6 +23976,8 @@ S.scanned.unshift({
   updateDBUI();
   camManualSelectedCode = null;
 } else if (camPendingExtra) {
+const code = camPendingExtra.code;
+const time = camPendingExtra.time;
   const savedPhoto = await savePhotosExtra(
   code,
   camCurrentPhotoEtiqueta,
