@@ -1821,6 +1821,86 @@
   opacity: 0.96;
 }
 
+
+
+/* STATUS DE SINCRONIZAÇÃO / CONSULTA NUVEM */
+.cloud-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 0.78em;
+  font-weight: 800;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+}
+.cloud-status.ok {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.28);
+  color: var(--accent-green);
+}
+.cloud-status.sync {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.28);
+  color: var(--accent-blue);
+}
+.cloud-status.error {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.28);
+  color: var(--accent-red);
+}
+.cloud-list {
+  display: grid;
+  gap: 8px;
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+.cloud-item {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.cloud-item-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.cloud-item-title {
+  font-weight: 900;
+  color: var(--text-primary);
+  font-size: 0.9em;
+}
+.cloud-item-status {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72em;
+  font-weight: 900;
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--accent-blue);
+  white-space: nowrap;
+}
+.cloud-item-status.finalizada {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--accent-green);
+}
+.cloud-item-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 0.8em;
+}
+.cloud-item-info strong { color: var(--text-primary); }
+
     </style>
   </head>
   <body>
@@ -1828,6 +1908,7 @@
       <div class="header">
         <h1>📦 Conferência de Bobinas</h1>
         <p>Sistema de conferência por código de barras</p>
+        <div id="cloudStatus" class="cloud-status">☁️ Nuvem: local</div>
       </div>
       <div class="tabs">
         <button class="tab active" onclick="switchTab('import')" id="tabImport">
@@ -1839,6 +1920,9 @@
         </button>
         <button class="tab" onclick="switchTab('report')" id="tabReport">
           <span class="t-icon">📊</span><span class="t-text">Relatório</span>
+        </button>
+        <button class="tab" onclick="switchTab('cloud')" id="tabCloud">
+          <span class="t-icon">☁️</span><span class="t-text">Nuvem</span>
         </button>
       </div>
       <!-- IMPORT -->
@@ -2152,6 +2236,37 @@
   📦 Não previstas c/ fotos
 </button>
             
+          </div>
+        </div>
+      </div>
+
+      <!-- CLOUD -->
+      <div class="section" id="sectionCloud">
+        <div class="card">
+          <div class="card-title">☁️ Consulta na Nuvem</div>
+          <div class="card-sub">Conferências salvas no Firestore por operador e data</div>
+
+          <div class="search-wrap">
+            <span class="si">🔍</span>
+            <input
+              class="search-input"
+              id="cloudSearch"
+              placeholder="Buscar por operador, data ou tipo..."
+              oninput="renderCloudConsult(this.value)"
+            />
+          </div>
+
+          <div class="btn-group" style="margin-top: 8px">
+            <button class="btn btn-primary" onclick="renderCloudConsult(document.getElementById('cloudSearch')?.value || '')">
+              🔄 Atualizar
+            </button>
+            <button class="btn btn-outline" onclick="finishConference()">
+              ✅ Finalizar conferência
+            </button>
+          </div>
+
+          <div id="cloudConsultBox" class="cloud-list" style="margin-top: 12px">
+            <div class="empty">Clique em atualizar para consultar.</div>
           </div>
         </div>
       </div>
@@ -2797,7 +2912,10 @@
 
       async function cloudInit() {
         try {
-          if (!cloudIsConfigured()) return false;
+          if (!cloudIsConfigured()) {
+            cloudSetStatus("", "☁️ Nuvem: local");
+            return false;
+          }
           if (typeof firebase === "undefined") {
             console.warn("Firebase SDK não carregado.");
             return false;
@@ -2815,10 +2933,12 @@
           cloudDb = firebase.firestore();
           cloudStorage = null; // Storage desativado no plano free. Fotos ficam locais.
           cloudReady = true;
+          cloudSetStatus("ok", "☁️ Nuvem conectada");
           return true;
         } catch (e) {
           console.error("Erro ao iniciar Firebase:", e);
           cloudReady = false;
+          cloudSetStatus("error", "☁️ Erro na nuvem");
           return false;
         }
       }
@@ -2895,6 +3015,7 @@
 
       async function cloudSyncDatabase() {
         try {
+          cloudSetStatus("sync", "☁️ Sincronizando...");
           await cloudEnsureSession();
           const ref = cloudConferenceRef();
           if (!ref) return;
@@ -2916,13 +3037,16 @@
           });
           await batch.commit();
           await cloudSaveConferenceHeader();
+          cloudSetStatus("ok", "☁️ Dados sincronizados");
         } catch (e) {
+          cloudSetStatus("error", "☁️ Erro ao sincronizar");
           console.warn("Falha ao sincronizar banco na nuvem:", e);
         }
       }
 
       async function cloudSyncReading(scan) {
         try {
+          cloudSetStatus("sync", "☁️ Salvando leitura...");
           await cloudEnsureSession();
           const ref = cloudConferenceRef();
           if (!ref || !scan || !scan.code) return;
@@ -2956,7 +3080,9 @@
             );
           }
           cloudUpdateSummaryDebounced();
+          cloudSetStatus("ok", "☁️ Leitura sincronizada");
         } catch (e) {
+          cloudSetStatus("error", "☁️ Leitura pendente");
           console.warn("Falha ao sincronizar leitura na nuvem:", e);
         }
       }
@@ -2974,6 +3100,106 @@
         // Plano free: não envia fotos para Storage.
         // As fotos continuam salvas localmente e entram no ZIP.
         return null;
+      }
+
+
+      function cloudSetStatus(type, text) {
+        const el = document.getElementById("cloudStatus");
+        if (!el) return;
+        el.className = "cloud-status" + (type ? " " + type : "");
+        el.textContent = text;
+      }
+
+      async function cloudMarkFinished() {
+        try {
+          await cloudEnsureSession();
+          const ref = cloudConferenceRef();
+          if (!ref) return false;
+          await ref.set(
+            {
+              status: "finalizada",
+              resumo: cloudSummary(),
+              finalizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+              atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true },
+          );
+          cloudSetStatus("ok", "☁️ Conferência finalizada na nuvem");
+          return true;
+        } catch (e) {
+          console.warn("Falha ao finalizar na nuvem:", e);
+          cloudSetStatus("error", "☁️ Erro ao finalizar");
+          return false;
+        }
+      }
+
+      async function finishConference() {
+        const ok = await cloudMarkFinished();
+        notify(ok ? "Conferência finalizada na nuvem." : "Não foi possível finalizar na nuvem.", ok ? "success" : "warning");
+        if ([...new Set(S.extras)].length > 0) {
+          exportZip();
+        } else {
+          exportRpt("csv");
+        }
+      }
+
+      async function renderCloudConsult(search = "") {
+        const box = document.getElementById("cloudConsultBox");
+        if (!box) return;
+        box.innerHTML = '<div class="empty">☁️ Carregando conferências...</div>';
+        try {
+          if (!(await cloudInit())) {
+            box.innerHTML = '<div class="empty">Firebase não configurado ou sem conexão.</div>';
+            cloudSetStatus("error", "☁️ Nuvem indisponível");
+            return;
+          }
+          const snap = await cloudDb
+            .collection("conferencias")
+            .orderBy("atualizadoEm", "desc")
+            .limit(80)
+            .get();
+          let docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          const q = String(search || "").trim().toLowerCase();
+          if (q) {
+            docs = docs.filter((d) =>
+              [d.operador, d.operadorKey, d.data, d.tipo, d.status, d.id]
+                .join(" ")
+                .toLowerCase()
+                .includes(q),
+            );
+          }
+          if (!docs.length) {
+            box.innerHTML = '<div class="empty">Nenhuma conferência encontrada.</div>';
+            cloudSetStatus("ok", "☁️ Consulta atualizada");
+            return;
+          }
+          box.innerHTML = docs
+            .map((d) => {
+              const r = d.resumo || {};
+              const status = d.status || "em_andamento";
+              return `<div class="cloud-item">
+                <div class="cloud-item-head">
+                  <div class="cloud-item-title">${esc(d.operador || "-")} • ${esc(d.data || "-")}</div>
+                  <div class="cloud-item-status ${status === "finalizada" ? "finalizada" : ""}">${esc(status)}</div>
+                </div>
+                <div class="cloud-item-info">
+                  <span>📋 <strong>${esc(d.tipo || "-")}</strong></span>
+                  <span>📦 Total: <strong>${r.total ?? 0}</strong></span>
+                  <span>✅ Conferidos: <strong>${r.conferidos ?? 0}</strong></span>
+                  <span>⏳ Pendentes: <strong>${r.pendentes ?? 0}</strong></span>
+                  <span>⚠️ Não previstas: <strong>${r.naoPrevistas ?? 0}</strong></span>
+                  <span>📊 <strong>${r.percentual ?? 0}%</strong></span>
+                </div>
+                <div class="small" style="margin-top:6px;color:var(--text-muted)">${esc(d.id || "")}</div>
+              </div>`;
+            })
+            .join("");
+          cloudSetStatus("ok", "☁️ Consulta atualizada");
+        } catch (e) {
+          console.error(e);
+          box.innerHTML = '<div class="empty">Erro ao consultar nuvem. Veja o console.</div>';
+          cloudSetStatus("error", "☁️ Erro na consulta");
+        }
       }
       function getPhoto(code) {
         try {
@@ -3030,6 +3256,7 @@
           ensureCheckerName();
         }
         if (t === "report") updateReport();
+        if (t === "cloud") renderCloudConsult(document.getElementById("cloudSearch")?.value || "");
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
       function showModal(title, msg, fn) {
@@ -4888,9 +5115,11 @@ async function camRotatePhoto(tipo) {
         updateHistory();
         updateReport();
         document.getElementById("btnUndo").disabled = !S.scanned.length;
-        cloudEnsureSession();
+        cloudEnsureSession().then((ok) => {
+          if (!ok && cloudIsConfigured()) cloudSetStatus("error", "☁️ Aguardando nuvem");
+        });
       }
       init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a140310c985fdfae',t:'MTc4Mjg1NDE4MQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1404193abfba517',t:'MTc4Mjg1NDg1OA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
