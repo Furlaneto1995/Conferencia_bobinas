@@ -3056,8 +3056,8 @@
 
       /* =========================
          FIREBASE CLOUD SYNC
-         Plano free: dados no Firestore.
-         Fotos permanecem locais e saem no ZIP.
+         Dados: Firestore.
+         Fotos: Supabase Storage + cópia local para ZIP.
       ========================= */
       const FIREBASE_CONFIG = {
         apiKey: "AIzaSyCJTpQfv3pTOXHvV4TpQl2h2tF0TdtWiNw",
@@ -3067,6 +3067,10 @@
         messagingSenderId: "915961990064",
         appId: "1:915961990064:web:23791d2464a8a5202aa475",
       };
+
+      const SUPABASE_URL = "https://uovfzdcbapcrinjpeada.supabase.co";
+      const SUPABASE_ANON_KEY = "sb_publishable_xShr3sQbRBvInga95QTJRg_8XcGYNbJ";
+      const SUPABASE_BUCKET = "bobinas-fotos";
 
       let cloudReady = false,
         cloudDb = null,
@@ -3365,9 +3369,57 @@
       }
 
       async function cloudUploadPhoto(code, dataUrl) {
-        // Plano free: não envia fotos para Storage.
-        // As fotos continuam salvas localmente e entram no ZIP.
-        return null;
+        try {
+          if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !dataUrl) return null;
+          await cloudEnsureSession();
+          if (!S.cloudSessionId) return null;
+          const safeCode = String(code).replace(/[^a-zA-Z0-9_-]/g, "_");
+          const path = `${cloudOperatorKey()}/${cloudDateKey()}/${S.cloudSessionId}/${safeCode}_etiqueta_bobina.jpg`;
+          const blob = cloudDataUrlToBlob(dataUrl);
+          const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`;
+          const res = await fetch(uploadUrl, {
+            method: "POST",
+            headers: {
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+              "Content-Type": "image/jpeg",
+              "x-upsert": "true",
+            },
+            body: blob,
+          });
+          if (!res.ok) {
+            const txt = await res.text().catch(() => "");
+            throw new Error(`Supabase upload ${res.status}: ${txt}`);
+          }
+          const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`;
+          const ref = cloudConferenceRef();
+          if (ref) {
+            const data = {
+              codigo: String(code),
+              provider: "supabase",
+              bucket: SUPABASE_BUCKET,
+              path,
+              url: publicUrl,
+              size: blob.size,
+              atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            };
+            await ref.collection("fotos").doc(String(code)).set(data, { merge: true });
+            await ref.collection("leituras").doc(String(code)).set(
+              { hasPhoto: true, fotoProvider: "supabase", fotoPath: path, fotoUrl: publicUrl },
+              { merge: true },
+            );
+            await ref.collection("nao_previstas").doc(String(code)).set(
+              { hasPhoto: true, fotoProvider: "supabase", fotoPath: path, fotoUrl: publicUrl },
+              { merge: true },
+            );
+          }
+          cloudSetStatus("ok", "☁️ Foto enviada");
+          return publicUrl;
+        } catch (e) {
+          console.warn("Falha ao enviar foto ao Supabase:", e);
+          cloudSetStatus("error", "☁️ Foto local, nuvem falhou");
+          return null;
+        }
       }
 
 
@@ -3614,14 +3666,17 @@
           const confSnap = await confRef.get();
           if (!confSnap.exists) throw new Error("Conferência não encontrada");
           const conf = { id: confSnap.id, ...confSnap.data() };
-          const [bobinas, leituras, naoPrevistas] = await Promise.all([
+          const [bobinas, leituras, naoPrevistas, fotos] = await Promise.all([
             cloudGetCollectionDocs(confRef, "bobinas"),
             cloudGetCollectionDocs(confRef, "leituras"),
             cloudGetCollectionDocs(confRef, "nao_previstas"),
+            cloudGetCollectionDocs(confRef, "fotos"),
           ]);
 
           const leiturasMap = new Map();
           leituras.forEach((l) => leiturasMap.set(String(l.codigo || l.id), l));
+          const fotoMap = new Map();
+          fotos.forEach((f) => fotoMap.set(String(f.codigo || f.id), f));
           const opSummary = cloudBuildOpSummary(bobinas, leiturasMap);
           const resumo = conf.resumo || {};
           const date = new Date();
@@ -3653,7 +3708,8 @@
               time: l.horaLocal || n.horaLocal || "",
               location: l.location || n.location || "",
               observation: l.observation || n.observation || "",
-              hasPhoto: !!(l.hasPhoto || n.hasPhoto),
+              hasPhoto: !!(l.hasPhoto || n.hasPhoto || fotoMap.get(code)),
+              fotoUrl: l.fotoUrl || n.fotoUrl || fotoMap.get(code)?.url || "",
             });
           });
 
@@ -3672,7 +3728,8 @@
                 time: checked ? (l.horaLocal || "") : "",
                 location: l?.location || "",
                 observation: l?.observation || "",
-                hasPhoto: !!l?.hasPhoto,
+                hasPhoto: !!(l?.hasPhoto || fotoMap.get(code)),
+                fotoUrl: l?.fotoUrl || fotoMap.get(code)?.url || "",
               });
             });
 
@@ -3702,9 +3759,9 @@
             csv += opSummary
               .map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`)
               .join("\n");
-            csv += `\n\nBOBINAS\nCódigo;OP;Peso;Status;Hora;Localização;Observação;Fotos\n`;
+            csv += `\n\nBOBINAS\nCódigo;OP;Peso;Status;Hora;Localização;Observação;Foto\n`;
             csv += exportItems
-              .map((i) => `${i.code};${i.op};${i.peso};${i.status};${i.time};${i.location};${i.observation};${i.hasPhoto ? "Sim" : "Não"}`)
+              .map((i) => `${i.code};${i.op};${i.peso};${i.status};${i.time};${i.location};${i.observation};${i.fotoUrl || (i.hasPhoto ? "Sim" : "Não")}`)
               .join("\n");
             download(csv, `${scopeLabel}_conferencia_nuvem_${conf.id}_${dateStr}.csv`, "text/csv");
           } else {
@@ -3714,7 +3771,7 @@
               .join("\n");
             txt += `\n\n${"=".repeat(95)}\nBOBINAS\n${"=".repeat(95)}\n\n`;
             txt += exportItems
-              .map((i) => `${i.code.padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${i.status.padEnd(16)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.hasPhoto ? "📸 Sim" : "—"}`)
+              .map((i) => `${i.code.padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${i.status.padEnd(16)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.fotoUrl ? "📸 " + i.fotoUrl : (i.hasPhoto ? "📸 Sim" : "—")}`)
               .join("\n");
             download(txt, `${scopeLabel}_conferencia_nuvem_${conf.id}_${dateStr}.txt`, "text/plain");
           }
@@ -3740,14 +3797,17 @@
           const confSnap = await confRef.get();
           if (!confSnap.exists) throw new Error("Conferência não encontrada");
           const conf = { id: confSnap.id, ...confSnap.data() };
-          const [bobinas, leituras, naoPrevistas] = await Promise.all([
+          const [bobinas, leituras, naoPrevistas, fotos] = await Promise.all([
             cloudGetCollectionDocs(confRef, "bobinas"),
             cloudGetCollectionDocs(confRef, "leituras"),
             cloudGetCollectionDocs(confRef, "nao_previstas"),
+            cloudGetCollectionDocs(confRef, "fotos"),
           ]);
 
           const leiturasMap = new Map();
           leituras.forEach((l) => leiturasMap.set(String(l.codigo || l.id), l));
+          const fotoMap = new Map();
+          fotos.forEach((f) => fotoMap.set(String(f.codigo || f.id), f));
           const opSummary = cloudBuildOpSummary(bobinas, leiturasMap);
           const resumo = conf.resumo || {};
           const total = resumo.total ?? bobinas.length;
@@ -3773,7 +3833,8 @@
               time: l.horaLocal || n.horaLocal || "",
               location: l.location || n.location || "",
               observation: l.observation || n.observation || "",
-              hasPhoto: !!(l.hasPhoto || n.hasPhoto),
+              hasPhoto: !!(l.hasPhoto || n.hasPhoto || fotoMap.get(code)),
+              fotoUrl: l.fotoUrl || n.fotoUrl || fotoMap.get(code)?.url || "",
             });
           });
           bobinas
@@ -3791,7 +3852,8 @@
                 time: checked ? (l.horaLocal || "") : "",
                 location: l?.location || "",
                 observation: l?.observation || "",
-                hasPhoto: !!l?.hasPhoto,
+                hasPhoto: !!(l?.hasPhoto || fotoMap.get(code)),
+                fotoUrl: l?.fotoUrl || fotoMap.get(code)?.url || "",
               });
             });
 
@@ -3903,7 +3965,7 @@
             <td>${esc(r.time || "")}</td>
             <td>${esc(r.location || "")}</td>
             <td>${esc(r.observation || "")}</td>
-            <td>${r.hasPhoto ? "📸" : "—"}</td>
+            <td>${r.fotoUrl ? `<a href="${esc(r.fotoUrl)}" target="_blank" rel="noopener">📸</a>` : (r.hasPhoto ? "📸" : "—")}</td>
           </tr>`)
           .join("");
         if (rows.length > 700) {
@@ -6136,5 +6198,5 @@ async function camRotatePhoto(tipo) {
       }
       init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a140c232bf345c96',t:'MTc4Mjg2MDEyNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a140e8c548d5d8a2',t:'MTc4Mjg2MTcwNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
