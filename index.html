@@ -2095,6 +2095,12 @@
 .cloud-item { cursor: pointer; }
 .cloud-item button, .cloud-item input { cursor: pointer; }
 
+
+.cloud-inline-detail {
+  margin-top: -2px;
+  margin-bottom: 8px;
+}
+
     </style>
   </head>
   <body>
@@ -3133,7 +3139,7 @@
         const pass = prompt("Menu do líder. Digite a senha:");
         if (pass === LEADER_PASSWORD) {
           cloudLeaderUnlocked = true;
-          notify("Acesso liberado.");
+          notify("Acesso do líder liberado.");
           switchTab("cloud");
         } else if (pass !== null) {
           notify("Senha incorreta.", "error");
@@ -3530,6 +3536,11 @@
         cloudRenderConsultList(document.getElementById("cloudSearch")?.value || "");
       }
 
+      function cloudInlineDetailId(confId) {
+        return "cloudDetailInline_" + String(confId || "")
+          .replace(/[^a-zA-Z0-9_-]/g, "_");
+      }
+
       function cloudRenderConsultList(search = "") {
         const box = document.getElementById("cloudConsultBox");
         if (!box) return;
@@ -3577,7 +3588,8 @@
                 <span>📊 <strong>${r.percentual ?? 0}%</strong></span>
               </div>
               <div class="small" style="margin-top:6px;color:var(--text-muted)">${esc(d.id || "")}</div>
-            </div>`;
+            </div>
+            <div id="${cloudInlineDetailId(d.id)}" class="cloud-detail cloud-inline-detail"></div>`;
           })
           .join("");
         cloudUpdateMergeButton();
@@ -4045,10 +4057,12 @@
 
 
       async function cloudOpenConference(confId) {
-        const box = document.getElementById("cloudDetailBox");
-        if (!box) return;
         if (!cloudLeaderUnlocked) return;
-        box.className = "cloud-detail show";
+        cloudCloseConferenceDetail();
+        const box = document.getElementById(cloudInlineDetailId(confId)) || document.getElementById("cloudDetailBox");
+        if (!box) return;
+        const isInline = box.id && box.id.startsWith("cloudDetailInline_");
+        box.className = "cloud-detail" + (isInline ? " cloud-inline-detail" : "") + " show";
         box.innerHTML = '<div class="empty">☁️ Abrindo conferência...</div>';
         try {
           if (!(await cloudInit())) throw new Error("Firebase indisponível");
@@ -4233,10 +4247,15 @@
       }
 
       function cloudCloseConferenceDetail() {
+        document.querySelectorAll(".cloud-inline-detail").forEach((box) => {
+          box.className = "cloud-detail cloud-inline-detail";
+          box.innerHTML = "";
+        });
         const box = document.getElementById("cloudDetailBox");
-        if (!box) return;
-        box.className = "cloud-detail";
-        box.innerHTML = "";
+        if (box) {
+          box.className = "cloud-detail";
+          box.innerHTML = "";
+        }
       }
 
 
@@ -6491,5 +6510,5 @@ async function camRotatePhoto(tipo) {
       }
       init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a141200e9cd6a4a8',t:'MTc4Mjg2Mzk3MQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a14128c5cc903f2d',t:'MTc4Mjg2NDMyOA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
