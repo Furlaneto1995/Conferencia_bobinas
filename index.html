@@ -3133,7 +3133,7 @@
         const pass = prompt("Menu do líder. Digite a senha:");
         if (pass === LEADER_PASSWORD) {
           cloudLeaderUnlocked = true;
-          notify("Acesso do líder liberado.");
+          notify("Acesso liberado.");
           switchTab("cloud");
         } else if (pass !== null) {
           notify("Senha incorreta.", "error");
