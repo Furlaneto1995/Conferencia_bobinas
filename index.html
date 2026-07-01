@@ -2091,6 +2091,10 @@
   margin-top: 6px;
 }
 
+
+.cloud-item { cursor: pointer; }
+.cloud-item button, .cloud-item input { cursor: pointer; }
+
     </style>
   </head>
   <body>
@@ -2445,7 +2449,7 @@
             <button class="cloud-filter-btn active" id="cloudFilterAll" onclick="cloudSetListFilter('all')">Todas</button>
             <button class="cloud-filter-btn" id="cloudFilterOpen" onclick="cloudSetListFilter('em_andamento')">Em andamento</button>
             <button class="cloud-filter-btn" id="cloudFilterDone" onclick="cloudSetListFilter('finalizada')">Finalizadas</button>
-            <button class="cloud-report-btn" onclick="cloudMergeSelectedConferences()">Juntar selecionadas</button>
+            <button class="cloud-report-btn" id="cloudMergeBtn" style="display:none" onclick="cloudMergeSelectedConferences()">Juntar selecionadas</button>
             <button class="cloud-filter-btn" onclick="cloudClearMergeSelection()">Limpar seleção</button>
           </div>
           <div class="cloud-merge-note">Marque duas ou mais conferências abaixo e clique em “Juntar selecionadas”.</div>
@@ -3116,6 +3120,11 @@
         }
       }
 
+      function cloudUpdateMergeButton() {
+        const btn = document.getElementById("cloudMergeBtn");
+        if (btn) btn.style.display = cloudMergeSelectedIds.size > 1 ? "inline-flex" : "none";
+      }
+
       function cloudRequestLeaderAccess() {
         if (cloudLeaderUnlocked) {
           switchTab("cloud");
@@ -3546,7 +3555,7 @@
             const r = d.resumo || {};
             const status = d.status || "em_andamento";
             const isCurrent = d.id === S.cloudSessionId;
-            return `<div class="cloud-item ${isCurrent ? "current" : ""}">
+            return `<div class="cloud-item ${isCurrent ? "current" : ""}" onclick="if(!event.target.closest('button,input,a')) cloudOpenConference('${esc(d.id).replace(/'/g, "&#39;")}')">
               <div class="cloud-item-head">
                 <div class="cloud-item-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                   <input class="cloud-select-check" type="checkbox" ${cloudMergeSelectedIds.has(d.id) ? "checked" : ""} onclick="event.stopPropagation()" onchange="cloudToggleMergeSelection('${esc(d.id).replace(/'/g, "&#39;")}', this.checked)" />
@@ -3554,7 +3563,6 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end">
                   <div class="cloud-item-status ${status === "finalizada" ? "finalizada" : ""}">${esc(status)}</div>
-                  <button class="cloud-report-btn" onclick="cloudOpenConference('${esc(d.id).replace(/'/g, "&#39;")}')">Visualizar</button>
                   <button class="cloud-report-btn" onclick="cloudShowExportModal('${esc(d.id).replace(/'/g, "&#39;")}')">Exportar</button>
                   ${status !== "finalizada" ? `<button class="cloud-report-btn" onclick="cloudFinishConferenceById('${esc(d.id).replace(/'/g, "&#39;")}')">Finalizar</button>` : ""}
                   <button class="cloud-delete-btn" onclick="cloudDeleteConference('${esc(d.id).replace(/'/g, "&#39;")}')">🗑️ Excluir</button>
@@ -3572,6 +3580,7 @@
             </div>`;
           })
           .join("");
+        cloudUpdateMergeButton();
       }
 
 
@@ -4262,10 +4271,12 @@
       function cloudToggleMergeSelection(confId, checked) {
         if (checked) cloudMergeSelectedIds.add(confId);
         else cloudMergeSelectedIds.delete(confId);
+        cloudUpdateMergeButton();
       }
 
       function cloudClearMergeSelection() {
         cloudMergeSelectedIds.clear();
+        cloudUpdateMergeButton();
         cloudRenderConsultList(document.getElementById("cloudSearch")?.value || "");
       }
 
@@ -6480,5 +6491,5 @@ async function camRotatePhoto(tipo) {
       }
       init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1411dc06db4a4a8',t:'MTc4Mjg2Mzg3Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a141200e9cd6a4a8',t:'MTc4Mjg2Mzk3MQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
