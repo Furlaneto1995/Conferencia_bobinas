@@ -5799,6 +5799,7 @@ ${"─".repeat(40)}
         camUpdateCounters();
         camUpdateHistory();
         camCooldown = false;
+        camEnableVolumeZoom();
         try {
           const devices = await Html5Qrcode.getCameras();
           if (!devices || !devices.length) {
@@ -5850,7 +5851,33 @@ ${"─".repeat(40)}
           closeIntegratedScanner();
         }
       }
+      function camVolumeKeyHandler(e) {
+        // Tentativa de usar as teclas físicas de volume para zoom.
+        // A maioria dos navegadores móveis NÃO expõe esses botões para páginas web
+        // (o sistema operacional intercepta antes), então isso só funciona em
+        // alguns aparelhos/navegadores específicos. Os botões +/- na tela continuam
+        // funcionando sempre, como alternativa garantida.
+        const key = e.key || e.code || "";
+        if (key === "AudioVolumeUp" || key === "VolumeUp") {
+          e.preventDefault();
+          camZoomStep(1);
+        } else if (key === "AudioVolumeDown" || key === "VolumeDown") {
+          e.preventDefault();
+          camZoomStep(-1);
+        }
+      }
+      function camEnableVolumeZoom() {
+        window.addEventListener("keydown", camVolumeKeyHandler, {
+          capture: true,
+        });
+      }
+      function camDisableVolumeZoom() {
+        window.removeEventListener("keydown", camVolumeKeyHandler, {
+          capture: true,
+        });
+      }
       function closeIntegratedScanner() {
+        camDisableVolumeZoom();
         try {
           if (camScanner) {
             camScanner
@@ -6041,12 +6068,7 @@ ${"─".repeat(40)}
           err = document.getElementById("camErrorOverlay"),
           warn = document.getElementById("camWarnOverlay");
         if (!/^(500|700)\d{8,9}$/.test(code)) {
-          camFlash("red");
-          camShowBigStatus("red", "❌ ERRO DE LEITURA", code, 1500);
-          err.classList.add("show");
-          setTimeout(() => err.classList.remove("show"), 900);
-          camVibrate("notfound");
-          camBeep("notfound");
+          // Código em formato inválido: ignora silenciosamente e continua escaneando.
           return;
         }
         if (S.checked.has(code)) {
@@ -6162,10 +6184,28 @@ ${"─".repeat(40)}
       }
       function camSelectManualBobina(code) {
         camCloseManualModal();
-        camManualSelectedCode = code;
+        camManualSelectedCode = null;
         camPendingExtra = null;
-        camShowLocationModal(code, "manualFound");
-        camCooldown = true;
+        camMarkManualFound(code);
+      }
+      function camMarkManualFound(code) {
+        const time = new Date().toLocaleTimeString("pt-BR");
+        S.checked.add(code);
+        S.scanned.unshift({
+          code,
+          time,
+          status: "found",
+          manual: true,
+        });
+        camShowResult("green", `📸 MANUAL — "${code}" — encontrada`);
+        save();
+        cloudSyncReading(S.scanned[0]);
+        camUpdateCounters();
+        camUpdateHistory();
+        updateStats();
+        updateHistory();
+        updateDBUI();
+        setTimeout(() => (camCooldown = false), 300);
       }
       function camManualNotExpected() {
         camCloseManualModal();
@@ -6510,5 +6550,5 @@ async function camRotatePhoto(tipo) {
       }
       init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a14128c5cc903f2d',t:'MTc4Mjg2NDMyOA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a14f862ecc02a535',t:'MTc4MzAxNDk1NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
