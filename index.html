@@ -1224,25 +1224,13 @@
             if (box) box.innerHTML = '<div class="empty">Firebase não configurado ou sem conexão.</div>';
             return;
           }
-          if (cloudBaseFilesUnsub) cloudBaseFilesUnsub();
-          if (cloudBaseDeletedUnsub) cloudBaseDeletedUnsub();
-          cloudBaseDeletedUnsub = cloudDb.collection("arquivos_base_excluidos").limit(300).onSnapshot(
-            (snap) => {
-              cloudBaseDeletedIds = new Set(snap.docs.map((d) => d.id));
-              cloudRenderBaseFiles();
-            },
-            () => {}
-          );
-          cloudBaseFilesUnsub = cloudDb.collection("arquivos_base").orderBy("criadoEm", "desc").limit(80).onSnapshot(
-            (snap) => {
-              cloudBaseFilesDocs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-              cloudRenderBaseFiles();
-            },
-            (err) => {
-              console.error(err);
-              if (box) box.innerHTML = '<div class="empty">Erro ao consultar arquivos-base.</div>';
-            }
-          );
+          const [deletedSnap, filesSnap] = await Promise.all([
+            cloudDb.collection("arquivos_base_excluidos").limit(300).get(),
+            cloudDb.collection("arquivos_base").orderBy("criadoEm", "desc").limit(80).get(),
+          ]);
+          cloudBaseDeletedIds = new Set(deletedSnap.docs.map((d) => d.id));
+          cloudBaseFilesDocs = filesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          cloudRenderBaseFiles();
         } catch (e) {
           console.error(e);
           if (box) box.innerHTML = '<div class="empty">Erro ao consultar arquivos-base.</div>';
@@ -1309,6 +1297,7 @@
           if (name) name.textContent = `☁️ ${currentImportedFile.name}`;
           parseFileForConferenceSelection(content);
           updateImportActionButtons();
+          switchTab("import");
           cloudSetStatus("ok", "☁️ Arquivo-base carregado");
           notify("Arquivo-base carregado da nuvem!");
         } catch (e) {
@@ -2820,5 +2809,5 @@
       }
       init();
     </script>
-  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17a48cbe8bc9979',t:'MTc4MzQ2MzMyOA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17a4f08ceaf646e',t:'MTc4MzQ2MzU4NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
