@@ -384,7 +384,11 @@
       .cloud-detail-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
       .cloud-detail-stat { background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 9px 10px; font-size: 0.82em; color: var(--text-secondary); min-width: 0; }
       .cloud-detail-stat strong { display: block; color: var(--text-primary); font-size: 1.15em; margin-top: 2px; }
+      .cloud-detail-stat.clickable { cursor: pointer; transition: all 0.2s ease; }
+      .cloud-detail-stat.clickable:active { transform: scale(0.98); }
+      .cloud-detail-stat.active { border-color: var(--accent-blue); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12) inset; background: rgba(59, 130, 246, 0.06); }
       .cloud-detail-section-title { margin: 12px 0 6px; font-size: 0.88em; font-weight: 900; color: var(--text-primary); }
+      .cloud-detail-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
       .cloud-detail-scroll { max-height: 360px; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--border); border-radius: 10px; -webkit-overflow-scrolling: touch; }
       #cloudDetailBox .dtbl,
       .cloud-inline-detail .dtbl {
@@ -1149,32 +1153,118 @@
         box.innerHTML = '<div class="empty">☁️ Abrindo conferência...</div>';
         try {
           const data = await cloudBuildExportData(confId);
-          const opHtml = (data.opSummary || []).length ? data.opSummary.map((op) => `<div class="op-summary-item"><div class="op-summary-op">OP ${esc(op.op || "-")}</div><div class="op-summary-info"><span>✅ Encontradas: <strong>${op.checked}/${op.total}</strong></span><span>📊 <strong>${op.pct}%</strong></span></div></div>`).join("") : '<div class="empty">Nenhuma OP encontrada.</div>';
           cloudDetailRows = data.rows; cloudDetailFilter = "all"; cloudDetailSearch = ""; cloudDetailConfId = data.id;
           box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(data.operador || "-")} • ${esc((cloudConsultDocs.find((d) => d.id === confId)?.data) || "-")}</div><div class="cloud-detail-sub">${esc(data.tipo || "-")}<br>${esc(data.id || "")}</div></div><button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">✕ Fechar</button></div>
-          <div class="cloud-detail-stats"><div class="cloud-detail-stat">Total<strong>${data.resumo.total}</strong></div><div class="cloud-detail-stat">Conferidos<strong>${data.resumo.conferidos}</strong></div><div class="cloud-detail-stat">Pendentes<strong>${data.resumo.pendentes}</strong></div><div class="cloud-detail-stat">Não previstas<strong>${data.resumo.naoPrevistas}</strong></div></div>
-          <div class="cloud-detail-section-title">📦 Resumo por OP</div><div class="op-summary-list" style="max-height:220px;overflow:auto;padding-right:4px">${opHtml}</div>
-          <div class="cloud-detail-section-title">📋 Bobinas e leituras</div>
-          <div class="search-wrap" style="margin-bottom: 8px"><span class="si">🔍</span><input class="search-input" id="cloudDetailSearch" placeholder="Buscar código, OP, status ou observação..." oninput="cloudDetailSearch=this.value; cloudRenderDetailRows()" /></div>
-          <div class="cloud-detail-filters"><button class="cloud-filter-btn active" id="cloudDetailFilterAll" onclick="cloudSetDetailFilter('all')">Todos</button><button class="cloud-filter-btn" id="cloudDetailFilterChecked" onclick="cloudSetDetailFilter('checked')">Conferidos</button><button class="cloud-filter-btn" id="cloudDetailFilterPending" onclick="cloudSetDetailFilter('pending')">Pendentes</button><button class="cloud-filter-btn" id="cloudDetailFilterExtra" onclick="cloudSetDetailFilter('extra')">Não previstas</button><button class="cloud-report-btn" onclick="cloudShowExportModal(cloudDetailConfId)">Exportar</button></div>
+          <div class="cloud-detail-stats">
+            <div class="cloud-detail-stat clickable active" id="cloudDetailStatAll" onclick="cloudSetDetailFilter('all')">Total<strong>${data.resumo.total}</strong></div>
+            <div class="cloud-detail-stat clickable" id="cloudDetailStatChecked" onclick="cloudSetDetailFilter('checked')">Conferidas<strong>${data.resumo.conferidos}</strong></div>
+            <div class="cloud-detail-stat clickable" id="cloudDetailStatPending" onclick="cloudSetDetailFilter('pending')">Pendentes<strong>${data.resumo.pendentes}</strong></div>
+            <div class="cloud-detail-stat clickable" id="cloudDetailStatExtra" onclick="cloudSetDetailFilter('extra')">Não previstas<strong>${data.resumo.naoPrevistas}</strong></div>
+          </div>
+          <div class="cloud-detail-section-title">📦 Resumo por OP</div>
+          <div class="op-summary-list" id="cloudDetailOpSummary" style="max-height:220px;overflow:auto;padding-right:4px"></div>
+          <div class="cloud-detail-toolbar">
+            <div class="cloud-detail-section-title" style="margin:0">📋 Bobinas e leituras</div>
+            <button class="cloud-report-btn" onclick="cloudShowExportModal(cloudDetailConfId)">Exportar</button>
+          </div>
+          <div class="search-wrap" style="margin-bottom: 8px"><span class="si">🔍</span><input class="search-input" id="cloudDetailSearch" placeholder="Buscar código, OP, status ou observação..." oninput="cloudDetailSearch=this.value; cloudRenderDetailRows(); cloudRenderDetailOpSummary()" /></div>
           <div class="cloud-detail-scroll" style="margin-top: 8px"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>`;
-          cloudRenderDetailRows(); box.scrollIntoView({ behavior: "smooth", block: "start" }); cloudSetStatus("ok", "☁️ Conferência aberta");
+          cloudApplyDetailFilterUI();
+          cloudRenderDetailOpSummary();
+          cloudRenderDetailRows();
+          box.scrollIntoView({ behavior: "smooth", block: "start" }); cloudSetStatus("ok", "☁️ Conferência aberta");
         } catch (e) { console.error(e); box.innerHTML = '<div class="empty">Erro ao abrir conferência. Veja o console.</div>'; cloudSetStatus("error", "☁️ Erro ao abrir"); }
+      }
+      function cloudRowsByDetailFilter(includeSearch = true) {
+        let rows = [...(cloudDetailRows || [])];
+        if (cloudDetailFilter === "checked") rows = rows.filter((r) => String(r.status).includes("Conferid") || String(r.status).includes("Manual"));
+        if (cloudDetailFilter === "pending") rows = rows.filter((r) => String(r.status).includes("Pendente"));
+        if (cloudDetailFilter === "extra") rows = rows.filter((r) => String(r.status).includes("Não Prevista"));
+        if (includeSearch) {
+          const q = String(cloudDetailSearch || "").trim().toLowerCase();
+          if (q) rows = rows.filter((r) => [r.code, r.op, r.peso, r.status, r.time, r.location, r.observation].join(" ").toLowerCase().includes(q));
+        }
+        return rows;
+      }
+      function cloudApplyDetailFilterUI() {
+        const map = {
+          all: "cloudDetailStatAll",
+          checked: "cloudDetailStatChecked",
+          pending: "cloudDetailStatPending",
+          extra: "cloudDetailStatExtra",
+        };
+        Object.values(map).forEach((id) => document.getElementById(id)?.classList.remove("active"));
+        document.getElementById(map[cloudDetailFilter] || map.all)?.classList.add("active");
+      }
+      function cloudRenderDetailOpSummary() {
+        const box = document.getElementById("cloudDetailOpSummary");
+        if (!box) return;
+        const baseRows = (cloudDetailRows || []).filter((r) => !String(r.status).includes("Não Prevista"));
+        const filteredRows = cloudRowsByDetailFilter(true);
+        const baseMap = new Map();
+        baseRows.forEach((r) => {
+          const op = r.op || "-";
+          if (!baseMap.has(op)) baseMap.set(op, { op, total: 0, checked: 0, pending: 0 });
+          const item = baseMap.get(op);
+          item.total++;
+          if (String(r.status).includes("Conferid") || String(r.status).includes("Manual")) item.checked++;
+          if (String(r.status).includes("Pendente")) item.pending++;
+        });
+        const filteredMap = new Map();
+        filteredRows.forEach((r) => {
+          const op = r.op || "-";
+          if (!filteredMap.has(op)) filteredMap.set(op, { op, count: 0, extra: 0 });
+          const item = filteredMap.get(op);
+          item.count++;
+          if (String(r.status).includes("Não Prevista")) item.extra++;
+        });
+        let entries = [];
+        if (cloudDetailFilter === "all") {
+          entries = Array.from(baseMap.values()).sort((a, b) => String(a.op).localeCompare(String(b.op), "pt-BR", { numeric: true, sensitivity: "base" }));
+          if (!entries.length) {
+            box.innerHTML = '<div class="empty">Nenhuma OP encontrada.</div>';
+            return;
+          }
+          box.innerHTML = entries.map((op) => {
+            const pct = op.total > 0 ? ((op.checked / op.total) * 100).toFixed(1) : "0.0";
+            return `<div class="op-summary-item"><div class="op-summary-op">OP ${esc(op.op || "-")}</div><div class="op-summary-info"><span>✅ Encontradas: <strong>${op.checked}/${op.total}</strong></span><span>📊 <strong>${pct}%</strong></span></div></div>`;
+          }).join("");
+          return;
+        }
+        entries = Array.from(filteredMap.values()).sort((a, b) => String(a.op).localeCompare(String(b.op), "pt-BR", { numeric: true, sensitivity: "base" }));
+        if (!entries.length) {
+          box.innerHTML = '<div class="empty">Nenhuma OP encontrada para este filtro.</div>';
+          return;
+        }
+        box.innerHTML = entries.map((entry) => {
+          const base = baseMap.get(entry.op) || { total: entry.count, checked: 0, pending: 0 };
+          let label = "Qtd.";
+          let value = String(entry.count);
+          let extraInfo = "";
+          if (cloudDetailFilter === "checked") {
+            label = "✅ Conferidas";
+            const pct = base.total > 0 ? ((entry.count / base.total) * 100).toFixed(1) : "0.0";
+            extraInfo = `<span>📊 <strong>${pct}%</strong></span>`;
+          } else if (cloudDetailFilter === "pending") {
+            label = "⏳ Pendentes";
+            const pct = base.total > 0 ? ((entry.count / base.total) * 100).toFixed(1) : "0.0";
+            extraInfo = `<span>📊 <strong>${pct}%</strong></span>`;
+          } else if (cloudDetailFilter === "extra") {
+            label = "⚠️ Não previstas";
+            value = String(entry.extra || entry.count);
+          }
+          return `<div class="op-summary-item"><div class="op-summary-op">OP ${esc(entry.op || "-")}</div><div class="op-summary-info"><span>${label}: <strong>${value}</strong></span>${extraInfo}</div></div>`;
+        }).join("");
       }
       function cloudSetDetailFilter(filter) {
         cloudDetailFilter = filter || "all";
-        document.querySelectorAll(".cloud-detail-filters .cloud-filter-btn").forEach((b) => b.classList.remove("active"));
-        const id = cloudDetailFilter === "checked" ? "cloudDetailFilterChecked" : cloudDetailFilter === "pending" ? "cloudDetailFilterPending" : cloudDetailFilter === "extra" ? "cloudDetailFilterExtra" : "cloudDetailFilterAll";
-        document.getElementById(id)?.classList.add("active");
+        cloudApplyDetailFilterUI();
+        cloudRenderDetailOpSummary();
         cloudRenderDetailRows();
       }
       function cloudRenderDetailRows() {
         const tbody = document.getElementById("cloudDetailRowsBody"); if (!tbody) return;
-        const q = String(cloudDetailSearch || "").trim().toLowerCase(); let rows = cloudDetailRows || [];
-        if (cloudDetailFilter === "checked") rows = rows.filter((r) => String(r.status).includes("Conferid") || String(r.status).includes("Manual"));
-        if (cloudDetailFilter === "pending") rows = rows.filter((r) => String(r.status).includes("Pendente"));
-        if (cloudDetailFilter === "extra") rows = rows.filter((r) => String(r.status).includes("Não Prevista"));
-        if (q) rows = rows.filter((r) => [r.code, r.op, r.peso, r.status, r.time, r.location, r.observation].join(" ").toLowerCase().includes(q));
+        const rows = cloudRowsByDetailFilter(true);
         const limited = rows.slice(0, 700);
         if (!limited.length) { tbody.innerHTML = '<tr><td colspan="9">Nenhum item encontrado</td></tr>'; return; }
         tbody.innerHTML = limited.map((r, i) => `<tr><td>${i + 1}</td><td class="cc">${esc(r.code)}</td><td>${esc(r.op)}</td><td>${esc(r.peso)}</td><td>${esc(r.status)}</td><td>${esc(r.time || "")}</td><td>${esc(r.location || "")}</td><td>${esc(r.observation || "")}</td><td>${r.fotoUrl ? `<a href="${esc(r.fotoUrl)}" target="_blank" rel="noopener">📸</a>` : (r.hasPhoto ? "📸" : "—")}</td></tr>`).join("");
@@ -1247,14 +1337,21 @@
       function cloudRenderMergedReport() {
         const box = document.getElementById("cloudDetailBox"); if (!box || !cloudMergedReport) return;
         const r = cloudMergedReport.resumo || {}; cloudDetailRows = cloudMergedReport.rows || []; cloudDetailFilter = "all"; cloudDetailSearch = ""; cloudDetailConfId = "__merged__";
-        const opHtml = (cloudMergedReport.opSummary || []).length ? cloudMergedReport.opSummary.map((op) => `<div class="op-summary-item"><div class="op-summary-op">OP ${esc(op.op || "-")}</div><div class="op-summary-info"><span>✅ Encontradas: <strong>${op.checked}/${op.total}</strong></span><span>📊 <strong>${op.pct}%</strong></span></div></div>`).join("") : '<div class="empty">Nenhuma OP encontrada.</div>';
         box.className = "cloud-detail show";
         box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(cloudMergedReport.title)}</div><div class="cloud-detail-sub">${esc(cloudMergedReport.subtitle || "")}</div></div><button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">✕ Fechar</button></div>
-        <div class="cloud-detail-stats"><div class="cloud-detail-stat">Total<strong>${r.total ?? 0}</strong></div><div class="cloud-detail-stat">Conferidos<strong>${r.conferidos ?? 0}</strong></div><div class="cloud-detail-stat">Pendentes<strong>${r.pendentes ?? 0}</strong></div><div class="cloud-detail-stat">Não previstas<strong>${r.naoPrevistas ?? 0}</strong></div></div>
-        <div class="cloud-detail-section-title">📦 Resumo por OP</div><div class="op-summary-list" style="max-height:220px;overflow:auto;padding-right:4px">${opHtml}</div>
-        <div class="cloud-detail-section-title">📋 Bobinas e leituras</div><div class="search-wrap" style="margin-bottom: 8px"><span class="si">🔍</span><input class="search-input" id="cloudDetailSearch" placeholder="Buscar código, OP, status ou observação..." oninput="cloudDetailSearch=this.value; cloudRenderDetailRows()" /></div>
-        <div class="cloud-detail-filters"><button class="cloud-filter-btn active" id="cloudDetailFilterAll" onclick="cloudSetDetailFilter('all')">Todos</button><button class="cloud-filter-btn" id="cloudDetailFilterChecked" onclick="cloudSetDetailFilter('checked')">Conferidos</button><button class="cloud-filter-btn" id="cloudDetailFilterPending" onclick="cloudSetDetailFilter('pending')">Pendentes</button><button class="cloud-filter-btn" id="cloudDetailFilterExtra" onclick="cloudSetDetailFilter('extra')">Não previstas</button><button class="cloud-report-btn" onclick="cloudShowMergedExportModal()">Exportar consolidado</button></div>
+        <div class="cloud-detail-stats">
+          <div class="cloud-detail-stat clickable active" id="cloudDetailStatAll" onclick="cloudSetDetailFilter('all')">Total<strong>${r.total ?? 0}</strong></div>
+          <div class="cloud-detail-stat clickable" id="cloudDetailStatChecked" onclick="cloudSetDetailFilter('checked')">Conferidas<strong>${r.conferidos ?? 0}</strong></div>
+          <div class="cloud-detail-stat clickable" id="cloudDetailStatPending" onclick="cloudSetDetailFilter('pending')">Pendentes<strong>${r.pendentes ?? 0}</strong></div>
+          <div class="cloud-detail-stat clickable" id="cloudDetailStatExtra" onclick="cloudSetDetailFilter('extra')">Não previstas<strong>${r.naoPrevistas ?? 0}</strong></div>
+        </div>
+        <div class="cloud-detail-section-title">📦 Resumo por OP</div>
+        <div class="op-summary-list" id="cloudDetailOpSummary" style="max-height:220px;overflow:auto;padding-right:4px"></div>
+        <div class="cloud-detail-toolbar"><div class="cloud-detail-section-title" style="margin:0">📋 Bobinas e leituras</div><button class="cloud-report-btn" onclick="cloudShowMergedExportModal()">Exportar consolidado</button></div>
+        <div class="search-wrap" style="margin-bottom: 8px"><span class="si">🔍</span><input class="search-input" id="cloudDetailSearch" placeholder="Buscar código, OP, status ou observação..." oninput="cloudDetailSearch=this.value; cloudRenderDetailRows(); cloudRenderDetailOpSummary()" /></div>
         <div class="cloud-detail-scroll" style="margin-top: 8px"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>`;
+        cloudApplyDetailFilterUI();
+        cloudRenderDetailOpSummary();
         cloudRenderDetailRows();
       }
       function cloudShowMergedExportModal() { if (!cloudMergedReport) return; cloudShowExportModal("__merged__"); }
@@ -1757,5 +1854,5 @@
       }
       init();
     </script>
-  </body>
+  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a176e8bc18bc01a7',t:'MTc4MzQyNzkzNg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
