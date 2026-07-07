@@ -177,6 +177,19 @@
       .collector-last-read.ok { color: var(--accent-green); }
       .collector-last-read.warn { color: var(--accent-yellow); }
       .collector-last-read.err { color: var(--accent-red); }
+      .collector-big-status {
+        position: fixed; left: 50%; top: 44%; transform: translate(-50%, -50%) scale(.96);
+        z-index: 4200; min-width: min(86vw, 420px); max-width: 92vw; padding: 18px 20px;
+        border-radius: 18px; color: #fff; text-align: center; font-weight: 900;
+        pointer-events: none; box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
+        backdrop-filter: blur(10px); opacity: 0; transition: opacity .12s ease, transform .12s ease;
+      }
+      .collector-big-status.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      .collector-big-status.green { background: rgba(16, 185, 129, 0.94); border: 2px solid rgba(187, 247, 208, 0.8); }
+      .collector-big-status.yellow { background: rgba(245, 158, 11, 0.95); border: 2px solid rgba(254, 240, 138, 0.8); }
+      .collector-big-status.red { background: rgba(239, 68, 68, 0.96); border: 2px solid rgba(254, 202, 202, 0.85); }
+      .collector-big-status .big-main { display: block; font-size: 1.22em; line-height: 1.15; letter-spacing: .02em; }
+      .collector-big-status .big-code { display: block; margin-top: 8px; font-family: "SF Mono", Consolas, monospace; font-size: .9em; word-break: break-all; opacity: .96; }
       .loc-photo-section { margin-top: 10px; display: none; }
       .loc-photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
       .loc-photo-label { font-size: 0.78em; color: var(--text-secondary); margin-bottom: 4px; }
@@ -924,12 +937,16 @@
           cloudSetStatus("sync", "☁️ Sincronizando...");
           await cloudEnsureSession();
           const ref = cloudConferenceRef(); if (!ref) return;
-          const batch = cloudDb.batch();
-          S.db.forEach((code) => {
-            const meta = S.meta && S.meta[code] ? S.meta[code] : {};
-            batch.set(ref.collection("bobinas").doc(String(code)), { codigo: String(code), op: meta.op || "-", peso: meta.peso || "-", etapa: meta.etapa || "", material: meta.material || "", atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-          });
-          await batch.commit();
+          const codes = [...new Set((S.db || []).map((code) => String(code)))];
+          const CHUNK = 400;
+          for (let i = 0; i < codes.length; i += CHUNK) {
+            const batch = cloudDb.batch();
+            codes.slice(i, i + CHUNK).forEach((code) => {
+              const meta = S.meta && S.meta[code] ? S.meta[code] : {};
+              batch.set(ref.collection("bobinas").doc(String(code)), { codigo: String(code), op: meta.op || "-", peso: meta.peso || "-", etapa: meta.etapa || "", material: meta.material || "", atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+            });
+            await batch.commit();
+          }
           await cloudSaveConferenceHeader();
           cloudSetStatus("ok", "☁️ Dados sincronizados");
         } catch (e) { cloudSetStatus("error", "☁️ Erro ao sincronizar"); console.warn("Falha ao sincronizar banco na nuvem:", e); }
@@ -1198,7 +1215,7 @@
           try {
             if (!(await cloudInit())) { box.innerHTML = '<div class="empty">Firebase não configurado ou sem conexão.</div>'; cloudSetStatus("error", "☁️ Nuvem indisponível"); return; }
             cloudConsultUnsub = cloudDb.collection("conferencias").orderBy("atualizadoEm", "desc").limit(80).onSnapshot(
-              (snap) => { cloudConsultDocs = snap.docs.map((d) => ({ id: d.id, ...d.data() })); cloudRenderConsultList(document.getElementById("cloudSearch")?.value || ""); cloudSetStatus("ok", "☁️ Consulta em tempo real"); },
+              (snap) => { cloudConsultDocs = snap.docs.map((d) => ({ id: d.id, ...d.data() })); cloudRenderConsultList(document.getElementById("cloudSearch")?.value || ""); if (cloudDetailConfId && cloudDetailConfId !== "__merged__" && document.getElementById("cloudDetailBox")?.classList.contains("show")) cloudOpenConference(cloudDetailConfId, { silent: true }); cloudSetStatus("ok", "☁️ Consulta em tempo real"); },
               (e) => { console.error(e); box.innerHTML = '<div class="empty">Erro ao consultar nuvem. Veja o console.</div>'; cloudSetStatus("error", "☁️ Erro na consulta"); },
             );
           } catch (e) { console.error(e); box.innerHTML = '<div class="empty">Erro ao iniciar consulta. Veja o console.</div>'; cloudSetStatus("error", "☁️ Erro na consulta"); }
@@ -1424,18 +1441,21 @@
           cloudSetStatus("ok", "☁️ Relatório da nuvem gerado"); notify("Relatório da nuvem exportado!");
         } catch (e) { console.error(e); cloudSetStatus("error", "☁️ Erro no relatório"); notify("Erro ao exportar relatório da nuvem: " + (e.message || e), "error"); }
       }
-      async function cloudOpenConference(confId) {
+      async function cloudOpenConference(confId, options = {}) {
         if (!cloudLeaderUnlocked) return;
-        cloudCloseConferenceDetail();
+        const silent = !!options.silent;
+        const prevFilter = silent ? cloudDetailFilter : "all";
+        const prevSearch = silent ? cloudDetailSearch : "";
+        if (!silent) cloudCloseConferenceDetail();
         const box = document.getElementById("cloudDetailBox");
         if (!box) return;
         box.className = "cloud-detail show";
-        box.innerHTML = '<div class="empty">☁️ Abrindo conferência...</div>';
+        if (!silent) box.innerHTML = '<div class="empty">☁️ Abrindo conferência...</div>';
         try {
           const data = await cloudBuildExportData(confId);
           cloudDetailRows = data.rows;
-          cloudDetailFilter = "all";
-          cloudDetailSearch = "";
+          cloudDetailFilter = prevFilter;
+          cloudDetailSearch = prevSearch;
           cloudDetailConfId = data.id;
           box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(data.operador || "-")} • ${esc((cloudConsultDocs.find((d) => d.id === confId)?.data) || "-")}</div><div class="cloud-detail-sub">${esc(data.tipo || "-")}<br>${esc(data.id || "")}</div></div><button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">✕ Fechar</button></div>
           <div class="cloud-detail-stats">
@@ -1451,12 +1471,13 @@
             <button class="cloud-report-btn" onclick="cloudShowExportModal(cloudDetailConfId)">Exportar</button>
           </div>
           <div class="search-wrap" style="margin-bottom: 8px"><span class="si">🔍</span><input class="search-input" id="cloudDetailSearch" placeholder="Buscar código, OP, status ou observação..." oninput="cloudDetailSearch=this.value; cloudRenderDetailRows(); cloudRenderDetailOpSummary()" /></div>
-          ${data.missingBobinas ? `<div style="margin:8px 0 0; padding:10px 12px; border-radius:10px; border:1px solid rgba(245,158,11,.28); background: rgba(245,158,11,.08); color: var(--accent-yellow); font-size:.82em; font-weight:700;">⚠️ Esta conferência tem resumo salvo, mas a lista de bobinas não foi sincronizada na nuvem. As próximas importações já serão salvas corretamente.</div>` : ""}
+          ${data.missingBobinas ? `<div style="margin:8px 0 0; padding:10px 12px; border-radius:10px; border:1px solid rgba(245,158,11,.28); background: rgba(245,158,11,.08); color: var(--accent-yellow); font-size:.82em; font-weight:700;">⚠️ Conferência antiga sem base de bobinas na nuvem.</div>` : ""}
           <div class="cloud-detail-scroll" style="margin-top: 8px"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>`;
+          const detailSearchInput = document.getElementById("cloudDetailSearch"); if (detailSearchInput) detailSearchInput.value = cloudDetailSearch || "";
           cloudApplyDetailFilterUI();
           cloudRenderDetailOpSummary();
           cloudRenderDetailRows();
-          box.scrollIntoView({ behavior: "smooth", block: "start" });
+          if (!silent) box.scrollIntoView({ behavior: "smooth", block: "start" });
           cloudSetStatus("ok", "☁️ Conferência aberta");
         } catch (e) {
           console.error(e);
@@ -1924,6 +1945,20 @@
           panel.classList.remove("active");
         }
       }
+      function collectorShowBigStatus(cls, main, code = "", ms = 1400) {
+        let box = document.getElementById("collectorBigStatus");
+        if (!box) {
+          box = document.createElement("div");
+          box.id = "collectorBigStatus";
+          box.className = "collector-big-status";
+          document.body.appendChild(box);
+        }
+        box.className = "collector-big-status " + cls;
+        box.innerHTML = `<span class="big-main">${esc(main)}</span>${code ? `<span class="big-code">${esc(code)}</span>` : ""}`;
+        clearTimeout(box._hideTimer);
+        requestAnimationFrame(() => box.classList.add("show"));
+        box._hideTimer = setTimeout(() => box.classList.remove("show"), ms);
+      }
       function setCollectorLastRead(message, tone = "") {
         const el = document.getElementById("collectorLastRead");
         if (!el) return;
@@ -2005,14 +2040,14 @@
           return;
         }
         if (S.checked.has(code)) {
+          collectorShowBigStatus("yellow", "⚠️ JÁ LIDA", code, 1500);
           setCollectorLastRead(`⚠️ ${code} já conferido.`, "warn");
-          notify(`⚠️ ${code} já conferido.`, "warning");
           setTimeout(focusCollectorInput, 80);
           return;
         }
         if (S.extras.includes(code)) {
+          collectorShowBigStatus("yellow", "⚠️ JÁ REGISTRADA", code, 1600);
           setCollectorLastRead(`⚠️ ${code} já registrado como não prevista.`, "warn");
-          notify(`⚠️ ${code} já registrado como não prevista.`, "warning");
           setTimeout(focusCollectorInput, 80);
           return;
         }
@@ -2024,11 +2059,12 @@
           cloudSyncReading(scanItem);
           updateStats(); updateHistory(); updateDBUI(); updateReport();
           document.getElementById("btnUndo").disabled = false;
+          collectorShowBigStatus("green", "✅ LIDA", code, 1400);
           setCollectorLastRead(`✅ ${code} conferido.`, "ok");
-          notify(`✅ ${code} conferido.`);
           setTimeout(focusCollectorInput, 80);
           return;
         }
+        collectorShowBigStatus("red", "⚠️ NÃO PREVISTA", code, 1200);
         setCollectorLastRead(`⚠️ ${code} não prevista. Informe a localização.`, "warn");
         showLocModal(code, time, "collector");
       }
@@ -2468,5 +2504,5 @@
       }
       init();
     </script>
-  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a179e29bbe3b8046',t:'MTc4MzQ1OTE0Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a179f2644bd14f2b',t:'MTc4MzQ1OTc4OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
