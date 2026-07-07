@@ -167,6 +167,19 @@
       .prog-fill { height: 100%; background: linear-gradient(90deg, var(--accent-blue), var(--accent-green)); border-radius: 6px; transition: width 0.5s; }
       .camera-area { text-align: center; padding: 20px 12px; }
       .camera-area p { color: var(--text-muted); font-size: 0.78em; margin-top: 10px; }
+      .collector-toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: center; margin-bottom: 12px; }
+      .collector-badge { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--bg-card); color: var(--text-secondary); font-size: 0.8em; font-weight: 700; }
+      .collector-badge.on { background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.25); color: var(--accent-green); }
+      .collector-badge.running { background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.25); color: var(--accent-blue); }
+      .collector-panel { display: none; margin-top: 12px; padding: 12px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.18); background: rgba(59, 130, 246, 0.04); text-align: left; }
+      .collector-panel.active { display: block; }
+      .collector-panel .hint { color: var(--text-secondary); font-size: 0.8em; margin-bottom: 8px; }
+      .collector-input { width: 100%; padding: 12px 14px; background: #fff; border: 2px solid var(--border); border-radius: 10px; color: var(--text-primary); font-family: "SF Mono", Consolas, "Courier New", monospace; font-size: 0.95em; }
+      .collector-input:focus { outline: none; border-color: var(--accent-blue); box-shadow: 0 0 0 3px var(--glow-blue); }
+      .collector-last-read { margin-top: 8px; color: var(--text-muted); font-size: 0.78em; min-height: 1.2em; }
+      .collector-last-read.ok { color: var(--accent-green); }
+      .collector-last-read.warn { color: var(--accent-yellow); }
+      .collector-last-read.err { color: var(--accent-red); }
       .history { max-height: 350px; overflow-y: auto; margin-top: 12px; -webkit-overflow-scrolling: touch; }
       .history::-webkit-scrollbar { width: 3px; }
       .history::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -556,7 +569,23 @@
         </div>
         <div class="card">
           <div class="prog-wrap"><div class="prog-head"><span>Progresso</span><span class="pct" id="pPct">0%</span></div><div class="prog-bar"><div class="prog-fill" id="pFill" style="width: 0%"></div></div></div>
-          <div class="camera-area"><button class="btn btn-camera" onclick="openCamera()">📸 Abrir Câmera</button><p>A câmera abrirá em tela cheia</p></div>
+          <div class="camera-area">
+            <div class="collector-toolbar">
+              <span class="collector-badge" id="collectorStatus">🔫 Coletor desativado</span>
+              <button class="btn btn-outline btn-sm" id="collectorToggleBtn" onclick="toggleCollectorMode()">🔫 Ativar coletor</button>
+            </div>
+            <button class="btn btn-camera" id="startConferenceBtn" onclick="startConference()">📸 Abrir Câmera</button>
+            <p id="startConferenceHelp">A câmera abrirá em tela cheia</p>
+            <div class="collector-panel" id="collectorPanel">
+              <div class="hint">Com o coletor ativado, mantenha este campo em foco e leia a etiqueta com o laser.</div>
+              <input type="text" id="collectorInput" class="collector-input" placeholder="Aguardando leitura do coletor..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="none" />
+              <div class="collector-last-read" id="collectorLastRead">Pronto para iniciar.</div>
+              <div class="btn-group" style="margin-top:10px">
+                <button class="btn btn-outline btn-sm" onclick="focusCollectorInput()">🎯 Focar campo</button>
+                <button class="btn btn-outline btn-sm" onclick="stopCollectorConference()">⏹️ Encerrar conferência</button>
+              </div>
+            </div>
+          </div>
           <div class="btn-group" style="justify-content: center"><button class="btn btn-outline" onclick="undoLast()" id="btnUndo" disabled>↩️ Desfazer</button><button class="btn btn-outline" onclick="clearScans()">🔄 Reiniciar</button></div>
         </div>
         <div class="card">
@@ -705,7 +734,7 @@
       let S = {
         db: [], scanned: [], checked: new Set(), extras: [], sep: "newline", fileData: null,
         fileLayout: null, meta: {}, confType: "", filter: "all", rptSearch: "",
-        checkerName: "", cloudSessionId: "",
+        checkerName: "", cloudSessionId: "", collectorMode: false, collectorActive: false,
       };
       let currentImportedFile = {
         name: "",
@@ -715,6 +744,7 @@
       };
       let pendingExtraMain = null;
       let checkerStartCallback = null;
+      let collectorReadTimer = null;
       let confTypeModalMode = "import";
       let cloudReady = false, cloudDb = null, cloudStorage = null, cloudSummaryTimer = null,
         cloudConsultUnsub = null, cloudConsultDocs = [], cloudListStatusFilter = "all",
@@ -754,6 +784,8 @@
             S.confType = s.confType || "";
             S.checkerName = s.checkerName || "";
             S.cloudSessionId = s.cloudSessionId || "";
+            S.collectorMode = !!s.collectorMode;
+            S.collectorActive = !!s.collectorActive;
           }
         } catch (e) {}
       }
@@ -761,7 +793,7 @@
         try {
           localStorage.setItem("bob3", JSON.stringify({
             db: S.db, scanned: S.scanned, checked: Array.from(S.checked), extras: S.extras,
-            meta: S.meta, confType: S.confType, checkerName: S.checkerName, cloudSessionId: S.cloudSessionId,
+            meta: S.meta, confType: S.confType, checkerName: S.checkerName, cloudSessionId: S.cloudSessionId, collectorMode: S.collectorMode, collectorActive: S.collectorActive,
           }));
         } catch (e) {}
       }
@@ -1650,7 +1682,7 @@
         document.querySelectorAll(".section").forEach((s) => s.classList.remove("active"));
         const tabEl = document.getElementById("tab" + t.charAt(0).toUpperCase() + t.slice(1)); if (tabEl) tabEl.classList.add("active");
         const sectionEl = document.getElementById("section" + t.charAt(0).toUpperCase() + t.slice(1)); if (sectionEl) sectionEl.classList.add("active");
-        if (t === "scan") { updateStats(); ensureCheckerName(); }
+        if (t === "scan") { updateStats(); updateCollectorModeUI(); ensureCheckerName(); if (S.collectorMode && S.collectorActive) setTimeout(focusCollectorInput, 120); }
         if (t === "report") updateReport();
         if (t === "import") cloudRefreshBaseFiles();
         if (t === "cloud") renderCloudConsult(document.getElementById("cloudSearch")?.value || "");
@@ -1705,12 +1737,14 @@
         S.scanned = [];
         S.checked = new Set();
         S.extras = [];
+        S.collectorActive = false;
         Object.keys(localStorage).filter((k) => k.startsWith("photo_")).forEach((k) => localStorage.removeItem(k));
         save();
         updateDBUI();
         updateStats();
         updateHistory();
         updateReport();
+        updateCollectorModeUI();
         document.getElementById("btnUndo").disabled = true;
       }
       function clearImportedFile(ev) {
@@ -1858,6 +1892,163 @@
         });
       }
       function exportDB() { download(S.db.join("\n"), "bobinas_banco.csv", "text/csv"); notify("Lista exportada!"); }
+      function updateCollectorModeUI() {
+        const status = document.getElementById("collectorStatus");
+        const toggleBtn = document.getElementById("collectorToggleBtn");
+        const startBtn = document.getElementById("startConferenceBtn");
+        const help = document.getElementById("startConferenceHelp");
+        const panel = document.getElementById("collectorPanel");
+        if (!status || !toggleBtn || !startBtn || !help || !panel) return;
+        status.className = "collector-badge";
+        if (S.collectorMode) {
+          toggleBtn.textContent = "🛑 Desativar coletor";
+          startBtn.textContent = S.collectorActive ? "🔫 Conferência em andamento" : "▶️ Iniciar Conferência";
+          help.textContent = S.collectorActive ? "Leia a etiqueta com o laser. O campo abaixo deve permanecer em foco." : "Modo coletor ativado. Toque em iniciar para receber as leituras do laser.";
+          if (S.collectorActive) {
+            status.textContent = "🔫 Coletor pronto para leitura";
+            status.classList.add("running");
+            panel.classList.add("active");
+          } else {
+            status.textContent = "🔫 Coletor ativado";
+            status.classList.add("on");
+            panel.classList.remove("active");
+          }
+        } else {
+          toggleBtn.textContent = "🔫 Ativar coletor";
+          startBtn.textContent = "📸 Abrir Câmera";
+          help.textContent = "A câmera abrirá em tela cheia";
+          status.textContent = "🔫 Coletor desativado";
+          panel.classList.remove("active");
+        }
+      }
+      function setCollectorLastRead(message, tone = "") {
+        const el = document.getElementById("collectorLastRead");
+        if (!el) return;
+        el.className = "collector-last-read" + (tone ? " " + tone : "");
+        el.textContent = message;
+      }
+      function collectorCanFocus() {
+        return !!(S.collectorMode && S.collectorActive && !document.getElementById("locModal")?.classList.contains("show") && !document.getElementById("checkerModal")?.classList.contains("show") && !document.getElementById("modal")?.classList.contains("show") && !document.getElementById("confTypeModal")?.classList.contains("show"));
+      }
+      function focusCollectorInput() {
+        if (!collectorCanFocus()) return;
+        const input = document.getElementById("collectorInput");
+        if (!input) return;
+        input.focus();
+        try { input.select(); } catch (e) {}
+      }
+      function stopCollectorConference(silent = false) {
+        S.collectorActive = false;
+        const input = document.getElementById("collectorInput");
+        if (input) input.value = "";
+        clearTimeout(collectorReadTimer);
+        save();
+        updateCollectorModeUI();
+        setCollectorLastRead("Conferência no coletor encerrada.", "warn");
+        if (!silent) notify("Conferência via coletor encerrada.", "warning");
+      }
+      function toggleCollectorMode() {
+        S.collectorMode = !S.collectorMode;
+        if (!S.collectorMode) stopCollectorConference(true);
+        save();
+        updateCollectorModeUI();
+        setCollectorLastRead(S.collectorMode ? "Modo coletor ativado. Toque em iniciar." : "Pronto para iniciar.");
+        notify(S.collectorMode ? "Modo coletor ativado." : "Modo coletor desativado.", S.collectorMode ? "success" : "warning");
+        if (S.collectorMode && S.collectorActive) setTimeout(focusCollectorInput, 80);
+      }
+      function normalizeCollectorCode(raw) {
+        const text = String(raw || "").replace(/[\r\n\t]+/g, "").trim();
+        if (!text) return "";
+        const digits = text.replace(/\D/g, "");
+        if (/^(500|700)\d{8,9}$/.test(digits)) return digits;
+        return text;
+      }
+      function startCollectorConference() {
+        if (S.db.length === 0) { notify("Importe os dados primeiro!", "error"); return; }
+        if (!ensureCheckerName(() => startCollectorConference())) return;
+        if (S.collectorActive) {
+          setCollectorLastRead("Coletor já está pronto para leitura.", "ok");
+          setTimeout(focusCollectorInput, 80);
+          return;
+        }
+        S.collectorActive = true;
+        save();
+        updateCollectorModeUI();
+        setCollectorLastRead("Pronto para receber leitura do coletor.");
+        setTimeout(focusCollectorInput, 120);
+        notify("Conferência iniciada no modo coletor.");
+      }
+      function startConference() {
+        if (S.collectorMode) startCollectorConference();
+        else openCamera();
+      }
+      function processCollectorCode(rawCode) {
+        const code = normalizeCollectorCode(rawCode);
+        const time = new Date().toLocaleTimeString("pt-BR");
+        if (!code) { setCollectorLastRead("Leitura vazia.", "err"); return; }
+        if (!/^(500|700)\d{8,9}$/.test(code)) {
+          setCollectorLastRead(`Código inválido: ${code}`, "err");
+          notify(`Código inválido: ${code}`, "warning");
+          setTimeout(focusCollectorInput, 80);
+          return;
+        }
+        if (S.checked.has(code)) {
+          setCollectorLastRead(`⚠️ ${code} já conferido.`, "warn");
+          notify(`⚠️ ${code} já conferido.`, "warning");
+          setTimeout(focusCollectorInput, 80);
+          return;
+        }
+        if (S.extras.includes(code)) {
+          setCollectorLastRead(`⚠️ ${code} já registrado como não prevista.`, "warn");
+          notify(`⚠️ ${code} já registrado como não prevista.`, "warning");
+          setTimeout(focusCollectorInput, 80);
+          return;
+        }
+        if (S.db.includes(code)) {
+          const scanItem = { code, time, status: "found", source: "collector" };
+          S.checked.add(code);
+          S.scanned.unshift(scanItem);
+          save();
+          cloudSyncReading(scanItem);
+          updateStats(); updateHistory(); updateDBUI(); updateReport();
+          document.getElementById("btnUndo").disabled = false;
+          setCollectorLastRead(`✅ ${code} conferido.`, "ok");
+          notify(`✅ ${code} conferido.`);
+          setTimeout(focusCollectorInput, 80);
+          return;
+        }
+        setCollectorLastRead(`⚠️ ${code} não prevista. Informe a localização.`, "warn");
+        showLocModal(code, time, "collector");
+      }
+      function handleCollectorRead() {
+        const input = document.getElementById("collectorInput");
+        if (!input) return;
+        const raw = input.value;
+        input.value = "";
+        clearTimeout(collectorReadTimer);
+        processCollectorCode(raw);
+      }
+      function initCollectorMode() {
+        const input = document.getElementById("collectorInput");
+        if (!input) return;
+        input.addEventListener("keydown", (event) => {
+          if (!S.collectorMode || !S.collectorActive) return;
+          if (event.key === "Enter" || event.key === "Tab") {
+            event.preventDefault();
+            handleCollectorRead();
+          }
+        });
+        input.addEventListener("input", () => {
+          if (!S.collectorMode || !S.collectorActive) return;
+          clearTimeout(collectorReadTimer);
+          collectorReadTimer = setTimeout(() => {
+            if ((input.value || "").trim().length >= 10) handleCollectorRead();
+          }, 150);
+        });
+        input.addEventListener("blur", () => {
+          if (collectorCanFocus()) setTimeout(focusCollectorInput, 80);
+        });
+      }
       function openCamera() {
         if (S.db.length === 0) { notify("Importe os dados primeiro!", "error"); return; }
         if (!ensureCheckerName(() => openCamera())) return;
@@ -1866,7 +2057,7 @@
         });
         startIntegratedScanner();
       }
-      window.addEventListener("storage", function (e) { if (e.key === "bob3") { load(); updateDBUI(); updateStats(); updateHistory(); updateReport(); } });
+      window.addEventListener("storage", function (e) { if (e.key === "bob3") { load(); updateDBUI(); updateStats(); updateHistory(); updateReport(); updateCollectorModeUI(); } });
       function updateStats() {
         const total = S.db.length, chk = S.checked.size, pend = total - chk, ext = S.extras.length, pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0;
         document.getElementById("sTotal").textContent = total; document.getElementById("sChecked").textContent = chk; document.getElementById("sPending").textContent = pend; document.getElementById("sExtra").textContent = ext; document.getElementById("pPct").textContent = pct + "%"; document.getElementById("pFill").style.width = pct + "%"; document.getElementById("scanBadge").textContent = chk;
@@ -2181,17 +2372,18 @@
       }
       function showPhotoModal(code) { const photo = getPhoto(code); if (photo) { document.getElementById("photoModalImg").src = photo; document.getElementById("photoModal").classList.add("show"); } else notify("Foto não encontrada", "warning"); }
       function closePhotoModal() { document.getElementById("photoModal").classList.remove("show"); }
-      function showLocModal(code, time) { pendingExtraMain = { code, time }; document.getElementById("locModal").classList.add("show"); document.getElementById("locCodeMain").textContent = code; document.getElementById("locInputMain").value = ""; document.getElementById("locErrorMain").style.display = "none"; setTimeout(() => document.getElementById("locInputMain").focus(), 300); }
+      function showLocModal(code, time, source = "manual") { pendingExtraMain = { code, time, source }; document.getElementById("locModal").classList.add("show"); document.getElementById("locCodeMain").textContent = code; document.getElementById("locInputMain").value = ""; document.getElementById("locErrorMain").style.display = "none"; setTimeout(() => document.getElementById("locInputMain").focus(), 300); }
       function confirmLocMain() {
         const loc = document.getElementById("locInputMain").value.trim(); if (!loc) { document.getElementById("locErrorMain").style.display = "block"; document.getElementById("locInputMain").focus(); return; }
-        if (pendingExtraMain) { S.extras.push(pendingExtraMain.code); S.scanned.unshift({ code: pendingExtraMain.code, time: pendingExtraMain.time, status: "not-found", location: loc }); document.getElementById("btnUndo").disabled = false; save(); updateStats(); updateHistory(); updateDBUI(); pendingExtraMain = null; }
+        if (pendingExtraMain) { const scanItem = { code: pendingExtraMain.code, time: pendingExtraMain.time, status: "not-found", location: loc, source: pendingExtraMain.source || "manual" }; S.extras.push(pendingExtraMain.code); S.scanned.unshift(scanItem); document.getElementById("btnUndo").disabled = false; save(); cloudSyncReading(scanItem); updateStats(); updateHistory(); updateDBUI(); updateReport(); pendingExtraMain = null; }
         document.getElementById("locModal").classList.remove("show");
+        if (collectorCanFocus()) setTimeout(focusCollectorInput, 80);
       }
-      function cancelLocMain() { pendingExtraMain = null; document.getElementById("locModal").classList.remove("show"); }
+      function cancelLocMain() { pendingExtraMain = null; document.getElementById("locModal").classList.remove("show"); if (collectorCanFocus()) setTimeout(focusCollectorInput, 80); }
       function init() {
-        setupMobileCopyProtection(); load(); updateDBUI(); updateStats(); updateHistory(); updateReport(); document.getElementById("btnUndo").disabled = !S.scanned.length; cloudEnsureSession().then((ok) => { if (!ok && cloudIsConfigured()) cloudSetStatus("error", "☁️ Aguardando nuvem"); });
+        setupMobileCopyProtection(); load(); initCollectorMode(); updateDBUI(); updateStats(); updateHistory(); updateReport(); updateCollectorModeUI(); document.getElementById("btnUndo").disabled = !S.scanned.length; if (S.collectorMode && S.collectorActive) setTimeout(focusCollectorInput, 120); cloudEnsureSession().then((ok) => { if (!ok && cloudIsConfigured()) cloudSetStatus("error", "☁️ Aguardando nuvem"); });
       }
       init();
     </script>
-  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a179879679dc01d3',t:'MTc4MzQ1NTQxNA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
