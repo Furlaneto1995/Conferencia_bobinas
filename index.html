@@ -1838,7 +1838,7 @@
         const rows = lines.map((l) => l.split(sep).map((c) => c.trim().replace(/^["']|["']$/g, "")));
         const maxC = Math.max(...rows.map((r) => r.length)); S.fileData = rows; S.fileLayout = null; document.getElementById("colSel").style.display = "none";
         const special = detectSpecialLayout(rows); if (special) { S.fileLayout = special; updateImportActionButtons(); showConferenceTypeModal(special); return; }
-        if (maxC <= 1) { const codes = rows.map((r) => r[0]).filter(Boolean); S.db = [...new Set([...S.db, ...codes])]; save(); cloudEnsureSession().then(() => cloudSyncDatabase()); updateDBUI(); updateImportActionButtons(); notify(`✅ ${codes.length} códigos importados!`); return; }
+        if (maxC <= 1) { const codes = rows.map((r) => r[0]).filter(Boolean); S.db = [...new Set([...S.db, ...codes])]; save(); syncCurrentConferenceToCloud(); updateDBUI(); updateImportActionButtons(); notify(`✅ ${codes.length} códigos importados!`); return; }
         const sel = document.getElementById("colSel"); sel.style.display = "block"; const select = document.getElementById("colSelect"); select.innerHTML = ""; const hdr = rows[0];
         for (let i = 0; i < maxC; i++) { const o = document.createElement("option"); o.value = i; o.textContent = `Col ${i + 1}: "${hdr[i] || ""}"`; select.appendChild(o); }
         for (let i = 0; i < maxC; i++) { const h = (hdr[i] || "").toLowerCase(); if (h.includes("barr") || h.includes("code") || h.includes("código") || h.includes("ean") || h.includes("bobina")) { select.value = i; break; } }
@@ -1891,6 +1891,16 @@
         if (!cfg) return;
         importByConferenceTypes([cfg], { replaceExisting: confTypeModalMode === "change" });
       }
+      function syncCurrentConferenceToCloud() {
+        const run = () => cloudEnsureSession().then((ok) => {
+          if (ok && S.db.length) {
+            cloudSyncDatabase();
+            if (cloudLeaderUnlocked) renderCloudConsult(document.getElementById("cloudSearch")?.value || "");
+          }
+        });
+        if (S.checkerName) run();
+        else showCheckerModal(() => run());
+      }
       function importByConferenceTypes(cfgList, { replaceExisting = false } = {}) {
         if (!S.fileData || !S.fileLayout) { notify("Arquivo não encontrado para importar.", "error"); return; }
         if (replaceExisting) {
@@ -1907,7 +1917,7 @@
         const uniq = [...new Set(codes)]; const labels = cfgList.map((c) => c.label).join(", "); if (!uniq.length) { notify(`Nenhum código encontrado para: ${labels}.`, "warning"); return; }
         S.meta = replaceExisting ? nextMeta : { ...S.meta, ...nextMeta };
         S.db = replaceExisting ? uniq : [...new Set([...S.db, ...uniq])];
-        S.confType = labels; save(); cloudEnsureSession().then(() => cloudSyncDatabase()); updateDBUI(); closeConferenceTypeModal(); updateImportActionButtons(); notify(`✅ ${uniq.length} códigos únicos importados de ${matched} linhas filtradas. Duplicados foram ignorados.`);
+        S.confType = labels; save(); syncCurrentConferenceToCloud(); updateDBUI(); closeConferenceTypeModal(); updateImportActionButtons(); notify(`✅ ${uniq.length} códigos únicos importados de ${matched} linhas filtradas. Duplicados foram ignorados.`);
       }
       function previewCol() {
         const ci = parseInt(document.getElementById("colSelect").value); const hh = document.getElementById("hasHeader").checked; const rows = S.fileData || [], box = document.getElementById("previewBox"); if (!rows.length) return;
@@ -1920,7 +1930,7 @@
       function importFile() {
         const ci = parseInt(document.getElementById("colSelect").value); const hh = document.getElementById("hasHeader").checked; const start = hh ? 1 : 0;
         const codes = (S.fileData || []).slice(start).map((r) => r[ci]).filter((c) => c && c.trim()).map((c) => c.trim());
-        const uniq = [...new Set(codes)]; S.db = [...new Set([...S.db, ...uniq])]; S.confType = S.confType || "Importação por arquivo"; save(); cloudEnsureSession().then(() => cloudSyncDatabase()); updateDBUI(); document.getElementById("colSel").style.display = "none"; notify(`✅ ${uniq.length} códigos importados!`);
+        const uniq = [...new Set(codes)]; S.db = [...new Set([...S.db, ...uniq])]; S.confType = S.confType || "Importação por arquivo"; save(); syncCurrentConferenceToCloud(); updateDBUI(); document.getElementById("colSel").style.display = "none"; notify(`✅ ${uniq.length} códigos importados!`);
       }
       function updateDBUI() {
         const c = S.db.length; document.getElementById("dbCount").textContent = `${c} código${c !== 1 ? "s" : ""}`; document.getElementById("scanBadge").textContent = S.checked.size;
@@ -1960,14 +1970,14 @@
           toggleBtn.classList.add("on");
           startBtn.textContent = "▶️ Iniciar conferência";
           help.textContent = S.collectorActive ? "Leia a etiqueta com o laser. Se surgir uma não prevista, tire as fotos antes de confirmar." : "Modo coletor ativado. Toque em iniciar para receber as leituras do laser.";
-          panel.classList.remove("active");
+          panel.classList.toggle("active", !!S.collectorActive);
           overlay.classList.remove("show");
-          overlay.classList.toggle("show", !!S.collectorActive);
         } else {
           toggleBtn.textContent = "🔫 Coletor OFF";
           startBtn.textContent = "▶️ Iniciar conferência";
           help.textContent = "A câmera abrirá em tela cheia";
           panel.classList.remove("active");
+          overlay.classList.remove("show");
         }
       }
       function collectorShowBigStatus(cls, main, code = "", ms = 1400) {
@@ -2558,5 +2568,5 @@
       }
       init();
     </script>
-  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a179fd21de001a57',t:'MTc4MzQ2MDIyOQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17a06729cb72395',t:'MTc4MzQ2MDYxMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
