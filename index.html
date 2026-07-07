@@ -514,7 +514,8 @@
                 <span id="fileName"></span><button class="file-remove" onclick="clearImportedFile(event)" title="Remover arquivo" aria-label="Remover arquivo">🗑️</button>
               </div>
               <div class="btn-group" id="importActions" style="display:none; margin-top:8px">
-                <button class="btn btn-outline btn-sm" onclick="changeConferenceType()">🔁 Alterar tipo de conferência</button>
+                <button class="btn btn-outline btn-sm" id="changeConfTypeBtn" onclick="changeConferenceType()">🔁 Alterar tipo de conferência</button>
+                <button class="btn btn-primary btn-sm" id="saveBaseFileBtn" onclick="cloudSaveCurrentFileBase()">☁️ Salvar arquivo-base na nuvem</button>
               </div>
               <div class="col-sel" id="colSel">
                 <label>Coluna com os códigos:</label>
@@ -527,6 +528,12 @@
               </div>
             </div>
           </div>
+        </div>
+        <div class="card">
+          <div class="card-title">☁️ Arquivos-base na nuvem <span class="card-actions-inline"><button class="btn btn-outline btn-sm" onclick="cloudRefreshBaseFiles()">🔄 Atualizar</button></span></div>
+          <div class="card-sub">Carregue em outros dispositivos sem precisar do arquivo no aparelho</div>
+          <div class="search-wrap"><span class="si">🔍</span><input class="search-input" id="cloudBaseSearch" placeholder="Buscar arquivo-base..." oninput="cloudBaseFilesSearch=this.value; cloudRenderBaseFiles()" /></div>
+          <div id="cloudBaseFilesBox" class="cloud-list"><div class="empty">Clique em atualizar para consultar.</div></div>
         </div>
         <div class="card">
           <div class="card-title">🗄️ Banco de Dados <span style="margin-left: auto; font-size: 0.75em; color: var(--text-muted);" id="dbCount">0 códigos</span><span class="card-actions-inline"><button class="btn btn-outline btn-sm" id="dbClearBtn" style="display:none" onclick="confirmClear()">🗑️ Limpar bobinas</button></span></div>
@@ -700,6 +707,12 @@
         fileLayout: null, meta: {}, confType: "", filter: "all", rptSearch: "",
         checkerName: "", cloudSessionId: "",
       };
+      let currentImportedFile = {
+        name: "",
+        content: "",
+        source: "",
+        mimeType: "text/plain",
+      };
       let pendingExtraMain = null;
       let checkerStartCallback = null;
       let confTypeModalMode = "import";
@@ -707,7 +720,8 @@
         cloudConsultUnsub = null, cloudConsultDocs = [], cloudListStatusFilter = "all",
         cloudDetailRows = [], cloudDetailFilter = "all", cloudDetailSearch = "",
         cloudDetailConfId = "", cloudMergeSelectedIds = new Set(), cloudMergedReport = null,
-        cloudSessionUnsub = null, cloudLeaderUnlocked = false, cloudSecretTimer = null;
+        cloudSessionUnsub = null, cloudLeaderUnlocked = false, cloudSecretTimer = null,
+        cloudBaseFilesUnsub = null, cloudBaseFilesDocs = [], cloudBaseFilesSearch = "";
       let camScanner = null, camVideoTrack = null, camTorchOn = false, camZoomValue = null,
         camZoomMin = 1, camZoomMax = 1, camZoomStepSize = 0.25, camZoomApplyTimer = null,
         camCooldown = false, camPendingExtra = null, camManualMode = "extra",
@@ -929,6 +943,190 @@
         } catch (e) { console.warn("Falha ao enviar foto ao Supabase:", e); cloudSetStatus("error", "☁️ Foto local, nuvem falhou"); return null; }
       }
       function cloudSetStatus(type, text) { const el = document.getElementById("cloudStatus"); if (!el) return; el.className = "cloud-status" + (type ? " " + type : ""); el.textContent = text; }
+      function cloudMimeTypeFromFileName(name = "") {
+        const lower = String(name).toLowerCase();
+        if (lower.endsWith(".csv")) return "text/csv";
+        if (lower.endsWith(".tsv")) return "text/tab-separated-values";
+        if (lower.endsWith(".txt") || lower.endsWith(".text")) return "text/plain";
+        return "text/plain";
+      }
+      function cloudSafeFileName(name = "arquivo-base.txt") {
+        const clean = String(name || "arquivo-base.txt").trim().replace(/[^a-zA-Z0-9._-]+/g, "_");
+        return clean || "arquivo-base.txt";
+      }
+      async function cloudUploadBaseFile(baseId, fileName, content, mimeType) {
+        if (!SUPABASE_URL || !SUPABASE_ANON_KEY) throw new Error("Supabase não configurado");
+        const safeName = cloudSafeFileName(fileName);
+        const path = `arquivos-base/${cloudDateKey()}_${baseId}_${safeName}`;
+        const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`;
+        const res = await fetch(uploadUrl, {
+          method: "POST",
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            "Content-Type": mimeType || "text/plain; charset=utf-8",
+            "x-upsert": "true",
+          },
+          body: content,
+        });
+        if (!res.ok) {
+          const txt = await res.text().catch(() => "");
+          throw new Error(`Upload arquivo-base ${res.status}: ${txt}`);
+        }
+        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`;
+        return { path, publicUrl };
+      }
+      async function cloudSaveCurrentFileBase() {
+        try {
+          if (!currentImportedFile.content) {
+            notify("Importe ou carregue um arquivo antes de salvar na nuvem.", "warning");
+            return;
+          }
+          if (!(await cloudInit())) throw new Error("Firebase indisponível");
+          const baseId = `base_${Date.now()}`;
+          const fileName = currentImportedFile.name || "arquivo-base.txt";
+          const mimeType = currentImportedFile.mimeType || cloudMimeTypeFromFileName(fileName);
+          cloudSetStatus("sync", "☁️ Salvando arquivo-base...");
+          const uploaded = await cloudUploadBaseFile(baseId, fileName, currentImportedFile.content, mimeType);
+          await cloudDb.collection("arquivos_base").doc(baseId).set({
+            id: baseId,
+            nome: fileName,
+            operador: S.checkerName || "",
+            operadorKey: cloudOperatorKey(),
+            criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            data: cloudDateKey(),
+            linhas: currentImportedFile.content.split(/\r?\n/).filter((l) => l.trim()).length,
+            totalCodigos: S.db.length || 0,
+            tipoConferencia: S.confType || "",
+            origem: currentImportedFile.source || "local",
+            mimeType,
+            storagePath: uploaded.path,
+            storageUrl: uploaded.publicUrl,
+          }, { merge: true });
+          cloudSetStatus("ok", "☁️ Arquivo-base salvo");
+          notify("Arquivo-base salvo na nuvem!");
+          cloudRefreshBaseFiles();
+        } catch (e) {
+          console.error(e);
+          cloudSetStatus("error", "☁️ Erro ao salvar arquivo-base");
+          notify("Erro ao salvar arquivo-base: " + (e.message || e), "error");
+        }
+      }
+      function cloudRenderBaseFiles() {
+        const box = document.getElementById("cloudBaseFilesBox");
+        if (!box) return;
+        const q = String(cloudBaseFilesSearch || "").trim().toLowerCase();
+        let docs = cloudBaseFilesDocs || [];
+        if (q) {
+          docs = docs.filter((d) => [d.nome, d.operador, d.data, d.tipoConferencia, d.id].join(" ").toLowerCase().includes(q));
+        }
+        if (!docs.length) {
+          box.innerHTML = '<div class="empty">Nenhum arquivo-base salvo na nuvem.</div>';
+          return;
+        }
+        box.innerHTML = docs.map((d) => `
+          <div class="cloud-item">
+            <div class="cloud-item-head">
+              <div class="cloud-item-title">${esc(d.nome || "arquivo-base")}</div>
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+                <button class="cloud-report-btn" onclick="cloudLoadBaseFile('${esc(d.id).replace(/'/g, "&#39;")}')">📥 Carregar</button>
+                ${cloudLeaderUnlocked ? `<button class="cloud-delete-btn" onclick="cloudDeleteBaseFile('${esc(d.id).replace(/'/g, "&#39;")}')">🗑️ Excluir</button>` : ""}
+              </div>
+            </div>
+            <div class="cloud-item-info">
+              <span>👤 <strong>${esc(d.operador || "-")}</strong></span>
+              <span>📅 <strong>${esc(d.data || "-")}</strong></span>
+              <span>📦 Códigos: <strong>${d.totalCodigos ?? 0}</strong></span>
+              <span>📋 Tipo: <strong>${esc(d.tipoConferencia || "-")}</strong></span>
+            </div>
+          </div>
+        `).join("");
+      }
+      async function cloudRefreshBaseFiles() {
+        const box = document.getElementById("cloudBaseFilesBox");
+        if (box) box.innerHTML = '<div class="empty">☁️ Consultando arquivos-base...</div>';
+        try {
+          if (!(await cloudInit())) {
+            if (box) box.innerHTML = '<div class="empty">Firebase não configurado ou sem conexão.</div>';
+            return;
+          }
+          if (cloudBaseFilesUnsub) cloudBaseFilesUnsub();
+          cloudBaseFilesUnsub = cloudDb.collection("arquivos_base").orderBy("criadoEm", "desc").limit(80).onSnapshot(
+            (snap) => {
+              cloudBaseFilesDocs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+              cloudRenderBaseFiles();
+            },
+            (err) => {
+              console.error(err);
+              if (box) box.innerHTML = '<div class="empty">Erro ao consultar arquivos-base.</div>';
+            }
+          );
+        } catch (e) {
+          console.error(e);
+          if (box) box.innerHTML = '<div class="empty">Erro ao consultar arquivos-base.</div>';
+        }
+      }
+      async function cloudLoadBaseFile(baseId) {
+        try {
+          if (!(await cloudInit())) throw new Error("Firebase indisponível");
+          const doc = await cloudDb.collection("arquivos_base").doc(baseId).get();
+          if (!doc.exists) throw new Error("Arquivo-base não encontrado");
+          const data = { id: doc.id, ...doc.data() };
+          if (!data.storageUrl) throw new Error("Arquivo-base sem URL de armazenamento");
+          cloudSetStatus("sync", "☁️ Baixando arquivo-base...");
+          const res = await fetch(data.storageUrl);
+          if (!res.ok) throw new Error("Falha ao baixar arquivo-base");
+          const content = await res.text();
+          currentImportedFile = {
+            name: data.nome || "arquivo-base.txt",
+            content,
+            source: "cloud",
+            mimeType: data.mimeType || cloudMimeTypeFromFileName(data.nome || "arquivo-base.txt"),
+          };
+          const info = document.getElementById("fileInfo");
+          const name = document.getElementById("fileName");
+          if (info) info.style.display = "flex";
+          if (name) name.textContent = `☁️ ${currentImportedFile.name}`;
+          parseFile(content);
+          updateImportActionButtons();
+          cloudSetStatus("ok", "☁️ Arquivo-base carregado");
+          notify("Arquivo-base carregado da nuvem!");
+        } catch (e) {
+          console.error(e);
+          cloudSetStatus("error", "☁️ Erro ao carregar arquivo-base");
+          notify("Erro ao carregar arquivo-base: " + (e.message || e), "error");
+        }
+      }
+      async function cloudDeleteBaseFile(baseId) {
+        if (!cloudLeaderUnlocked) {
+          cloudRequestLeaderAccess();
+          return;
+        }
+        if (!confirm(`Excluir definitivamente o arquivo-base ${baseId}?`)) return;
+        try {
+          if (!(await cloudInit())) throw new Error("Firebase indisponível");
+          const ref = cloudDb.collection("arquivos_base").doc(baseId);
+          const snap = await ref.get();
+          if (!snap.exists) throw new Error("Arquivo-base não encontrado");
+          const data = snap.data() || {};
+          if (data.storagePath && SUPABASE_URL && SUPABASE_ANON_KEY) {
+            await fetch(`${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}`, {
+              method: "DELETE",
+              headers: {
+                apikey: SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ prefixes: [data.storagePath] }),
+            }).catch(() => {});
+          }
+          await ref.delete();
+          notify("Arquivo-base excluído.");
+        } catch (e) {
+          console.error(e);
+          notify("Erro ao excluir arquivo-base: " + (e.message || e), "error");
+        }
+      }
       async function cloudMarkFinished() {
         try {
           await cloudEnsureSession(); const ref = cloudConferenceRef(); if (!ref) return false;
@@ -1451,6 +1649,7 @@
         const sectionEl = document.getElementById("section" + t.charAt(0).toUpperCase() + t.slice(1)); if (sectionEl) sectionEl.classList.add("active");
         if (t === "scan") { updateStats(); ensureCheckerName(); }
         if (t === "report") updateReport();
+        if (t === "import") cloudRefreshBaseFiles();
         if (t === "cloud") renderCloudConsult(document.getElementById("cloudSearch")?.value || "");
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
@@ -1488,6 +1687,7 @@
         if (!keepImportedFile) {
           S.fileData = null;
           S.fileLayout = null;
+          currentImportedFile = { name: "", content: "", source: "", mimeType: "text/plain" };
           const fi = document.getElementById("fileIn"); if (fi) fi.value = "";
           const info = document.getElementById("fileInfo"); if (info) info.style.display = "none";
           const name = document.getElementById("fileName"); if (name) name.textContent = "";
@@ -1519,7 +1719,18 @@
         const f = e.target.files[0]; if (!f) return;
         document.getElementById("fileInfo").style.display = "flex";
         document.getElementById("fileName").textContent = `📄 ${f.name} (${(f.size / 1024).toFixed(1)} KB)`;
-        const r = new FileReader(); r.onload = (ev) => parseFile(ev.target.result); r.readAsText(f, "UTF-8");
+        const r = new FileReader();
+        r.onload = (ev) => {
+          currentImportedFile = {
+            name: f.name,
+            content: ev.target.result,
+            source: "local",
+            mimeType: cloudMimeTypeFromFileName(f.name),
+          };
+          parseFile(ev.target.result);
+          updateImportActionButtons();
+        };
+        r.readAsText(f, "UTF-8");
       }
       function detectSpecialLayout(rows) {
         if (!rows || !rows.length) return null;
@@ -1534,16 +1745,22 @@
         const lines = content.split(/\r?\n/).filter((l) => l.trim()); if (!lines.length) { notify("Arquivo vazio!", "error"); return; }
         const rows = lines.map((l) => l.split(sep).map((c) => c.trim().replace(/^["']|["']$/g, "")));
         const maxC = Math.max(...rows.map((r) => r.length)); S.fileData = rows; S.fileLayout = null; document.getElementById("colSel").style.display = "none";
-        const special = detectSpecialLayout(rows); if (special) { S.fileLayout = special; showConferenceTypeModal(special); return; }
-        if (maxC <= 1) { const codes = rows.map((r) => r[0]).filter(Boolean); S.db = [...new Set([...S.db, ...codes])]; save(); updateDBUI(); notify(`✅ ${codes.length} códigos importados!`); return; }
+        const special = detectSpecialLayout(rows); if (special) { S.fileLayout = special; updateImportActionButtons(); showConferenceTypeModal(special); return; }
+        if (maxC <= 1) { const codes = rows.map((r) => r[0]).filter(Boolean); S.db = [...new Set([...S.db, ...codes])]; save(); updateDBUI(); updateImportActionButtons(); notify(`✅ ${codes.length} códigos importados!`); return; }
         const sel = document.getElementById("colSel"); sel.style.display = "block"; const select = document.getElementById("colSelect"); select.innerHTML = ""; const hdr = rows[0];
         for (let i = 0; i < maxC; i++) { const o = document.createElement("option"); o.value = i; o.textContent = `Col ${i + 1}: "${hdr[i] || ""}"`; select.appendChild(o); }
         for (let i = 0; i < maxC; i++) { const h = (hdr[i] || "").toLowerCase(); if (h.includes("barr") || h.includes("code") || h.includes("código") || h.includes("ean") || h.includes("bobina")) { select.value = i; break; } }
+        updateImportActionButtons();
         previewCol();
       }
       function updateImportActionButtons() {
         const importActions = document.getElementById("importActions");
-        if (importActions) importActions.style.display = S.fileData && S.fileLayout ? "flex" : "none";
+        const changeBtn = document.getElementById("changeConfTypeBtn");
+        const saveBtn = document.getElementById("saveBaseFileBtn");
+        const hasImportedSource = !!(currentImportedFile && currentImportedFile.content);
+        if (importActions) importActions.style.display = hasImportedSource ? "flex" : "none";
+        if (changeBtn) changeBtn.style.display = S.fileData && S.fileLayout ? "inline-flex" : "none";
+        if (saveBtn) saveBtn.style.display = hasImportedSource ? "inline-flex" : "none";
         const clearBtn = document.getElementById("dbClearBtn");
         if (clearBtn) clearBtn.style.display = S.db.length ? "inline-flex" : "none";
       }
@@ -1973,5 +2190,5 @@
       }
       init();
     </script>
-  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1770192990ef245',t:'MTc4MzQyODk1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1776e558c61b30b',t:'MTc4MzQzMzQwOA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
