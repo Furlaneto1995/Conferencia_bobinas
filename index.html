@@ -1095,6 +1095,17 @@
         const rows = lines.map((l) => l.split(sep).map((c) => c.trim().replace(/^["']|["']$/g, "")));
         return { rows, sep, maxC: rows.length ? Math.max(...rows.map((r) => r.length)) : 0 };
       }
+      function countCodesFromRows(rows) {
+        if (!rows || !rows.length) return 0;
+        const maxC = Math.max(...rows.map((r) => r.length));
+        const special = detectSpecialLayout(rows);
+        if (special) return rows.slice(1).filter((r) => String(r[special.idx.BARRAS_ORIGEM] || "").trim()).length;
+        if (maxC <= 1) return rows.filter((r) => String(r[0] || "").trim()).length;
+        const hdr = (rows[0] || []).map((h) => String(h || "").toLowerCase());
+        let codeIdx = hdr.findIndex((h) => h.includes("barr") || h.includes("code") || h.includes("código") || h.includes("ean") || h.includes("bobina"));
+        if (codeIdx < 0) codeIdx = 0;
+        return rows.slice(1).filter((r) => String(r[codeIdx] || "").trim()).length;
+      }
       function cloudHandleLeaderBaseFile(e) {
         if (!cloudLeaderUnlocked) { cloudRequestLeaderAccess(); return; }
         const f = e.target.files[0];
@@ -1224,11 +1235,15 @@
             if (box) box.innerHTML = '<div class="empty">Firebase não configurado ou sem conexão.</div>';
             return;
           }
-          const [deletedSnap, filesSnap] = await Promise.all([
-            cloudDb.collection("arquivos_base_excluidos").limit(300).get(),
-            cloudDb.collection("arquivos_base").orderBy("criadoEm", "desc").limit(80).get(),
-          ]);
-          cloudBaseDeletedIds = new Set(deletedSnap.docs.map((d) => d.id));
+          let deletedIds = new Set();
+          try {
+            const deletedSnap = await cloudDb.collection("arquivos_base_excluidos").limit(300).get();
+            deletedIds = new Set(deletedSnap.docs.map((d) => d.id));
+          } catch (e) {
+            console.warn("Sem permissão para ler arquivos_base_excluidos, seguindo sem essa coleção.", e);
+          }
+          const filesSnap = await cloudDb.collection("arquivos_base").orderBy("criadoEm", "desc").limit(80).get();
+          cloudBaseDeletedIds = deletedIds;
           cloudBaseFilesDocs = filesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
           cloudRenderBaseFiles();
         } catch (e) {
@@ -2809,5 +2824,5 @@
       }
       init();
     </script>
-  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17a4f08ceaf646e',t:'MTc4MzQ2MzU4NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17a57f64c2d1f4b',t:'MTc4MzQ2Mzk0OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
