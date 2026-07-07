@@ -167,10 +167,8 @@
       .prog-fill { height: 100%; background: linear-gradient(90deg, var(--accent-blue), var(--accent-green)); border-radius: 6px; transition: width 0.5s; }
       .camera-area { text-align: center; padding: 20px 12px; }
       .camera-area p { color: var(--text-muted); font-size: 0.78em; margin-top: 10px; }
-      .collector-toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: center; margin-bottom: 12px; }
-      .collector-badge { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--bg-card); color: var(--text-secondary); font-size: 0.8em; font-weight: 700; }
-      .collector-badge.on { background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.25); color: var(--accent-green); }
-      .collector-badge.running { background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.25); color: var(--accent-blue); }
+      .collector-topbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: center; margin-top: 10px; }
+      .collector-toggle.on { background: linear-gradient(135deg, var(--accent-blue), #2563eb); border-color: transparent; color: #fff; }
       .collector-panel { display: none; margin-top: 12px; padding: 12px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.18); background: rgba(59, 130, 246, 0.04); text-align: left; }
       .collector-panel.active { display: block; }
       .collector-panel .hint { color: var(--text-secondary); font-size: 0.8em; margin-bottom: 8px; }
@@ -180,6 +178,17 @@
       .collector-last-read.ok { color: var(--accent-green); }
       .collector-last-read.warn { color: var(--accent-yellow); }
       .collector-last-read.err { color: var(--accent-red); }
+      .loc-photo-section { margin-top: 10px; display: none; }
+      .loc-photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .loc-photo-label { font-size: 0.78em; color: var(--text-secondary); margin-bottom: 4px; }
+      .loc-photo-btn { width: 100%; padding: 10px 8px; background: rgba(6, 182, 212, 0.08); border: 2px dashed rgba(6, 182, 212, 0.35); border-radius: 10px; color: var(--accent-cyan); font-size: 0.78em; font-weight: 700; text-align: center; cursor: pointer; }
+      .loc-photo-btn.has-photo { border-color: rgba(16, 185, 129, 0.45); background: rgba(16, 185, 129, 0.08); color: var(--accent-green); }
+      .loc-photo-btn input { display: none; }
+      .loc-photo-preview { display: none; position: relative; margin-top: 6px; }
+      .loc-photo-preview img { width: 100%; height: 140px; object-fit: cover; border-radius: 10px; border: 2px solid rgba(16, 185, 129, 0.25); }
+      .loc-photo-remove { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; border: none; border-radius: 50%; background: rgba(239, 68, 68, 0.92); color: #fff; cursor: pointer; }
+      .loc-photo-error { color: var(--accent-red); font-size: 0.76em; font-weight: 700; margin-top: 4px; display: none; }
+      @media (max-width: 520px) { .loc-photo-grid { grid-template-columns: 1fr; } }
       .history { max-height: 350px; overflow-y: auto; margin-top: 12px; -webkit-overflow-scrolling: touch; }
       .history::-webkit-scrollbar { width: 3px; }
       .history::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -487,7 +496,9 @@
       <div class="header">
         <h1>📦 Conferência de Bobinas</h1>
         <p>Sistema de conferência por código de barras</p>
-        <div
+        <div class="collector-topbar">
+          <button class="btn btn-outline btn-sm collector-toggle" id="collectorTopToggleBtn" onclick="toggleCollectorMode()">🔫 Coletor OFF</button>
+          <div
           id="cloudStatus"
           class="cloud-status"
           title="Menu do líder: segure por 2 segundos"
@@ -497,6 +508,7 @@
           onpointercancel="cloudCancelSecretPress()"
           oncontextmenu="return false"
         >☁️ Nuvem: local</div>
+        </div>
       </div>
       <div class="tabs">
         <button class="tab active" onclick="switchTab('import')" id="tabImport">
@@ -570,10 +582,6 @@
         <div class="card">
           <div class="prog-wrap"><div class="prog-head"><span>Progresso</span><span class="pct" id="pPct">0%</span></div><div class="prog-bar"><div class="prog-fill" id="pFill" style="width: 0%"></div></div></div>
           <div class="camera-area">
-            <div class="collector-toolbar">
-              <span class="collector-badge" id="collectorStatus">🔫 Coletor desativado</span>
-              <button class="btn btn-outline btn-sm" id="collectorToggleBtn" onclick="toggleCollectorMode()">🔫 Ativar coletor</button>
-            </div>
             <button class="btn btn-camera" id="startConferenceBtn" onclick="startConference()">📸 Abrir Câmera</button>
             <p id="startConferenceHelp">A câmera abrirá em tela cheia</p>
             <div class="collector-panel" id="collectorPanel">
@@ -727,7 +735,7 @@
       <button class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px 14px" onclick="importSelectedConferenceTypes()">📥 Importar selecionados</button>
       <button class="btn btn-outline" style="width: 100%; justify-content: center; padding: 12px 14px" onclick="closeConferenceTypeModal()">Cancelar</button>
     </div></div></div>
-    <div class="modal-bg" id="locModal"><div class="modal" style="border-color: var(--accent-red)"><h2 style="color: var(--accent-red)">⚠️ Bobina Não Prevista</h2><div class="loc-code-display" id="locCodeMain"></div><p>Informe a localização desta bobina:</p><input type="text" id="locInputMain" class="loc-input-main" placeholder="Ex: Galpão A, Corredor 3..." onkeydown="if (event.key === 'Enter') confirmLocMain();" autocomplete="off" /><div id="locErrorMain" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Localização obrigatória!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmLocMain()">✅ Confirmar</button><button class="btn btn-outline" onclick="cancelLocMain()">Cancelar</button></div></div></div>
+    <div class="modal-bg" id="locModal"><div class="modal" style="border-color: var(--accent-red)"><h2 style="color: var(--accent-red)">⚠️ Bobina Não Prevista</h2><div class="loc-code-display" id="locCodeMain"></div><p id="locModalDesc">Informe a localização desta bobina:</p><input type="text" id="locInputMain" class="loc-input-main" placeholder="Ex: Galpão A, Corredor 3..." onkeydown="if (event.key === 'Enter') confirmLocMain();" autocomplete="off" /><textarea id="locObsMain" class="loc-input-main" placeholder="Observação (opcional)" style="min-height: 76px; resize: vertical; font-family: inherit;"></textarea><div class="loc-photo-section" id="locPhotoSection"><div class="loc-photo-grid"><div><div class="loc-photo-label">🏷️ Foto da etiqueta <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnEtiqueta" onclick="document.getElementById('locPhotoInputEtiqueta').click()">📷 Tirar foto da etiqueta<input type="file" id="locPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'etiqueta')" /></div><div class="loc-photo-preview" id="locPhotoPreviewEtiqueta"><img id="locPhotoImgEtiqueta" src="" /><button class="loc-photo-remove" onclick="locRemovePhoto('etiqueta')">✕</button></div><div class="loc-photo-error" id="locPhotoErrorEtiqueta">⚠️ Foto da etiqueta obrigatória!</div></div><div><div class="loc-photo-label">📦 Foto da bobina <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnBobina" onclick="document.getElementById('locPhotoInputBobina').click()">📷 Tirar foto da bobina<input type="file" id="locPhotoInputBobina" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'bobina')" /></div><div class="loc-photo-preview" id="locPhotoPreviewBobina"><img id="locPhotoImgBobina" src="" /><button class="loc-photo-remove" onclick="locRemovePhoto('bobina')">✕</button></div><div class="loc-photo-error" id="locPhotoErrorBobina">⚠️ Foto da bobina obrigatória!</div></div></div></div><div id="locErrorMain" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Localização obrigatória!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmLocMain()">✅ Confirmar</button><button class="btn btn-outline" onclick="cancelLocMain()">Cancelar</button></div></div></div>
     <div class="photo-modal" id="photoModal"><div style="text-align: center; color: #fff; font-weight: 700; max-width: 100%; max-height: 82vh; overflow: auto;">🏷️ Etiqueta + 📦 Bobina<br /><img id="photoModalImg" src="" /></div><button class="photo-modal-close" onclick="closePhotoModal()">✕ Fechar</button></div>
 
     <script>
@@ -743,6 +751,8 @@
         mimeType: "text/plain",
       };
       let pendingExtraMain = null;
+      let pendingExtraMainPhotoEtiqueta = null;
+      let pendingExtraMainPhotoBobina = null;
       let checkerStartCallback = null;
       let collectorReadTimer = null;
       let confTypeModalMode = "import";
@@ -1738,6 +1748,9 @@
         S.checked = new Set();
         S.extras = [];
         S.collectorActive = false;
+        pendingExtraMain = null;
+        pendingExtraMainPhotoEtiqueta = null;
+        pendingExtraMainPhotoBobina = null;
         Object.keys(localStorage).filter((k) => k.startsWith("photo_")).forEach((k) => localStorage.removeItem(k));
         save();
         updateDBUI();
@@ -1893,31 +1906,22 @@
       }
       function exportDB() { download(S.db.join("\n"), "bobinas_banco.csv", "text/csv"); notify("Lista exportada!"); }
       function updateCollectorModeUI() {
-        const status = document.getElementById("collectorStatus");
-        const toggleBtn = document.getElementById("collectorToggleBtn");
+        const toggleBtn = document.getElementById("collectorTopToggleBtn");
         const startBtn = document.getElementById("startConferenceBtn");
         const help = document.getElementById("startConferenceHelp");
         const panel = document.getElementById("collectorPanel");
-        if (!status || !toggleBtn || !startBtn || !help || !panel) return;
-        status.className = "collector-badge";
+        if (!toggleBtn || !startBtn || !help || !panel) return;
+        toggleBtn.className = "btn btn-outline btn-sm collector-toggle";
         if (S.collectorMode) {
-          toggleBtn.textContent = "🛑 Desativar coletor";
+          toggleBtn.textContent = S.collectorActive ? "🔫 Coletor ON" : "🔫 Coletor ON";
+          toggleBtn.classList.add("on");
           startBtn.textContent = S.collectorActive ? "🔫 Conferência em andamento" : "▶️ Iniciar Conferência";
-          help.textContent = S.collectorActive ? "Leia a etiqueta com o laser. O campo abaixo deve permanecer em foco." : "Modo coletor ativado. Toque em iniciar para receber as leituras do laser.";
-          if (S.collectorActive) {
-            status.textContent = "🔫 Coletor pronto para leitura";
-            status.classList.add("running");
-            panel.classList.add("active");
-          } else {
-            status.textContent = "🔫 Coletor ativado";
-            status.classList.add("on");
-            panel.classList.remove("active");
-          }
+          help.textContent = S.collectorActive ? "Leia a etiqueta com o laser. Se surgir uma não prevista, tire as fotos antes de confirmar." : "Modo coletor ativado. Toque em iniciar para receber as leituras do laser.";
+          panel.classList.toggle("active", !!S.collectorActive);
         } else {
-          toggleBtn.textContent = "🔫 Ativar coletor";
+          toggleBtn.textContent = "🔫 Coletor OFF";
           startBtn.textContent = "📸 Abrir Câmera";
           help.textContent = "A câmera abrirá em tela cheia";
-          status.textContent = "🔫 Coletor desativado";
           panel.classList.remove("active");
         }
       }
@@ -2372,18 +2376,92 @@
       }
       function showPhotoModal(code) { const photo = getPhoto(code); if (photo) { document.getElementById("photoModalImg").src = photo; document.getElementById("photoModal").classList.add("show"); } else notify("Foto não encontrada", "warning"); }
       function closePhotoModal() { document.getElementById("photoModal").classList.remove("show"); }
-      function showLocModal(code, time, source = "manual") { pendingExtraMain = { code, time, source }; document.getElementById("locModal").classList.add("show"); document.getElementById("locCodeMain").textContent = code; document.getElementById("locInputMain").value = ""; document.getElementById("locErrorMain").style.display = "none"; setTimeout(() => document.getElementById("locInputMain").focus(), 300); }
-      function confirmLocMain() {
-        const loc = document.getElementById("locInputMain").value.trim(); if (!loc) { document.getElementById("locErrorMain").style.display = "block"; document.getElementById("locInputMain").focus(); return; }
-        if (pendingExtraMain) { const scanItem = { code: pendingExtraMain.code, time: pendingExtraMain.time, status: "not-found", location: loc, source: pendingExtraMain.source || "manual" }; S.extras.push(pendingExtraMain.code); S.scanned.unshift(scanItem); document.getElementById("btnUndo").disabled = false; save(); cloudSyncReading(scanItem); updateStats(); updateHistory(); updateDBUI(); updateReport(); pendingExtraMain = null; }
+      function resetLocPhotoState() {
+        pendingExtraMainPhotoEtiqueta = null;
+        pendingExtraMainPhotoBobina = null;
+        ["Etiqueta", "Bobina"].forEach((suffix) => {
+          const preview = document.getElementById("locPhotoPreview" + suffix);
+          const img = document.getElementById("locPhotoImg" + suffix);
+          const btn = document.getElementById("locPhotoBtn" + suffix);
+          const input = document.getElementById("locPhotoInput" + suffix);
+          const err = document.getElementById("locPhotoError" + suffix);
+          if (preview) preview.style.display = "none";
+          if (img) img.src = "";
+          if (btn) btn.classList.remove("has-photo");
+          if (input) input.value = "";
+          if (err) err.style.display = "none";
+        });
+      }
+      function locHandlePhoto(e, tipo) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+          const data = ev.target.result;
+          const isBobina = tipo === "bobina";
+          if (isBobina) pendingExtraMainPhotoBobina = data; else pendingExtraMainPhotoEtiqueta = data;
+          document.getElementById(isBobina ? "locPhotoImgBobina" : "locPhotoImgEtiqueta").src = data;
+          document.getElementById(isBobina ? "locPhotoPreviewBobina" : "locPhotoPreviewEtiqueta").style.display = "block";
+          document.getElementById(isBobina ? "locPhotoBtnBobina" : "locPhotoBtnEtiqueta").classList.add("has-photo");
+          document.getElementById(isBobina ? "locPhotoErrorBobina" : "locPhotoErrorEtiqueta").style.display = "none";
+        };
+        reader.readAsDataURL(file);
+      }
+      function locRemovePhoto(tipo) {
+        const isBobina = tipo === "bobina";
+        if (isBobina) pendingExtraMainPhotoBobina = null; else pendingExtraMainPhotoEtiqueta = null;
+        document.getElementById(isBobina ? "locPhotoPreviewBobina" : "locPhotoPreviewEtiqueta").style.display = "none";
+        document.getElementById(isBobina ? "locPhotoBtnBobina" : "locPhotoBtnEtiqueta").classList.remove("has-photo");
+        document.getElementById(isBobina ? "locPhotoErrorBobina" : "locPhotoErrorEtiqueta").style.display = "none";
+        const input = document.getElementById(isBobina ? "locPhotoInputBobina" : "locPhotoInputEtiqueta");
+        if (input) input.value = "";
+      }
+      function showLocModal(code, time, source = "manual") {
+        const requirePhotos = source === "collector";
+        pendingExtraMain = { code, time, source, requirePhotos };
+        document.getElementById("locModal").classList.add("show");
+        document.getElementById("locCodeMain").textContent = code;
+        document.getElementById("locInputMain").value = "";
+        document.getElementById("locObsMain").value = "";
+        document.getElementById("locErrorMain").style.display = "none";
+        document.getElementById("locModalDesc").textContent = requirePhotos ? "Informe a localização e tire as fotos da etiqueta e da bobina." : "Informe a localização desta bobina:";
+        document.getElementById("locPhotoSection").style.display = requirePhotos ? "block" : "none";
+        resetLocPhotoState();
+        setTimeout(() => document.getElementById("locInputMain").focus(), 300);
+      }
+      async function confirmLocMain() {
+        const loc = document.getElementById("locInputMain").value.trim();
+        const obs = document.getElementById("locObsMain").value.trim();
+        if (!loc) { document.getElementById("locErrorMain").style.display = "block"; document.getElementById("locInputMain").focus(); return; }
+        const requirePhotos = !!pendingExtraMain?.requirePhotos;
+        let photoError = false;
+        if (requirePhotos && !pendingExtraMainPhotoEtiqueta) { document.getElementById("locPhotoErrorEtiqueta").style.display = "block"; photoError = true; }
+        if (requirePhotos && !pendingExtraMainPhotoBobina) { document.getElementById("locPhotoErrorBobina").style.display = "block"; photoError = true; }
+        if (photoError) return;
+        if (pendingExtraMain) {
+          let savedPhoto = false;
+          if (requirePhotos) {
+            savedPhoto = await savePhotosExtra(pendingExtraMain.code, pendingExtraMainPhotoEtiqueta, pendingExtraMainPhotoBobina);
+            if (!savedPhoto) notify("Foto não foi salva. Não vai sair no exportador.", "warning");
+          }
+          const scanItem = { code: pendingExtraMain.code, time: pendingExtraMain.time, status: "not-found", location: loc, observation: obs, hasPhoto: savedPhoto, source: pendingExtraMain.source || "manual" };
+          S.extras.push(pendingExtraMain.code);
+          S.scanned.unshift(scanItem);
+          document.getElementById("btnUndo").disabled = false;
+          save();
+          cloudSyncReading(scanItem);
+          updateStats(); updateHistory(); updateDBUI(); updateReport();
+          pendingExtraMain = null;
+        }
+        resetLocPhotoState();
         document.getElementById("locModal").classList.remove("show");
         if (collectorCanFocus()) setTimeout(focusCollectorInput, 80);
       }
-      function cancelLocMain() { pendingExtraMain = null; document.getElementById("locModal").classList.remove("show"); if (collectorCanFocus()) setTimeout(focusCollectorInput, 80); }
+      function cancelLocMain() { pendingExtraMain = null; resetLocPhotoState(); document.getElementById("locModal").classList.remove("show"); if (collectorCanFocus()) setTimeout(focusCollectorInput, 80); }
       function init() {
         setupMobileCopyProtection(); load(); initCollectorMode(); updateDBUI(); updateStats(); updateHistory(); updateReport(); updateCollectorModeUI(); document.getElementById("btnUndo").disabled = !S.scanned.length; if (S.collectorMode && S.collectorActive) setTimeout(focusCollectorInput, 120); cloudEnsureSession().then((ok) => { if (!ok && cloudIsConfigured()) cloudSetStatus("error", "☁️ Aguardando nuvem"); });
       }
       init();
     </script>
-  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a179879679dc01d3',t:'MTc4MzQ1NTQxNA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17994dade64f1e5',t:'MTc4MzQ1NTk1OA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
