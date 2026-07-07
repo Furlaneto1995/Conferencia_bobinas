@@ -374,18 +374,48 @@
       }
       .cloud-report-btn { background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.28); color: var(--accent-blue); border-radius: 8px; padding: 6px 9px; font-size: 0.78em; font-weight: 900; cursor: pointer; }
       .cloud-report-btn:active { transform: scale(0.96); }
-      .cloud-detail { display: none; margin-top: 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 12px; box-shadow: var(--shadow); }
+      .cloud-detail { display: none; margin-top: 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 12px; box-shadow: var(--shadow); width: 100%; max-width: 100%; overflow-x: hidden; }
       .cloud-detail.show { display: block; }
-      .cloud-detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+      .cloud-detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+      .cloud-detail-head > div { min-width: 0; flex: 1 1 220px; }
       .cloud-detail-title { font-weight: 900; color: var(--text-primary); font-size: 0.98em; }
-      .cloud-detail-sub { color: var(--text-secondary); font-size: 0.8em; margin-top: 3px; word-break: break-all; }
-      .cloud-detail-close { border: 1px solid rgba(100, 116, 139, 0.25); background: rgba(100, 116, 139, 0.12); color: var(--text-secondary); border-radius: 10px; padding: 7px 10px; font-weight: 900; cursor: pointer; }
+      .cloud-detail-sub { color: var(--text-secondary); font-size: 0.8em; margin-top: 3px; word-break: break-word; overflow-wrap: anywhere; }
+      .cloud-detail-close { border: 1px solid rgba(100, 116, 139, 0.25); background: rgba(100, 116, 139, 0.12); color: var(--text-secondary); border-radius: 10px; padding: 7px 10px; font-weight: 900; cursor: pointer; flex: 0 0 auto; }
       .cloud-detail-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
-      .cloud-detail-stat { background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 9px 10px; font-size: 0.82em; color: var(--text-secondary); }
+      .cloud-detail-stat { background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 9px 10px; font-size: 0.82em; color: var(--text-secondary); min-width: 0; }
       .cloud-detail-stat strong { display: block; color: var(--text-primary); font-size: 1.15em; margin-top: 2px; }
       .cloud-detail-section-title { margin: 12px 0 6px; font-size: 0.88em; font-weight: 900; color: var(--text-primary); }
-      .cloud-detail-scroll { max-height: 360px; overflow: auto; border: 1px solid var(--border); border-radius: 10px; -webkit-overflow-scrolling: touch; }
+      .cloud-detail-scroll { max-height: 360px; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--border); border-radius: 10px; -webkit-overflow-scrolling: touch; }
+      #cloudDetailBox .dtbl,
+      .cloud-inline-detail .dtbl {
+        min-width: 0;
+        width: 100%;
+        table-layout: fixed;
+      }
+      #cloudDetailBox .dtbl thead th,
+      #cloudDetailBox .dtbl tbody td,
+      .cloud-inline-detail .dtbl thead th,
+      .cloud-inline-detail .dtbl tbody td {
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        vertical-align: top;
+      }
       @media (min-width: 769px) { .cloud-detail-stats { grid-template-columns: repeat(4, 1fr); } }
+      @media (max-width: 640px) {
+        #cloudDetailBox .dtbl thead th,
+        #cloudDetailBox .dtbl tbody td,
+        .cloud-inline-detail .dtbl thead th,
+        .cloud-inline-detail .dtbl tbody td {
+          padding: 6px 5px;
+          font-size: 0.7em;
+        }
+        .cloud-detail { padding: 10px; }
+        .cloud-detail-head { gap: 8px; }
+        .cloud-detail-title { font-size: 0.9em; }
+        .cloud-detail-sub { font-size: 0.74em; }
+        .cloud-detail-close { width: 100%; }
+      }
       .cloud-current-badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 2px 8px; font-size: 0.7em; font-weight: 900; background: rgba(16, 185, 129, 0.12); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.25); margin-left: 6px; }
       .cloud-item.current { border-color: rgba(16, 185, 129, 0.35); box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.08) inset; }
       .cloud-filters, .cloud-detail-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
@@ -951,12 +981,17 @@
         const confSnap = await confRef.get(); if (!confSnap.exists) throw new Error("Conferência não encontrada");
         const conf = { id: confSnap.id, ...confSnap.data() };
         const [bobinas, leituras, naoPrevistas, fotos] = await Promise.all([cloudGetCollectionDocs(confRef, "bobinas"), cloudGetCollectionDocs(confRef, "leituras"), cloudGetCollectionDocs(confRef, "nao_previstas"), cloudGetCollectionDocs(confRef, "fotos")]);
+        const bobinasSource = bobinas.length
+          ? bobinas
+          : (confId === S.cloudSessionId && S.db.length
+              ? S.db.map((code) => ({ codigo: String(code), op: getOP(code), peso: getPeso(code) }))
+              : []);
         const leiturasMap = new Map(); leituras.forEach((l) => leiturasMap.set(String(l.codigo || l.id), l));
         const fotoMap = new Map(); fotos.forEach((f) => fotoMap.set(String(f.codigo || f.id), f));
-        const opSummary = cloudBuildOpSummary(bobinas, leiturasMap);
+        const opSummary = cloudBuildOpSummary(bobinasSource, leiturasMap);
         const resumo = conf.resumo || {};
-        const total = resumo.total ?? bobinas.length;
-        const chk = resumo.conferidos ?? bobinas.filter((b) => { const l = leiturasMap.get(String(b.codigo || b.id)); return l && l.status !== "not-found"; }).length;
+        const total = resumo.total ?? bobinasSource.length;
+        const chk = resumo.conferidos ?? bobinasSource.filter((b) => { const l = leiturasMap.get(String(b.codigo || b.id)); return l && l.status !== "not-found"; }).length;
         const extras = resumo.naoPrevistas ?? naoPrevistas.length;
         const pct = resumo.percentual ?? (total > 0 ? ((chk / total) * 100).toFixed(1) : "0.0");
         const extraCodes = new Set(naoPrevistas.map((n) => String(n.codigo || n.id))); leituras.forEach((l) => { if (l.status === "not-found") extraCodes.add(String(l.codigo || l.id)); });
@@ -966,7 +1001,7 @@
           const l = leiturasMap.get(code) || {};
           rows.push({ code, op: "-", peso: "-", status: "Não Prevista", time: l.horaLocal || n.horaLocal || "", location: l.location || n.location || "", observation: l.observation || n.observation || "", hasPhoto: !!(l.hasPhoto || n.hasPhoto || fotoMap.get(code)), fotoUrl: l.fotoUrl || n.fotoUrl || fotoMap.get(code)?.url || "" });
         });
-        bobinas.slice().sort((a, b) => String(a.codigo || a.id).localeCompare(String(b.codigo || b.id), "pt-BR", { numeric: true })).forEach((b) => {
+        bobinasSource.slice().sort((a, b) => String(a.codigo || a.id).localeCompare(String(b.codigo || b.id), "pt-BR", { numeric: true })).forEach((b) => {
           const code = String(b.codigo || b.id); const l = leiturasMap.get(code); const checked = !!(l && l.status !== "not-found");
           rows.push({ code, op: b.op || "-", peso: b.peso || "-", status: checked ? (l.manual ? "Conferido Manual" : "Conferido") : "Pendente", time: checked ? (l.horaLocal || "") : "", location: l?.location || "", observation: l?.observation || "", hasPhoto: !!(l?.hasPhoto || fotoMap.get(code)), fotoUrl: l?.fotoUrl || fotoMap.get(code)?.url || "" });
         });
@@ -1269,7 +1304,12 @@
       function confirmCheckerName() {
         const name = document.getElementById("checkerInput").value.trim();
         if (!name) { document.getElementById("checkerError").style.display = "block"; document.getElementById("checkerInput").focus(); return false; }
-        S.checkerName = name; save(); cloudEnsureSession(); document.getElementById("checkerModal").classList.remove("show");
+        S.checkerName = name;
+        save();
+        cloudEnsureSession().then((ok) => {
+          if (ok && S.db.length) cloudSyncDatabase();
+        });
+        document.getElementById("checkerModal").classList.remove("show");
         if (document.getElementById("rCheckerName")) document.getElementById("rCheckerName").textContent = name;
         const cb = checkerStartCallback; checkerStartCallback = null; notify("Conferente: " + name); if (cb) cb(); return true;
       }
@@ -1382,7 +1422,14 @@
         });
       }
       function exportDB() { download(S.db.join("\n"), "bobinas_banco.csv", "text/csv"); notify("Lista exportada!"); }
-      function openCamera() { if (S.db.length === 0) { notify("Importe os dados primeiro!", "error"); return; } if (!ensureCheckerName(() => openCamera())) return; startIntegratedScanner(); }
+      function openCamera() {
+        if (S.db.length === 0) { notify("Importe os dados primeiro!", "error"); return; }
+        if (!ensureCheckerName(() => openCamera())) return;
+        cloudEnsureSession().then((ok) => {
+          if (ok && S.db.length) cloudSyncDatabase();
+        });
+        startIntegratedScanner();
+      }
       window.addEventListener("storage", function (e) { if (e.key === "bob3") { load(); updateDBUI(); updateStats(); updateHistory(); updateReport(); } });
       function updateStats() {
         const total = S.db.length, chk = S.checked.size, pend = total - chk, ext = S.extras.length, pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0;
