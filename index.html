@@ -168,7 +168,11 @@
       .camera-area { text-align: center; padding: 20px 12px; }
       .camera-area p { color: var(--text-muted); font-size: 0.78em; margin-top: 10px; }
       .collector-topbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: center; margin-top: 10px; }
-      .collector-toggle.on { background: linear-gradient(135deg, var(--accent-blue), #2563eb); border-color: transparent; color: #fff; }
+      .collector-toggle-wrap { display: inline-flex; align-items: center; background: #e5e7eb; border: 1px solid #cbd5e1; border-radius: 999px; padding: 4px; gap: 4px; }
+      .collector-toggle-label { padding: 8px 12px; font-weight: 700; color: #334155; font-size: 0.9rem; white-space: nowrap; }
+      .collector-toggle-seg { border: none; border-radius: 999px; padding: 8px 14px; font-weight: 700; cursor: pointer; white-space: nowrap; background: transparent; color: #334155; }
+      .collector-toggle-seg.active-on { background: linear-gradient(135deg, var(--accent-blue), #2563eb); color: #fff; }
+      .collector-toggle-seg.active-off { background: #475569; color: #fff; }
       .collector-panel { display: none; margin-top: 12px; padding: 12px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.18); background: rgba(59, 130, 246, 0.04); text-align: left; }
       .collector-panel.active { display: block; }
       .collector-panel .hint { color: var(--text-secondary); font-size: 0.8em; margin-bottom: 8px; }
@@ -265,6 +269,7 @@
       .empty h3 { color: var(--text-secondary); margin-bottom: 4px; font-size: 0.95em; }
       .empty p { font-size: 0.82em; }
       .modal-bg { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.4); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); padding: 16px; }
+      #locModal { z-index: 6100; }
       .modal-bg.show { display: flex; }
       .modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 22px; max-width: 400px; width: 100%; animation: popIn 0.3s ease; box-shadow: var(--shadow-lg); }
       .modal h2 { margin-bottom: 8px; display: flex; align-items: center; gap: 8px; color: var(--text-primary); font-size: 1.1em; }
@@ -527,7 +532,11 @@
         <h1>📦 Conferência de Bobinas</h1>
         <p>Sistema de conferência por código de barras</p>
         <div class="collector-topbar">
-          <button class="btn btn-outline btn-sm collector-toggle" id="collectorTopToggleBtn" onclick="toggleCollectorMode()">🔫 Coletor OFF</button>
+          <div class="collector-toggle-wrap">
+            <div class="collector-toggle-label">Coletor</div>
+            <button class="collector-toggle-seg" id="collectorModeOffBtn" onclick="setCollectorMode(false)">OFF</button>
+            <button class="collector-toggle-seg" id="collectorModeOnBtn" onclick="setCollectorMode(true)">ON</button>
+          </div>
           <div
           id="cloudStatus"
           class="cloud-status"
@@ -2214,27 +2223,43 @@
       }
       function exportDB() { download(S.db.join("\n"), "bobinas_banco.csv", "text/csv"); notify("Lista exportada!"); }
       function updateCollectorModeUI() {
-        const toggleBtn = document.getElementById("collectorTopToggleBtn");
+        const onBtn = document.getElementById("collectorModeOnBtn");
+        const offBtn = document.getElementById("collectorModeOffBtn");
         const startBtn = document.getElementById("startConferenceBtn");
         const help = document.getElementById("startConferenceHelp");
         const panel = document.getElementById("collectorPanel");
         const overlay = document.getElementById("collectorOverlay");
-        if (!toggleBtn || !startBtn || !help || !panel || !overlay) return;
-        toggleBtn.className = "btn btn-outline btn-sm collector-toggle";
+        if (!onBtn || !offBtn || !startBtn || !help || !panel || !overlay) return;
+        onBtn.className = "collector-toggle-seg";
+        offBtn.className = "collector-toggle-seg";
         if (S.collectorMode) {
-          toggleBtn.textContent = S.collectorActive ? "🔫 Coletor ON" : "🔫 Coletor ON";
-          toggleBtn.classList.add("on");
+          onBtn.classList.add("active-on");
           startBtn.textContent = "▶️ Iniciar conferência";
-          help.textContent = S.collectorActive ? "Leia a etiqueta com o laser. Se surgir uma não prevista, tire as fotos antes de confirmar." : "Modo coletor ativado. Toque em iniciar para receber as leituras do laser.";
-          panel.classList.toggle("active", !!S.collectorActive);
-          overlay.classList.remove("show");
+          help.textContent = S.collectorActive ? "Leia a etiqueta com o laser. Se surgir uma não prevista, tire as fotos antes de confirmar." : "Modo coletor ativado. Toque em iniciar para abrir a tela de conferência do coletor.";
+          panel.classList.remove("active");
+          overlay.classList.toggle("show", !!S.collectorActive);
+          document.body.style.overflow = S.collectorActive ? "hidden" : "";
         } else {
-          toggleBtn.textContent = "🔫 Coletor OFF";
+          offBtn.classList.add("active-off");
           startBtn.textContent = "▶️ Iniciar conferência";
           help.textContent = "A câmera abrirá em tela cheia";
           panel.classList.remove("active");
           overlay.classList.remove("show");
+          document.body.style.overflow = "";
         }
+      }
+      function setCollectorMode(enabled) {
+        const next = !!enabled;
+        if (S.collectorMode === next) {
+          updateCollectorModeUI();
+          return;
+        }
+        S.collectorMode = next;
+        if (!S.collectorMode) stopCollectorConference(true);
+        save();
+        updateCollectorModeUI();
+        setCollectorLastRead(S.collectorMode ? "Modo coletor ativado. Toque em iniciar." : "Pronto para iniciar.");
+        notify(S.collectorMode ? "Modo coletor ativado." : "Modo coletor desativado.", S.collectorMode ? "success" : "warning");
       }
       function collectorShowBigStatus(cls, main, code = "", ms = 1400) {
         let box = document.getElementById("collectorBigStatus");
@@ -2285,15 +2310,6 @@
         setCollectorLastRead("Conferência no coletor encerrada.", "warn");
         updateCollectorOverlayCenter("Conferência encerrada", "Toque em iniciar conferência para voltar ao modo coletor.");
         if (!silent) notify("Conferência via coletor encerrada.", "warning");
-      }
-      function toggleCollectorMode() {
-        S.collectorMode = !S.collectorMode;
-        if (!S.collectorMode) stopCollectorConference(true);
-        save();
-        updateCollectorModeUI();
-        setCollectorLastRead(S.collectorMode ? "Modo coletor ativado. Toque em iniciar." : "Pronto para iniciar.");
-        notify(S.collectorMode ? "Modo coletor ativado." : "Modo coletor desativado.", S.collectorMode ? "success" : "warning");
-        if (S.collectorMode && S.collectorActive) setTimeout(focusCollectorInput, 80);
       }
       function normalizeCollectorCode(raw) {
         const text = String(raw || "").replace(/[\r\n\t]+/g, "").trim();
@@ -2824,5 +2840,5 @@
       }
       init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17a57f64c2d1f4b',t:'MTc4MzQ2Mzk0OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17a7e035f472395',t:'MTc4MzQ2NTUwOA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
