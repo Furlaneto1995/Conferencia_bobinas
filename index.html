@@ -555,7 +555,7 @@
         <div class="card">
           <div class="card-title">📋 Importar Lista de Bobinas</div>
           <div class="card-sub">Importe os códigos de barras do sistema</div>
-          <div class="import-grid">
+          <div class="import-grid" style="display:none">
             <div class="import-box">
               <h3>📁 Upload de Arquivo</h3>
               <p class="desc">CSV, TXT ou planilha</p>
@@ -583,6 +583,7 @@
               </div>
             </div>
           </div>
+          <div class="empty" style="padding:18px 14px; margin-top: 4px;"><div class="e-icon" style="font-size:2.1em">☁️</div><h3>Base centralizada na nuvem</h3><p>O envio de novos arquivos-base agora é feito no menu do líder. Aqui os dispositivos apenas carregam a base salva abaixo.</p></div>
         </div>
         <div class="card">
           <div class="card-title">☁️ Arquivos-base na nuvem <span class="card-actions-inline"><button class="btn btn-outline btn-sm" onclick="cloudRefreshBaseFiles()">🔄 Atualizar</button></span></div>
@@ -667,6 +668,14 @@
         </div>
       </div>
       <div class="section" id="sectionCloud">
+        <div class="card">
+          <div class="card-title">📤 Arquivo-base do líder</div>
+          <div class="card-sub">Importe a planilha completa do dispositivo do líder, dê um nome e salve para os outros dispositivos baixarem.</div>
+          <input type="file" id="leaderBaseFileInput" accept=".csv,.txt,.tsv,.text" style="display:none" onchange="cloudHandleLeaderBaseFile(event)" />
+          <div class="btn-group" style="margin-top:0">
+            <button class="btn btn-primary" onclick="cloudPickLeaderBaseFile()">📁 Importar arquivo do dispositivo</button>
+          </div>
+        </div>
         <div class="card">
           <div class="card-title">☁️ Consulta na Nuvem</div>
           <div class="card-sub">Conferências salvas no Firestore por operador e data</div>
@@ -768,6 +777,8 @@
       <button class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px 14px" onclick="importSelectedConferenceTypes()">📥 Importar selecionados</button>
       <button class="btn btn-outline" style="width: 100%; justify-content: center; padding: 12px 14px" onclick="closeConferenceTypeModal()">Cancelar</button>
     </div></div></div>
+    <div class="modal-bg" id="baseNameModal"><div class="modal"><h2>☁️ Nome do arquivo-base</h2><p>Digite o nome que os outros dispositivos verão para baixar esta base.</p><input type="text" id="baseNameInput" class="loc-input-main" placeholder="Ex: Base Agosto turno A" onkeydown="if (event.key === 'Enter') confirmBaseNameUpload();" autocomplete="off" /><div id="baseNameError" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Nome obrigatório!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmBaseNameUpload()">✅ Salvar arquivo-base</button><button class="btn btn-outline" onclick="closeBaseNameModal()">Cancelar</button></div></div></div>
+
     <div class="modal-bg" id="locModal"><div class="modal" style="border-color: var(--accent-red)"><h2 style="color: var(--accent-red)">⚠️ Bobina Não Prevista</h2><div class="loc-code-display" id="locCodeMain"></div><p id="locModalDesc">Informe a localização desta bobina:</p><input type="text" id="locInputMain" class="loc-input-main" placeholder="Ex: Galpão A, Corredor 3..." onkeydown="if (event.key === 'Enter') confirmLocMain();" autocomplete="off" /><textarea id="locObsMain" class="loc-input-main" placeholder="Observação (opcional)" style="min-height: 76px; resize: vertical; font-family: inherit;"></textarea><div class="loc-photo-section" id="locPhotoSection"><div class="loc-photo-grid"><div><div class="loc-photo-label">🏷️ Foto da etiqueta <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnEtiqueta" onclick="document.getElementById('locPhotoInputEtiqueta').click()">📷 Tirar foto da etiqueta<input type="file" id="locPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'etiqueta')" /></div><div class="loc-photo-preview" id="locPhotoPreviewEtiqueta"><img id="locPhotoImgEtiqueta" src="" /><button class="loc-photo-remove" onclick="locRemovePhoto('etiqueta')">✕</button></div><div class="loc-photo-error" id="locPhotoErrorEtiqueta">⚠️ Foto da etiqueta obrigatória!</div></div><div><div class="loc-photo-label">📦 Foto da bobina <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnBobina" onclick="document.getElementById('locPhotoInputBobina').click()">📷 Tirar foto da bobina<input type="file" id="locPhotoInputBobina" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'bobina')" /></div><div class="loc-photo-preview" id="locPhotoPreviewBobina"><img id="locPhotoImgBobina" src="" /><button class="loc-photo-remove" onclick="locRemovePhoto('bobina')">✕</button></div><div class="loc-photo-error" id="locPhotoErrorBobina">⚠️ Foto da bobina obrigatória!</div></div></div></div><div id="locErrorMain" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Localização obrigatória!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmLocMain()">✅ Confirmar</button><button class="btn btn-outline" onclick="cancelLocMain()">Cancelar</button></div></div></div>
     <div class="photo-modal" id="photoModal"><div style="text-align: center; color: #fff; font-weight: 700; max-width: 100%; max-height: 82vh; overflow: auto;">🏷️ Etiqueta + 📦 Bobina<br /><img id="photoModalImg" src="" /></div><button class="photo-modal-close" onclick="closePhotoModal()">✕ Fechar</button></div>
 
@@ -1055,6 +1066,77 @@
         }
         const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`;
         return { path, publicUrl };
+      }
+      function cloudPickLeaderBaseFile() {
+        if (!cloudLeaderUnlocked) { cloudRequestLeaderAccess(); return; }
+        document.getElementById("leaderBaseFileInput")?.click();
+      }
+      function showBaseNameModal(defaultName = "") {
+        const clean = String(defaultName || "").replace(/\.[^.]+$/, "").trim();
+        document.getElementById("baseNameInput").value = clean;
+        document.getElementById("baseNameError").style.display = "none";
+        document.getElementById("baseNameModal").classList.add("show");
+        setTimeout(() => document.getElementById("baseNameInput").focus(), 120);
+      }
+      function closeBaseNameModal() {
+        document.getElementById("baseNameModal").classList.remove("show");
+        const input = document.getElementById("leaderBaseFileInput");
+        if (input) input.value = "";
+      }
+      function cloudHandleLeaderBaseFile(e) {
+        if (!cloudLeaderUnlocked) { cloudRequestLeaderAccess(); return; }
+        const f = e.target.files[0];
+        if (!f) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const content = ev.target.result;
+          pendingLeaderBaseUpload = { originalName: f.name, content, mimeType: cloudMimeTypeFromFileName(f.name) };
+          currentImportedFile = { name: f.name, content, source: "leader-device", mimeType: cloudMimeTypeFromFileName(f.name) };
+          const imported = parseFile(content);
+          if (imported) showBaseNameModal(f.name);
+        };
+        reader.readAsText(f, "UTF-8");
+      }
+      async function confirmBaseNameUpload() {
+        const name = document.getElementById("baseNameInput").value.trim();
+        if (!name) {
+          document.getElementById("baseNameError").style.display = "block";
+          document.getElementById("baseNameInput").focus();
+          return;
+        }
+        if (!pendingLeaderBaseUpload) return;
+        try {
+          if (!(await cloudInit())) throw new Error("Firebase indisponível");
+          const baseId = `base_${Date.now()}`;
+          const ext = (pendingLeaderBaseUpload.originalName.match(/\.[^.]+$/) || [""])[0];
+          const fileName = name.includes(".") ? name : (name + (ext || ".csv"));
+          cloudSetStatus("sync", "☁️ Salvando arquivo-base...");
+          const uploaded = await cloudUploadBaseFile(baseId, fileName, pendingLeaderBaseUpload.content, pendingLeaderBaseUpload.mimeType);
+          await cloudDb.collection("arquivos_base").doc(baseId).set({
+            id: baseId,
+            nome: fileName,
+            operador: S.checkerName || "",
+            operadorKey: cloudOperatorKey(),
+            criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            data: cloudDateKey(),
+            linhas: pendingLeaderBaseUpload.content.split(/\r?\n/).filter((l) => l.trim()).length,
+            totalCodigos: S.db.length || 0,
+            tipoConferencia: "Arquivo completo",
+            origem: "leader-device",
+            mimeType: pendingLeaderBaseUpload.mimeType,
+            storagePath: uploaded.path,
+            storageUrl: uploaded.publicUrl,
+          }, { merge: true });
+          cloudSetStatus("ok", "☁️ Arquivo-base salvo");
+          notify("Arquivo-base salvo na nuvem!");
+          closeBaseNameModal();
+          pendingLeaderBaseUpload = null;
+          cloudRefreshBaseFiles();
+        } catch (e) {
+          console.error(e);
+          cloudSetStatus("error", "☁️ Erro ao salvar arquivo-base");
+          notify("Erro ao salvar arquivo-base: " + (e.message || e), "error");
+        }
       }
       async function cloudSaveCurrentFileBase() {
         try {
@@ -1862,27 +1944,76 @@
         const hasMain = idx.BARRAS_ORIGEM >= 0 && idx.ETAPA >= 0; const hasAll = expected.every((col) => idx[col] >= 0);
         return hasMain ? { idx, hasAll } : null;
       }
+      function importRowsComplete(rows, { replaceExisting = true } = {}) {
+        if (!rows || !rows.length) return 0;
+        if (replaceExisting) {
+          S.meta = {};
+          S.db = [];
+          S.scanned = [];
+          S.checked = new Set();
+          S.extras = [];
+          S.cloudSessionId = "";
+        }
+        const maxC = Math.max(...rows.map((r) => r.length));
+        const special = detectSpecialLayout(rows);
+        const nextMeta = {};
+        const codes = [];
+        if (special) {
+          const bIdx = special.idx.BARRAS_ORIGEM, opIdx = special.idx.OP, eIdx = special.idx.ETAPA, mIdx = special.idx.MATERIAL, pIdx = special.idx.PESO;
+          rows.slice(1).forEach((r) => {
+            const code = String(r[bIdx] || "").trim();
+            if (!code) return;
+            codes.push(code);
+            nextMeta[code] = { op: String(r[opIdx] || "").trim(), etapa: String(r[eIdx] || "").trim(), material: String(r[mIdx] || "").trim(), peso: String(r[pIdx] || "").trim() };
+          });
+        } else if (maxC <= 1) {
+          rows.forEach((r) => { const code = String(r[0] || "").trim(); if (code) codes.push(code); });
+        } else {
+          const hdrNorm = rows[0].map(normalizeHeader);
+          let codeIdx = hdrNorm.findIndex((h) => h.includes("BARR") || h.includes("COD") || h.includes("EAN") || h.includes("BOBINA"));
+          if (codeIdx < 0) codeIdx = 0;
+          const opIdx = hdrNorm.indexOf("OP");
+          const pIdx = hdrNorm.findIndex((h) => h.includes("PESO"));
+          rows.slice(1).forEach((r) => {
+            const code = String(r[codeIdx] || "").trim();
+            if (!code) return;
+            codes.push(code);
+            nextMeta[code] = { op: opIdx >= 0 ? String(r[opIdx] || "").trim() : "", peso: pIdx >= 0 ? String(r[pIdx] || "").trim() : "" };
+          });
+        }
+        const uniq = [...new Set(codes)];
+        if (!uniq.length) return 0;
+        S.fileData = rows;
+        S.fileLayout = special || null;
+        S.meta = nextMeta;
+        S.db = uniq;
+        S.confType = "Arquivo completo";
+        save();
+        updateDBUI();
+        updateStats();
+        updateHistory();
+        updateReport();
+        document.getElementById("btnUndo").disabled = !S.scanned.length;
+        return uniq.length;
+      }
       function parseFile(content) {
         const first = content.split(/\r?\n/)[0]; let sep = ","; if (first.includes("\t")) sep = "\t"; else if (first.includes(";")) sep = ";"; else if (first.includes("|")) sep = "|";
-        const lines = content.split(/\r?\n/).filter((l) => l.trim()); if (!lines.length) { notify("Arquivo vazio!", "error"); return; }
+        const lines = content.split(/\r?\n/).filter((l) => l.trim()); if (!lines.length) { notify("Arquivo vazio!", "error"); return 0; }
         const rows = lines.map((l) => l.split(sep).map((c) => c.trim().replace(/^["']|["']$/g, "")));
-        const maxC = Math.max(...rows.map((r) => r.length)); S.fileData = rows; S.fileLayout = null; document.getElementById("colSel").style.display = "none";
-        const special = detectSpecialLayout(rows); if (special) { S.fileLayout = special; updateImportActionButtons(); showConferenceTypeModal(special); return; }
-        if (maxC <= 1) { const codes = rows.map((r) => r[0]).filter(Boolean); S.db = [...new Set([...S.db, ...codes])]; save(); syncCurrentConferenceToCloud(); updateDBUI(); updateImportActionButtons(); notify(`✅ ${codes.length} códigos importados!`); return; }
-        const sel = document.getElementById("colSel"); sel.style.display = "block"; const select = document.getElementById("colSelect"); select.innerHTML = ""; const hdr = rows[0];
-        for (let i = 0; i < maxC; i++) { const o = document.createElement("option"); o.value = i; o.textContent = `Col ${i + 1}: "${hdr[i] || ""}"`; select.appendChild(o); }
-        for (let i = 0; i < maxC; i++) { const h = (hdr[i] || "").toLowerCase(); if (h.includes("barr") || h.includes("code") || h.includes("código") || h.includes("ean") || h.includes("bobina")) { select.value = i; break; } }
+        document.getElementById("colSel").style.display = "none";
+        const imported = importRowsComplete(rows, { replaceExisting: true });
         updateImportActionButtons();
-        previewCol();
+        if (!imported) { notify("Nenhum código encontrado no arquivo.", "warning"); return 0; }
+        notify(`✅ ${imported} códigos importados!`);
+        return imported;
       }
       function updateImportActionButtons() {
         const importActions = document.getElementById("importActions");
         const changeBtn = document.getElementById("changeConfTypeBtn");
         const saveBtn = document.getElementById("saveBaseFileBtn");
-        const hasImportedSource = !!(currentImportedFile && currentImportedFile.content);
-        if (importActions) importActions.style.display = hasImportedSource ? "flex" : "none";
-        if (changeBtn) changeBtn.style.display = S.fileData && S.fileLayout ? "inline-flex" : "none";
-        if (saveBtn) saveBtn.style.display = hasImportedSource ? "inline-flex" : "none";
+        if (importActions) importActions.style.display = "none";
+        if (changeBtn) changeBtn.style.display = "none";
+        if (saveBtn) saveBtn.style.display = "none";
         const clearBtn = document.getElementById("dbClearBtn");
         if (clearBtn) clearBtn.style.display = S.db.length ? "inline-flex" : "none";
       }
@@ -2598,5 +2729,5 @@
       }
       init();
     </script>
-  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17a11e3ad45ccfb',t:'MTc4MzQ2MTA3OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17a25a5ab8f261c',t:'MTc4MzQ2MTg4OA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
