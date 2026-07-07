@@ -794,7 +794,8 @@
         cloudDetailRows = [], cloudDetailFilter = "all", cloudDetailSearch = "",
         cloudDetailConfId = "", cloudMergeSelectedIds = new Set(), cloudMergedReport = null,
         cloudSessionUnsub = null, cloudLeaderUnlocked = false, cloudSecretTimer = null,
-        cloudBaseFilesUnsub = null, cloudBaseFilesDocs = [], cloudBaseFilesSearch = "";
+        cloudBaseFilesUnsub = null, cloudBaseFilesDocs = [], cloudBaseFilesSearch = "",
+        cloudDetailLiveUnsubs = [], cloudDetailRefreshTimer = null;
       let camScanner = null, camVideoTrack = null, camTorchOn = false, camZoomValue = null,
         camZoomMin = 1, camZoomMax = 1, camZoomStepSize = 0.25, camZoomApplyTimer = null,
         camCooldown = false, camPendingExtra = null, camManualMode = "extra",
@@ -1248,7 +1249,7 @@
       function cloudRenderConsultList(search = "") {
         const box = document.getElementById("cloudConsultBox"); if (!box) return;
         const q = String(search || "").trim().toLowerCase();
-        let docs = cloudConsultDocs || [];
+        let docs = (cloudConsultDocs || []).filter((d) => !d.deleted);
         if (q) docs = docs.filter((d) => [d.operador, d.operadorKey, d.data, d.tipo, d.status, d.id].join(" ").toLowerCase().includes(q));
         if (cloudListStatusFilter !== "all") docs = docs.filter((d) => (d.status || "em_andamento") === cloudListStatusFilter);
         if (!docs.length) { box.innerHTML = '<div class="empty">Nenhuma conferência encontrada.</div>'; return; }
@@ -1463,12 +1464,36 @@
           cloudSetStatus("ok", "☁️ Relatório da nuvem gerado"); notify("Relatório da nuvem exportado!");
         } catch (e) { console.error(e); cloudSetStatus("error", "☁️ Erro no relatório"); notify("Erro ao exportar relatório da nuvem: " + (e.message || e), "error"); }
       }
+      function cloudClearDetailLiveListeners() {
+        (cloudDetailLiveUnsubs || []).forEach((fn) => { try { fn && fn(); } catch (e) {} });
+        cloudDetailLiveUnsubs = [];
+        clearTimeout(cloudDetailRefreshTimer);
+      }
+      function cloudWatchOpenedConference(confId) {
+        cloudClearDetailLiveListeners();
+        if (!cloudDb || !confId || confId === "__merged__") return;
+        const ref = cloudDb.collection("conferencias").doc(confId);
+        const scheduleRefresh = () => {
+          clearTimeout(cloudDetailRefreshTimer);
+          cloudDetailRefreshTimer = setTimeout(() => {
+            if (cloudDetailConfId === confId && document.getElementById("cloudDetailBox")?.classList.contains("show")) cloudOpenConference(confId, { silent: true });
+          }, 250);
+        };
+        cloudDetailLiveUnsubs = [
+          ref.onSnapshot(scheduleRefresh, () => {}),
+          ref.collection("bobinas").onSnapshot(scheduleRefresh, () => {}),
+          ref.collection("leituras").onSnapshot(scheduleRefresh, () => {}),
+          ref.collection("nao_previstas").onSnapshot(scheduleRefresh, () => {}),
+          ref.collection("fotos").onSnapshot(scheduleRefresh, () => {}),
+        ];
+      }
       async function cloudOpenConference(confId, options = {}) {
         if (!cloudLeaderUnlocked) return;
         const silent = !!options.silent;
         const prevFilter = silent ? cloudDetailFilter : "all";
         const prevSearch = silent ? cloudDetailSearch : "";
         if (!silent) cloudCloseConferenceDetail();
+        if (!silent || cloudDetailConfId !== confId) cloudWatchOpenedConference(confId);
         const box = document.getElementById("cloudDetailBox");
         if (!box) return;
         box.className = "cloud-detail show";
@@ -1603,6 +1628,7 @@
         if (rows.length > 700) tbody.innerHTML += `<tr><td colspan="9">Mostrando 700 de ${rows.length} itens</td></tr>`;
       }
       function cloudCloseConferenceDetail() {
+        cloudClearDetailLiveListeners();
         document.querySelectorAll(".cloud-inline-detail").forEach((box) => { box.className = "cloud-detail cloud-inline-detail"; box.innerHTML = ""; });
         const box = document.getElementById("cloudDetailBox"); if (box) { box.className = "cloud-detail"; box.innerHTML = ""; }
       }
@@ -1711,6 +1737,10 @@
           cloudSetStatus("sync", "☁️ Excluindo conferência...");
           if (!(await cloudInit())) throw new Error("Firebase indisponível");
           const ref = cloudDb.collection("conferencias").doc(confId);
+          await ref.set({ deleted: true, deletedAt: firebase.firestore.FieldValue.serverTimestamp(), atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+          cloudConsultDocs = (cloudConsultDocs || []).filter((d) => d.id !== confId);
+          cloudRenderConsultList(document.getElementById("cloudSearch")?.value || "");
+          if (cloudDetailConfId === confId) cloudCloseConferenceDetail();
           await cloudDeleteSupabasePhotos(ref);
           for (const sub of ["bobinas", "leituras", "nao_previstas", "fotos"]) {
             let removed = 0;
@@ -2568,5 +2598,5 @@
       }
       init();
     </script>
-  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17a06729cb72395',t:'MTc4MzQ2MDYxMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17a11e3ad45ccfb',t:'MTc4MzQ2MTA3OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
