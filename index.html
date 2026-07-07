@@ -1088,6 +1088,16 @@
         const input = document.getElementById("leaderBaseFileInput");
         if (input) input.value = "";
       }
+      function parseRowsFromContent(content) {
+        const first = content.split(/\r?\n/)[0] || "";
+        let sep = ",";
+        if (first.includes("\t")) sep = "\t";
+        else if (first.includes(";")) sep = ";";
+        else if (first.includes("|")) sep = "|";
+        const lines = content.split(/\r?\n/).filter((l) => l.trim());
+        const rows = lines.map((l) => l.split(sep).map((c) => c.trim().replace(/^["']|["']$/g, "")));
+        return { rows, sep, maxC: rows.length ? Math.max(...rows.map((r) => r.length)) : 0 };
+      }
       function cloudHandleLeaderBaseFile(e) {
         if (!cloudLeaderUnlocked) { cloudRequestLeaderAccess(); return; }
         const f = e.target.files[0];
@@ -1095,10 +1105,10 @@
         const reader = new FileReader();
         reader.onload = (ev) => {
           const content = ev.target.result;
-          pendingLeaderBaseUpload = { originalName: f.name, content, mimeType: cloudMimeTypeFromFileName(f.name) };
-          currentImportedFile = { name: f.name, content, source: "leader-device", mimeType: cloudMimeTypeFromFileName(f.name) };
-          const imported = parseFile(content);
-          if (imported) showBaseNameModal(f.name);
+          const parsed = parseRowsFromContent(content);
+          const totalCodigos = countCodesFromRows(parsed.rows);
+          pendingLeaderBaseUpload = { originalName: f.name, content, mimeType: cloudMimeTypeFromFileName(f.name), totalCodigos };
+          showBaseNameModal(f.name);
         };
         reader.readAsText(f, "UTF-8");
       }
@@ -1125,7 +1135,7 @@
             criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
             data: cloudDateKey(),
             linhas: pendingLeaderBaseUpload.content.split(/\r?\n/).filter((l) => l.trim()).length,
-            totalCodigos: S.db.length || 0,
+            totalCodigos: pendingLeaderBaseUpload.totalCodigos || 0,
             tipoConferencia: "Arquivo completo",
             origem: "leader-device",
             mimeType: pendingLeaderBaseUpload.mimeType,
@@ -2009,15 +2019,39 @@
         return uniq.length;
       }
       function parseFile(content) {
-        const first = content.split(/\r?\n/)[0]; let sep = ","; if (first.includes("\t")) sep = "\t"; else if (first.includes(";")) sep = ";"; else if (first.includes("|")) sep = "|";
-        const lines = content.split(/\r?\n/).filter((l) => l.trim()); if (!lines.length) { notify("Arquivo vazio!", "error"); return 0; }
-        const rows = lines.map((l) => l.split(sep).map((c) => c.trim().replace(/^["']|["']$/g, "")));
+        const parsed = parseRowsFromContent(content);
+        const rows = parsed.rows;
+        const maxC = parsed.maxC;
+        if (!rows.length) { notify("Arquivo vazio!", "error"); return 0; }
+        S.fileData = rows;
+        S.fileLayout = null;
         document.getElementById("colSel").style.display = "none";
-        const imported = importRowsComplete(rows, { replaceExisting: true });
+        const special = detectSpecialLayout(rows);
+        if (special) {
+          S.fileLayout = special;
+          updateImportActionButtons();
+          showConferenceTypeModal(special);
+          return rows.length;
+        }
+        if (maxC <= 1) {
+          const codes = rows.map((r) => r[0]).filter(Boolean);
+          S.db = [...new Set([...S.db, ...codes])];
+          S.confType = S.confType || "Importação por arquivo";
+          save();
+          syncCurrentConferenceToCloud();
+          updateDBUI();
+          updateImportActionButtons();
+          notify(`✅ ${codes.length} códigos importados!`);
+          return codes.length;
+        }
+        const sel = document.getElementById("colSel"); sel.style.display = "block";
+        const select = document.getElementById("colSelect"); select.innerHTML = "";
+        const hdr = rows[0];
+        for (let i = 0; i < maxC; i++) { const o = document.createElement("option"); o.value = i; o.textContent = `Col ${i + 1}: "${hdr[i] || ""}"`; select.appendChild(o); }
+        for (let i = 0; i < maxC; i++) { const h = (hdr[i] || "").toLowerCase(); if (h.includes("barr") || h.includes("code") || h.includes("código") || h.includes("ean") || h.includes("bobina")) { select.value = i; break; } }
         updateImportActionButtons();
-        if (!imported) { notify("Nenhum código encontrado no arquivo.", "warning"); return 0; }
-        notify(`✅ ${imported} códigos importados!`);
-        return imported;
+        previewCol();
+        return rows.length;
       }
       function updateImportActionButtons() {
         const importActions = document.getElementById("importActions");
@@ -2741,5 +2775,5 @@
       }
       init();
     </script>
-  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17a2d8c384af8bf',t:'MTc4MzQ2MjIxMg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17a39dbeeb6d87c',t:'MTc4MzQ2MjcxNg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
