@@ -585,11 +585,7 @@
           </div>
           <div class="empty" style="padding:18px 14px; margin-top: 4px;"><div class="e-icon" style="font-size:2.1em">☁️</div><h3>Base centralizada na nuvem</h3><p>O envio de novos arquivos-base agora é feito no menu do líder. Aqui os dispositivos apenas carregam a base salva abaixo.</p></div>
         </div>
-        <div class="card">
-          <div class="card-title">☁️ Base carregada da nuvem</div>
-          <div class="card-sub">O envio do arquivo-base foi migrado para o menu do líder. Aqui os dispositivos apenas atualizam e carregam a base salva.</div>
-        </div>
-        <div class="card">
+                <div class="card">
           <div class="card-title">☁️ Arquivos-base na nuvem <span class="card-actions-inline"><button class="btn btn-outline btn-sm" onclick="cloudRefreshBaseFiles()">🔄 Atualizar</button></span></div>
           <div class="card-sub">Carregue em outros dispositivos sem precisar do arquivo no aparelho</div>
           <div class="search-wrap"><span class="si">🔍</span><input class="search-input" id="cloudBaseSearch" placeholder="Buscar arquivo-base..." oninput="cloudBaseFilesSearch=this.value; cloudRenderBaseFiles()" /></div>
@@ -811,7 +807,8 @@
         cloudSessionUnsub = null, cloudLeaderUnlocked = false, cloudSecretTimer = null,
         cloudBaseFilesUnsub = null, cloudBaseFilesDocs = [], cloudBaseFilesSearch = "",
         cloudDetailLiveUnsubs = [], cloudDetailRefreshTimer = null,
-        cloudDeletedUnsub = null, cloudDeletedIds = new Set();
+        cloudDeletedUnsub = null, cloudDeletedIds = new Set(),
+        cloudBaseDeletedUnsub = null, cloudBaseDeletedIds = new Set();
       let camScanner = null, camVideoTrack = null, camTorchOn = false, camZoomValue = null,
         camZoomMin = 1, camZoomMax = 1, camZoomStepSize = 0.25, camZoomApplyTimer = null,
         camCooldown = false, camPendingExtra = null, camManualMode = "extra",
@@ -1193,7 +1190,7 @@
         const box = document.getElementById("cloudBaseFilesBox");
         if (!box) return;
         const q = String(cloudBaseFilesSearch || "").trim().toLowerCase();
-        let docs = cloudBaseFilesDocs || [];
+        let docs = (cloudBaseFilesDocs || []).filter((d) => !d.deleted && !d.hidden && d.status !== "deleted" && !cloudBaseDeletedIds.has(d.id));
         if (q) {
           docs = docs.filter((d) => [d.nome, d.operador, d.data, d.tipoConferencia, d.id].join(" ").toLowerCase().includes(q));
         }
@@ -1228,6 +1225,14 @@
             return;
           }
           if (cloudBaseFilesUnsub) cloudBaseFilesUnsub();
+          if (cloudBaseDeletedUnsub) cloudBaseDeletedUnsub();
+          cloudBaseDeletedUnsub = cloudDb.collection("arquivos_base_excluidos").limit(300).onSnapshot(
+            (snap) => {
+              cloudBaseDeletedIds = new Set(snap.docs.map((d) => d.id));
+              cloudRenderBaseFiles();
+            },
+            () => {}
+          );
           cloudBaseFilesUnsub = cloudDb.collection("arquivos_base").orderBy("criadoEm", "desc").limit(80).onSnapshot(
             (snap) => {
               cloudBaseFilesDocs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -1242,6 +1247,41 @@
           console.error(e);
           if (box) box.innerHTML = '<div class="empty">Erro ao consultar arquivos-base.</div>';
         }
+      }
+      function parseFileForConferenceSelection(content) {
+        const parsed = parseRowsFromContent(content);
+        const rows = parsed.rows;
+        const maxC = parsed.maxC;
+        if (!rows.length) { notify("Arquivo vazio!", "error"); return 0; }
+        S.fileData = rows;
+        S.fileLayout = null;
+        document.getElementById("colSel").style.display = "none";
+        const special = detectSpecialLayout(rows);
+        if (special) {
+          S.fileLayout = special;
+          updateImportActionButtons();
+          showConferenceTypeModal(special);
+          return rows.length;
+        }
+        if (maxC <= 1) {
+          const codes = rows.map((r) => r[0]).filter(Boolean);
+          S.db = [...new Set([...S.db, ...codes])];
+          S.confType = S.confType || "Importação por arquivo";
+          save();
+          syncCurrentConferenceToCloud();
+          updateDBUI();
+          updateImportActionButtons();
+          notify(`✅ ${codes.length} códigos importados!`);
+          return codes.length;
+        }
+        const sel = document.getElementById("colSel"); sel.style.display = "block";
+        const select = document.getElementById("colSelect"); select.innerHTML = "";
+        const hdr = rows[0];
+        for (let i = 0; i < maxC; i++) { const o = document.createElement("option"); o.value = i; o.textContent = `Col ${i + 1}: "${hdr[i] || ""}"`; select.appendChild(o); }
+        for (let i = 0; i < maxC; i++) { const h = (hdr[i] || "").toLowerCase(); if (h.includes("barr") || h.includes("code") || h.includes("código") || h.includes("ean") || h.includes("bobina")) { select.value = i; break; } }
+        updateImportActionButtons();
+        previewCol();
+        return rows.length;
       }
       async function cloudLoadBaseFile(baseId) {
         try {
@@ -1267,7 +1307,7 @@
           const name = document.getElementById("fileName");
           if (info) info.style.display = "flex";
           if (name) name.textContent = `☁️ ${currentImportedFile.name}`;
-          parseFile(content);
+          parseFileForConferenceSelection(content);
           updateImportActionButtons();
           cloudSetStatus("ok", "☁️ Arquivo-base carregado");
           notify("Arquivo-base carregado da nuvem!");
@@ -1289,6 +1329,11 @@
           const snap = await ref.get();
           if (!snap.exists) throw new Error("Arquivo-base não encontrado");
           const data = snap.data() || {};
+          await cloudDb.collection("arquivos_base_excluidos").doc(baseId).set({ id: baseId, deletedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+          await ref.set({ deleted: true, hidden: true, status: "deleted", deletedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+          cloudBaseDeletedIds.add(baseId);
+          cloudBaseFilesDocs = (cloudBaseFilesDocs || []).filter((d) => d.id !== baseId);
+          cloudRenderBaseFiles();
           if (data.storagePath && SUPABASE_URL && SUPABASE_ANON_KEY) {
             await fetch(`${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}`, {
               method: "DELETE",
@@ -2775,5 +2820,5 @@
       }
       init();
     </script>
-  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17a39dbeeb6d87c',t:'MTc4MzQ2MjcxNg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17a48cbe8bc9979',t:'MTc4MzQ2MzMyOA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
