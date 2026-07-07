@@ -996,8 +996,7 @@
                 <span>📊 <strong>${r.percentual ?? 0}%</strong></span>
               </div>
               <div class="small" style="margin-top:6px;color:var(--text-muted)">${esc(d.id || "")}</div>
-            </div>
-            <div id="${cloudInlineDetailId(d.id)}" class="cloud-detail cloud-inline-detail"></div>`;
+            </div>`;
         }).join("");
         cloudUpdateMergeButton();
       }
@@ -1185,14 +1184,18 @@
         } catch (e) { console.error(e); cloudSetStatus("error", "☁️ Erro no relatório"); notify("Erro ao exportar relatório da nuvem: " + (e.message || e), "error"); }
       }
       async function cloudOpenConference(confId) {
-        if (!cloudLeaderUnlocked) return; cloudCloseConferenceDetail();
-        const box = document.getElementById(cloudInlineDetailId(confId)) || document.getElementById("cloudDetailBox"); if (!box) return;
-        const isInline = box.id && box.id.startsWith("cloudDetailInline_");
-        box.className = "cloud-detail" + (isInline ? " cloud-inline-detail" : "") + " show";
+        if (!cloudLeaderUnlocked) return;
+        cloudCloseConferenceDetail();
+        const box = document.getElementById("cloudDetailBox");
+        if (!box) return;
+        box.className = "cloud-detail show";
         box.innerHTML = '<div class="empty">☁️ Abrindo conferência...</div>';
         try {
           const data = await cloudBuildExportData(confId);
-          cloudDetailRows = data.rows; cloudDetailFilter = "all"; cloudDetailSearch = ""; cloudDetailConfId = data.id;
+          cloudDetailRows = data.rows;
+          cloudDetailFilter = "all";
+          cloudDetailSearch = "";
+          cloudDetailConfId = data.id;
           box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(data.operador || "-")} • ${esc((cloudConsultDocs.find((d) => d.id === confId)?.data) || "-")}</div><div class="cloud-detail-sub">${esc(data.tipo || "-")}<br>${esc(data.id || "")}</div></div><button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">✕ Fechar</button></div>
           <div class="cloud-detail-stats">
             <div class="cloud-detail-stat clickable active" id="cloudDetailStatAll" onclick="cloudSetDetailFilter('all')">Total<strong>${data.resumo.total}</strong></div>
@@ -1211,8 +1214,13 @@
           cloudApplyDetailFilterUI();
           cloudRenderDetailOpSummary();
           cloudRenderDetailRows();
-          box.scrollIntoView({ behavior: "smooth", block: "start" }); cloudSetStatus("ok", "☁️ Conferência aberta");
-        } catch (e) { console.error(e); box.innerHTML = '<div class="empty">Erro ao abrir conferência. Veja o console.</div>'; cloudSetStatus("error", "☁️ Erro ao abrir"); }
+          box.scrollIntoView({ behavior: "smooth", block: "start" });
+          cloudSetStatus("ok", "☁️ Conferência aberta");
+        } catch (e) {
+          console.error(e);
+          box.innerHTML = '<div class="empty">Erro ao abrir conferência. Veja o console.</div>';
+          cloudSetStatus("error", "☁️ Erro ao abrir");
+        }
       }
       function cloudRowsByDetailFilter(includeSearch = true) {
         let rows = [...(cloudDetailRows || [])];
@@ -1412,14 +1420,27 @@
         const batch = cloudDb.batch(); snap.docs.forEach((doc) => batch.delete(doc.ref)); await batch.commit(); return snap.size;
       }
       async function cloudDeleteConference(confId) {
-        if (!cloudLeaderUnlocked) return; if (!confirm(`Excluir definitivamente a conferência ${confId}?`)) return;
-        const pass = prompt("Confirme a senha do líder para excluir:"); if (pass !== LEADER_PASSWORD) { notify("Senha incorreta. Exclusão cancelada.", "error"); return; }
+        if (!cloudLeaderUnlocked) return;
+        if (!confirm(`Excluir definitivamente a conferência ${confId}?`)) return;
         try {
-          cloudSetStatus("sync", "☁️ Excluindo conferência..."); if (!(await cloudInit())) throw new Error("Firebase indisponível");
-          const ref = cloudDb.collection("conferencias").doc(confId); await cloudDeleteSupabasePhotos(ref);
-          for (const sub of ["bobinas", "leituras", "nao_previstas", "fotos"]) { let removed = 0; do { removed = await cloudDeleteSubcollection(ref, sub); } while (removed > 0); }
-          await ref.delete(); notify("Conferência excluída."); cloudSetStatus("ok", "☁️ Conferência excluída");
-        } catch (e) { console.error(e); notify("Erro ao excluir: " + (e.message || e), "error"); cloudSetStatus("error", "☁️ Erro ao excluir"); }
+          cloudSetStatus("sync", "☁️ Excluindo conferência...");
+          if (!(await cloudInit())) throw new Error("Firebase indisponível");
+          const ref = cloudDb.collection("conferencias").doc(confId);
+          await cloudDeleteSupabasePhotos(ref);
+          for (const sub of ["bobinas", "leituras", "nao_previstas", "fotos"]) {
+            let removed = 0;
+            do {
+              removed = await cloudDeleteSubcollection(ref, sub);
+            } while (removed > 0);
+          }
+          await ref.delete();
+          notify("Conferência excluída.");
+          cloudSetStatus("ok", "☁️ Conferência excluída");
+        } catch (e) {
+          console.error(e);
+          notify("Erro ao excluir: " + (e.message || e), "error");
+          cloudSetStatus("error", "☁️ Erro ao excluir");
+        }
       }
 
       function switchTab(t) {
@@ -1952,5 +1973,5 @@
       }
       init();
     </script>
-  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a176f89e9f77de31',t:'MTc4MzQyODU4Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1770192990ef245',t:'MTc4MzQyODk1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
