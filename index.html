@@ -582,7 +582,7 @@
         <div class="card">
           <div class="prog-wrap"><div class="prog-head"><span>Progresso</span><span class="pct" id="pPct">0%</span></div><div class="prog-bar"><div class="prog-fill" id="pFill" style="width: 0%"></div></div></div>
           <div class="camera-area">
-            <button class="btn btn-camera" id="startConferenceBtn" onclick="startConference()">📸 Abrir Câmera</button>
+            <button class="btn btn-camera" id="startConferenceBtn" onclick="startConference()">▶️ Iniciar conferência</button>
             <p id="startConferenceHelp">A câmera abrirá em tela cheia</p>
             <div class="collector-panel" id="collectorPanel">
               <div class="hint">Com o coletor ativado, mantenha este campo em foco e leia a etiqueta com o laser.</div>
@@ -1915,12 +1915,12 @@
         if (S.collectorMode) {
           toggleBtn.textContent = S.collectorActive ? "🔫 Coletor ON" : "🔫 Coletor ON";
           toggleBtn.classList.add("on");
-          startBtn.textContent = S.collectorActive ? "🔫 Conferência em andamento" : "▶️ Iniciar Conferência";
+          startBtn.textContent = "▶️ Iniciar conferência";
           help.textContent = S.collectorActive ? "Leia a etiqueta com o laser. Se surgir uma não prevista, tire as fotos antes de confirmar." : "Modo coletor ativado. Toque em iniciar para receber as leituras do laser.";
           panel.classList.toggle("active", !!S.collectorActive);
         } else {
           toggleBtn.textContent = "🔫 Coletor OFF";
-          startBtn.textContent = "📸 Abrir Câmera";
+          startBtn.textContent = "▶️ Iniciar conferência";
           help.textContent = "A câmera abrirá em tela cheia";
           panel.classList.remove("active");
         }
@@ -1969,7 +1969,6 @@
       }
       function startCollectorConference() {
         if (S.db.length === 0) { notify("Importe os dados primeiro!", "error"); return; }
-        if (!ensureCheckerName(() => startCollectorConference())) return;
         if (S.collectorActive) {
           setCollectorLastRead("Coletor já está pronto para leitura.", "ok");
           setTimeout(focusCollectorInput, 80);
@@ -1982,7 +1981,17 @@
         setTimeout(focusCollectorInput, 120);
         notify("Conferência iniciada no modo coletor.");
       }
-      function startConference() {
+      async function startConference() {
+        if (S.db.length === 0) { notify("Importe os dados primeiro!", "error"); return; }
+        if (!ensureCheckerName(() => startConference())) return;
+        try {
+          cloudSetStatus("sync", "☁️ Iniciando conferência...");
+          const ok = await cloudEnsureSession();
+          if (ok && S.db.length) await cloudSyncDatabase();
+          if (cloudLeaderUnlocked) renderCloudConsult(document.getElementById("cloudSearch")?.value || "");
+        } catch (e) {
+          console.warn("Falha ao iniciar conferência na nuvem:", e);
+        }
         if (S.collectorMode) startCollectorConference();
         else openCamera();
       }
@@ -2055,10 +2064,7 @@
       }
       function openCamera() {
         if (S.db.length === 0) { notify("Importe os dados primeiro!", "error"); return; }
-        if (!ensureCheckerName(() => openCamera())) return;
-        cloudEnsureSession().then((ok) => {
-          if (ok && S.db.length) cloudSyncDatabase();
-        });
+        if (!ensureCheckerName(() => startConference())) return;
         startIntegratedScanner();
       }
       window.addEventListener("storage", function (e) { if (e.key === "bob3") { load(); updateDBUI(); updateStats(); updateHistory(); updateReport(); updateCollectorModeUI(); } });
@@ -2463,5 +2469,5 @@
       }
       init();
     </script>
-  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a179d47d0c4f0106',t:'MTc4MzQ1ODU2NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
