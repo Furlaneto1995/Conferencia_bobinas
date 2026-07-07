@@ -172,8 +172,7 @@
       .collector-panel { display: none; margin-top: 12px; padding: 12px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.18); background: rgba(59, 130, 246, 0.04); text-align: left; }
       .collector-panel.active { display: block; }
       .collector-panel .hint { color: var(--text-secondary); font-size: 0.8em; margin-bottom: 8px; }
-      .collector-input { width: 100%; padding: 12px 14px; background: #fff; border: 2px solid var(--border); border-radius: 10px; color: var(--text-primary); font-family: "SF Mono", Consolas, "Courier New", monospace; font-size: 0.95em; }
-      .collector-input:focus { outline: none; border-color: var(--accent-blue); box-shadow: 0 0 0 3px var(--glow-blue); }
+      .collector-input-hidden { position: absolute; left: -9999px; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
       .collector-last-read { margin-top: 8px; color: var(--text-muted); font-size: 0.78em; min-height: 1.2em; }
       .collector-last-read.ok { color: var(--accent-green); }
       .collector-last-read.warn { color: var(--accent-yellow); }
@@ -585,8 +584,8 @@
             <button class="btn btn-camera" id="startConferenceBtn" onclick="startConference()">▶️ Iniciar conferência</button>
             <p id="startConferenceHelp">A câmera abrirá em tela cheia</p>
             <div class="collector-panel" id="collectorPanel">
-              <div class="hint">Com o coletor ativado, mantenha este campo em foco e leia a etiqueta com o laser.</div>
-              <input type="text" id="collectorInput" class="collector-input" placeholder="Aguardando leitura do coletor..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="none" />
+              <div class="hint">Com o coletor ativado, deixe esta tela aberta e leia a etiqueta com o laser.</div>
+              <input type="text" id="collectorInput" class="collector-input-hidden" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="none" />
               <div class="collector-last-read" id="collectorLastRead">Pronto para iniciar.</div>
               <div class="btn-group" style="margin-top:10px">
                 <button class="btn btn-outline btn-sm" onclick="stopCollectorConference()">⏹️ Encerrar conferência</button>
@@ -1998,10 +1997,8 @@
       function processCollectorCode(rawCode) {
         const code = normalizeCollectorCode(rawCode);
         const time = new Date().toLocaleTimeString("pt-BR");
-        if (!code) { setCollectorLastRead("Leitura vazia.", "err"); return; }
+        if (!code) { setTimeout(focusCollectorInput, 80); return; }
         if (!/^(500|700)\d{8,9}$/.test(code)) {
-          setCollectorLastRead(`Código inválido: ${code}`, "err");
-          notify(`Código inválido: ${code}`, "warning");
           setTimeout(focusCollectorInput, 80);
           return;
         }
@@ -2469,5 +2466,5 @@
       }
       init();
     </script>
-  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a179d47d0c4f0106',t:'MTc4MzQ1ODU2NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a179dbda2975ad79',t:'MTc4MzQ1ODg2Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
