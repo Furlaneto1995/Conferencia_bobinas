@@ -384,9 +384,27 @@
       .cloud-detail-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
       .cloud-detail-stat { background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 9px 10px; font-size: 0.82em; color: var(--text-secondary); min-width: 0; }
       .cloud-detail-stat strong { display: block; color: var(--text-primary); font-size: 1.15em; margin-top: 2px; }
-      .cloud-detail-stat.clickable { cursor: pointer; transition: all 0.2s ease; }
+      .cloud-detail-stat.clickable { cursor: pointer; transition: all 0.2s ease; position: relative; }
+      .cloud-detail-stat.clickable:hover { border-color: rgba(59, 130, 246, 0.35); }
       .cloud-detail-stat.clickable:active { transform: scale(0.98); }
-      .cloud-detail-stat.active { border-color: var(--accent-blue); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12) inset; background: rgba(59, 130, 246, 0.06); }
+      .cloud-detail-stat.active {
+        border-color: var(--accent-blue);
+        box-shadow:
+          0 0 0 2px rgba(59, 130, 246, 0.14) inset,
+          0 6px 18px rgba(59, 130, 246, 0.12);
+        background: linear-gradient(180deg, rgba(59, 130, 246, 0.10), rgba(59, 130, 246, 0.04));
+      }
+      .cloud-detail-stat.active strong { color: var(--accent-blue); }
+      .cloud-detail-stat.active::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        border-radius: 10px 10px 0 0;
+        background: var(--accent-blue);
+      }
       .cloud-detail-section-title { margin: 12px 0 6px; font-size: 0.88em; font-weight: 900; color: var(--text-primary); }
       .cloud-detail-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
       .cloud-detail-scroll { max-height: 360px; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--border); border-radius: 10px; -webkit-overflow-scrolling: touch; }
@@ -419,6 +437,21 @@
         .cloud-detail-title { font-size: 0.9em; }
         .cloud-detail-sub { font-size: 0.74em; }
         .cloud-detail-close { width: 100%; }
+      }
+      @media (max-width: 520px) {
+        #cloudDetailBox .dtbl thead th:nth-child(6),
+        #cloudDetailBox .dtbl tbody td:nth-child(6),
+        .cloud-inline-detail .dtbl thead th:nth-child(6),
+        .cloud-inline-detail .dtbl tbody td:nth-child(6) {
+          display: none;
+        }
+        #cloudDetailBox .dtbl thead th,
+        #cloudDetailBox .dtbl tbody td,
+        .cloud-inline-detail .dtbl thead th,
+        .cloud-inline-detail .dtbl tbody td {
+          font-size: 0.68em;
+          padding: 6px 4px;
+        }
       }
       .cloud-current-badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 2px 8px; font-size: 0.7em; font-weight: 900; background: rgba(16, 185, 129, 0.12); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.25); margin-left: 6px; }
       .cloud-item.current { border-color: rgba(16, 185, 129, 0.35); box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.08) inset; }
@@ -1854,5 +1887,5 @@
       }
       init();
     </script>
-  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a176e8bc18bc01a7',t:'MTc4MzQyNzkzNg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a176ed90ea04d824',t:'MTc4MzQyODEzNA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
