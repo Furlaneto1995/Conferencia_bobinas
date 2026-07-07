@@ -181,14 +181,14 @@
       .loc-photo-section { margin-top: 10px; display: none; }
       .loc-photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
       .loc-photo-label { font-size: 0.78em; color: var(--text-secondary); margin-bottom: 4px; }
-      .loc-photo-btn { width: 100%; padding: 10px 8px; background: rgba(6, 182, 212, 0.08); border: 2px dashed rgba(6, 182, 212, 0.35); border-radius: 10px; color: var(--accent-cyan); font-size: 0.78em; font-weight: 700; text-align: center; cursor: pointer; }
+      .loc-photo-btn { width: 100%; padding: 8px 6px; background: rgba(6, 182, 212, 0.08); border: 2px dashed rgba(6, 182, 212, 0.35); border-radius: 10px; color: var(--accent-cyan); font-size: 0.74em; font-weight: 700; text-align: center; cursor: pointer; line-height: 1.2; }
       .loc-photo-btn.has-photo { border-color: rgba(16, 185, 129, 0.45); background: rgba(16, 185, 129, 0.08); color: var(--accent-green); }
       .loc-photo-btn input { display: none; }
       .loc-photo-preview { display: none; position: relative; margin-top: 6px; }
-      .loc-photo-preview img { width: 100%; height: 140px; object-fit: cover; border-radius: 10px; border: 2px solid rgba(16, 185, 129, 0.25); }
+      .loc-photo-preview img { width: 100%; height: 108px; object-fit: cover; border-radius: 10px; border: 2px solid rgba(16, 185, 129, 0.25); }
       .loc-photo-remove { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; border: none; border-radius: 50%; background: rgba(239, 68, 68, 0.92); color: #fff; cursor: pointer; }
       .loc-photo-error { color: var(--accent-red); font-size: 0.76em; font-weight: 700; margin-top: 4px; display: none; }
-      @media (max-width: 520px) { .loc-photo-grid { grid-template-columns: 1fr; } }
+      @media (max-width: 520px) { .loc-photo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } .loc-photo-preview img { height: 92px; } .loc-photo-btn { font-size: 0.7em; padding: 7px 4px; } .loc-photo-label { font-size: 0.72em; } }
       .history { max-height: 350px; overflow-y: auto; margin-top: 12px; -webkit-overflow-scrolling: touch; }
       .history::-webkit-scrollbar { width: 3px; }
       .history::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -589,7 +589,6 @@
               <input type="text" id="collectorInput" class="collector-input" placeholder="Aguardando leitura do coletor..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="none" />
               <div class="collector-last-read" id="collectorLastRead">Pronto para iniciar.</div>
               <div class="btn-group" style="margin-top:10px">
-                <button class="btn btn-outline btn-sm" onclick="focusCollectorInput()">🎯 Focar campo</button>
                 <button class="btn btn-outline btn-sm" onclick="stopCollectorConference()">⏹️ Encerrar conferência</button>
               </div>
             </div>
@@ -1290,7 +1289,7 @@
           const code = String(b.codigo || b.id); const l = leiturasMap.get(code); const checked = !!(l && l.status !== "not-found");
           rows.push({ code, op: b.op || "-", peso: b.peso || "-", status: checked ? (l.manual ? "Conferido Manual" : "Conferido") : "Pendente", time: checked ? (l.horaLocal || "") : "", location: l?.location || "", observation: l?.observation || "", hasPhoto: !!(l?.hasPhoto || fotoMap.get(code)), fotoUrl: l?.fotoUrl || fotoMap.get(code)?.url || "" });
         });
-        return { id: conf.id, title: "RELATÓRIO DE CONFERÊNCIA - NUVEM", operador: conf.operador || "-", tipo: conf.tipo || "-", status: conf.status || "-", resumo: { total, conferidos: chk, pendentes: total - chk, naoPrevistas: extras, percentual: pct }, opSummary, rows, confIds: [conf.id] };
+        return { id: conf.id, title: "RELATÓRIO DE CONFERÊNCIA - NUVEM", operador: conf.operador || "-", tipo: conf.tipo || "-", status: conf.status || "-", resumo: { total, conferidos: chk, pendentes: total - chk, naoPrevistas: extras, percentual: pct }, opSummary, rows, confIds: [conf.id], missingBobinas: !bobinasSource.length && total > 0 };
       }
       function cloudFilterRowsForExport(rows, opt) {
         return (rows || []).filter((i) => {
@@ -1453,6 +1452,7 @@
             <button class="cloud-report-btn" onclick="cloudShowExportModal(cloudDetailConfId)">Exportar</button>
           </div>
           <div class="search-wrap" style="margin-bottom: 8px"><span class="si">🔍</span><input class="search-input" id="cloudDetailSearch" placeholder="Buscar código, OP, status ou observação..." oninput="cloudDetailSearch=this.value; cloudRenderDetailRows(); cloudRenderDetailOpSummary()" /></div>
+          ${data.missingBobinas ? `<div style="margin:8px 0 0; padding:10px 12px; border-radius:10px; border:1px solid rgba(245,158,11,.28); background: rgba(245,158,11,.08); color: var(--accent-yellow); font-size:.82em; font-weight:700;">⚠️ Esta conferência tem resumo salvo, mas a lista de bobinas não foi sincronizada na nuvem. As próximas importações já serão salvas corretamente.</div>` : ""}
           <div class="cloud-detail-scroll" style="margin-top: 8px"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>`;
           cloudApplyDetailFilterUI();
           cloudRenderDetailOpSummary();
@@ -1796,7 +1796,7 @@
         const rows = lines.map((l) => l.split(sep).map((c) => c.trim().replace(/^["']|["']$/g, "")));
         const maxC = Math.max(...rows.map((r) => r.length)); S.fileData = rows; S.fileLayout = null; document.getElementById("colSel").style.display = "none";
         const special = detectSpecialLayout(rows); if (special) { S.fileLayout = special; updateImportActionButtons(); showConferenceTypeModal(special); return; }
-        if (maxC <= 1) { const codes = rows.map((r) => r[0]).filter(Boolean); S.db = [...new Set([...S.db, ...codes])]; save(); updateDBUI(); updateImportActionButtons(); notify(`✅ ${codes.length} códigos importados!`); return; }
+        if (maxC <= 1) { const codes = rows.map((r) => r[0]).filter(Boolean); S.db = [...new Set([...S.db, ...codes])]; save(); cloudEnsureSession().then(() => cloudSyncDatabase()); updateDBUI(); updateImportActionButtons(); notify(`✅ ${codes.length} códigos importados!`); return; }
         const sel = document.getElementById("colSel"); sel.style.display = "block"; const select = document.getElementById("colSelect"); select.innerHTML = ""; const hdr = rows[0];
         for (let i = 0; i < maxC; i++) { const o = document.createElement("option"); o.value = i; o.textContent = `Col ${i + 1}: "${hdr[i] || ""}"`; select.appendChild(o); }
         for (let i = 0; i < maxC; i++) { const h = (hdr[i] || "").toLowerCase(); if (h.includes("barr") || h.includes("code") || h.includes("código") || h.includes("ean") || h.includes("bobina")) { select.value = i; break; } }
@@ -2459,9 +2459,9 @@
       }
       function cancelLocMain() { pendingExtraMain = null; resetLocPhotoState(); document.getElementById("locModal").classList.remove("show"); if (collectorCanFocus()) setTimeout(focusCollectorInput, 80); }
       function init() {
-        setupMobileCopyProtection(); load(); initCollectorMode(); updateDBUI(); updateStats(); updateHistory(); updateReport(); updateCollectorModeUI(); document.getElementById("btnUndo").disabled = !S.scanned.length; if (S.collectorMode && S.collectorActive) setTimeout(focusCollectorInput, 120); cloudEnsureSession().then((ok) => { if (!ok && cloudIsConfigured()) cloudSetStatus("error", "☁️ Aguardando nuvem"); });
+        setupMobileCopyProtection(); load(); initCollectorMode(); updateDBUI(); updateStats(); updateHistory(); updateReport(); updateCollectorModeUI(); document.getElementById("btnUndo").disabled = !S.scanned.length; if (S.collectorMode && S.collectorActive) setTimeout(focusCollectorInput, 120); cloudEnsureSession().then((ok) => { if (ok && S.db.length) cloudSyncDatabase(); else if (!ok && cloudIsConfigured()) cloudSetStatus("error", "☁️ Aguardando nuvem"); });
       }
       init();
     </script>
-  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17994dade64f1e5',t:'MTc4MzQ1NTk1OA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
