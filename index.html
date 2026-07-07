@@ -102,6 +102,8 @@
       .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 14px; box-shadow: var(--shadow); }
       .card-title { font-size: 1em; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; color: var(--text-primary); flex-wrap: wrap; }
       .card-sub { color: var(--text-secondary); font-size: 0.82em; margin-bottom: 14px; }
+      .card-actions-inline { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+      .btn-sm { padding: 7px 12px; font-size: 0.78em; border-radius: 8px; }
       .import-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
       .import-box { background: var(--bg-input); border: 2px dashed var(--border); border-radius: 12px; padding: 16px; transition: all 0.3s; }
       .import-box:hover, .import-box:focus-within { border-color: var(--accent-blue); background: rgba(59, 130, 246, 0.03); }
@@ -511,6 +513,9 @@
               <div class="file-info" id="fileInfo">
                 <span id="fileName"></span><button class="file-remove" onclick="clearImportedFile(event)" title="Remover arquivo" aria-label="Remover arquivo">🗑️</button>
               </div>
+              <div class="btn-group" id="importActions" style="display:none; margin-top:8px">
+                <button class="btn btn-outline btn-sm" onclick="changeConferenceType()">🔁 Alterar tipo de conferência</button>
+              </div>
               <div class="col-sel" id="colSel">
                 <label>Coluna com os códigos:</label>
                 <select id="colSelect" onchange="previewCol()"></select>
@@ -524,7 +529,7 @@
           </div>
         </div>
         <div class="card">
-          <div class="card-title">🗄️ Banco de Dados <span style="margin-left: auto; font-size: 0.75em; color: var(--text-muted);" id="dbCount">0 códigos</span></div>
+          <div class="card-title">🗄️ Banco de Dados <span style="margin-left: auto; font-size: 0.75em; color: var(--text-muted);" id="dbCount">0 códigos</span><span class="card-actions-inline"><button class="btn btn-outline btn-sm" id="dbClearBtn" style="display:none" onclick="confirmClear()">🗑️ Limpar bobinas</button></span></div>
           <div class="card-sub">Códigos carregados para conferência</div>
           <div id="dbEmpty" class="empty"><div class="e-icon">📭</div><h3>Nenhum código importado</h3><p>Importe usando as opções acima</p></div>
           <div id="dbContent" style="display: none">
@@ -697,6 +702,7 @@
       };
       let pendingExtraMain = null;
       let checkerStartCallback = null;
+      let confTypeModalMode = "import";
       let cloudReady = false, cloudDb = null, cloudStorage = null, cloudSummaryTimer = null,
         cloudConsultUnsub = null, cloudConsultDocs = [], cloudListStatusFilter = "all",
         cloudDetailRows = [], cloudDetailFilter = "all", cloudDetailSearch = "",
@@ -1457,17 +1463,36 @@
       dz.addEventListener("dragover", (e) => { e.preventDefault(); dz.classList.add("over"); });
       dz.addEventListener("dragleave", () => dz.classList.remove("over"));
       dz.addEventListener("drop", (e) => { e.preventDefault(); dz.classList.remove("over"); if (e.dataTransfer.files.length) handleFile({ target: { files: e.dataTransfer.files } }); });
+      function resetConferenceData({ keepImportedFile = false } = {}) {
+        if (!keepImportedFile) {
+          S.fileData = null;
+          S.fileLayout = null;
+          const fi = document.getElementById("fileIn"); if (fi) fi.value = "";
+          const info = document.getElementById("fileInfo"); if (info) info.style.display = "none";
+          const name = document.getElementById("fileName"); if (name) name.textContent = "";
+          const col = document.getElementById("colSel"); if (col) col.style.display = "none";
+          const prev = document.getElementById("previewBox"); if (prev) prev.innerHTML = "";
+        }
+        const modal = document.getElementById("confTypeModal"); if (modal) modal.classList.remove("show");
+        S.meta = {};
+        S.confType = "";
+        S.cloudSessionId = "";
+        S.db = [];
+        S.scanned = [];
+        S.checked = new Set();
+        S.extras = [];
+        Object.keys(localStorage).filter((k) => k.startsWith("photo_")).forEach((k) => localStorage.removeItem(k));
+        save();
+        updateDBUI();
+        updateStats();
+        updateHistory();
+        updateReport();
+        document.getElementById("btnUndo").disabled = true;
+      }
       function clearImportedFile(ev) {
         if (ev) ev.stopPropagation();
-        const fi = document.getElementById("fileIn"); if (fi) fi.value = "";
-        const info = document.getElementById("fileInfo"); if (info) info.style.display = "none";
-        const name = document.getElementById("fileName"); if (name) name.textContent = "";
-        const col = document.getElementById("colSel"); if (col) col.style.display = "none";
-        const prev = document.getElementById("previewBox"); if (prev) prev.innerHTML = "";
-        const modal = document.getElementById("confTypeModal"); if (modal) modal.classList.remove("show");
-        S.fileData = null; S.fileLayout = null; S.meta = {}; S.confType = ""; S.cloudSessionId = ""; S.db = []; S.scanned = []; S.checked = new Set(); S.extras = [];
-        Object.keys(localStorage).filter((k) => k.startsWith("photo_")).forEach((k) => localStorage.removeItem(k));
-        save(); updateDBUI(); updateStats(); updateHistory(); updateReport(); document.getElementById("btnUndo").disabled = true; notify("Arquivo removido e códigos limpos.", "warning");
+        resetConferenceData({ keepImportedFile: false });
+        notify("Arquivo removido e códigos limpos.", "warning");
       }
       function handleFile(e) {
         const f = e.target.files[0]; if (!f) return;
@@ -1495,25 +1520,64 @@
         for (let i = 0; i < maxC; i++) { const h = (hdr[i] || "").toLowerCase(); if (h.includes("barr") || h.includes("code") || h.includes("código") || h.includes("ean") || h.includes("bobina")) { select.value = i; break; } }
         previewCol();
       }
-      function showConferenceTypeModal(layout) { const msg = layout && layout.hasAll ? "Modelo detectado: BARRAS_ORIGEM / ETAPA." : "Colunas BARRAS_ORIGEM e ETAPA detectadas."; notify(msg); document.getElementById("confTypeModal").classList.add("show"); }
-      function closeConferenceTypeModal() { document.getElementById("confTypeModal").classList.remove("show"); }
+      function updateImportActionButtons() {
+        const importActions = document.getElementById("importActions");
+        if (importActions) importActions.style.display = S.fileData && S.fileLayout ? "flex" : "none";
+        const clearBtn = document.getElementById("dbClearBtn");
+        if (clearBtn) clearBtn.style.display = S.db.length ? "inline-flex" : "none";
+      }
+      function showConferenceTypeModal(layout, mode = "import") {
+        confTypeModalMode = mode;
+        const msg = layout && layout.hasAll ? "Modelo detectado: BARRAS_ORIGEM / ETAPA." : "Colunas BARRAS_ORIGEM e ETAPA detectadas.";
+        if (mode === "import") notify(msg);
+        document.getElementById("confTypeModal").classList.add("show");
+      }
+      function closeConferenceTypeModal() { confTypeModalMode = "import"; document.getElementById("confTypeModal").classList.remove("show"); }
+      function changeConferenceType() {
+        if (!S.fileData || !S.fileLayout) {
+          notify("O arquivo original não está mais carregado. Importe novamente para mudar o tipo.", "warning");
+          return;
+        }
+        if ((S.scanned && S.scanned.length) || (S.checked && S.checked.size) || (S.extras && S.extras.length)) {
+          showModal("🔁 Alterar tipo", "Alterar o tipo de conferência vai substituir as bobinas atuais e limpar as leituras já feitas. Deseja continuar?", () => {
+            showConferenceTypeModal(S.fileLayout, "change");
+          });
+          return;
+        }
+        showConferenceTypeModal(S.fileLayout, "change");
+      }
       function conferenceTypeConfigs() {
         return { bases_todas: { label: "Bases - Todas", etapas: [20] }, bases_peliculas: { label: "Bases - Películas", etapas: [20], materialTerms: ["BOPP", "PP", "PET"] }, capas: { label: "Capas", etapas: [30, 31] }, refiladeira: { label: "Refiladeira", etapas: [40, 41, 42, 43, 44, 45, 46, 47] }, cs: { label: "C&S", etapas: [50, 51, 52, 53, 54, 55] } };
       }
       function setAllConferenceChecks(v) { document.querySelectorAll(".conf-check").forEach((c) => (c.checked = v)); }
-      function importSelectedConferenceTypes() { const cfgs = conferenceTypeConfigs(); const selected = [...document.querySelectorAll(".conf-check:checked")].map((c) => cfgs[c.value]).filter(Boolean); if (!selected.length) { notify("Marque pelo menos uma opção para importar.", "warning"); return; } importByConferenceTypes(selected); }
-      function selectConferenceType(type) { const cfg = conferenceTypeConfigs()[type]; if (!cfg) return; importByConferenceTypes([cfg]); }
-      function importByConferenceTypes(cfgList) {
+      function importSelectedConferenceTypes() {
+        const cfgs = conferenceTypeConfigs();
+        const selected = [...document.querySelectorAll(".conf-check:checked")].map((c) => cfgs[c.value]).filter(Boolean);
+        if (!selected.length) { notify("Marque pelo menos uma opção para importar.", "warning"); return; }
+        importByConferenceTypes(selected, { replaceExisting: confTypeModalMode === "change" });
+      }
+      function selectConferenceType(type) {
+        const cfg = conferenceTypeConfigs()[type];
+        if (!cfg) return;
+        importByConferenceTypes([cfg], { replaceExisting: confTypeModalMode === "change" });
+      }
+      function importByConferenceTypes(cfgList, { replaceExisting = false } = {}) {
         if (!S.fileData || !S.fileLayout) { notify("Arquivo não encontrado para importar.", "error"); return; }
+        if (replaceExisting) {
+          resetConferenceData({ keepImportedFile: true });
+        }
+        const nextMeta = {};
         const bIdx = S.fileLayout.idx.BARRAS_ORIGEM, eIdx = S.fileLayout.idx.ETAPA, mIdx = S.fileLayout.idx.MATERIAL, opIdx = S.fileLayout.idx.OP, pIdx = S.fileLayout.idx.PESO;
         const rows = S.fileData.slice(1); const codes = []; let matched = 0;
         rows.forEach((r) => {
           const etapaTxt = String(r[eIdx] || "").trim(); const m = etapaTxt.match(/\d+/); const etapa = m ? parseInt(m[0], 10) : NaN; const material = String(r[mIdx] || "").toUpperCase();
           const ok = cfgList.some((cfg) => { const etapas = new Set(cfg.etapas.map(Number)); if (!etapas.has(etapa)) return false; const terms = (cfg.materialTerms || []).map((t) => String(t).toUpperCase()); return !terms.length || terms.some((t) => material.includes(t)); });
-          if (!ok) return; matched++; const code = String(r[bIdx] || "").trim(); if (code) { codes.push(code); S.meta[code] = { op: String(r[opIdx] || "").trim(), etapa: String(r[eIdx] || "").trim(), material: String(r[mIdx] || "").trim(), peso: String(r[pIdx] || "").trim() }; }
+          if (!ok) return; matched++; const code = String(r[bIdx] || "").trim(); if (code) { codes.push(code); nextMeta[code] = { op: String(r[opIdx] || "").trim(), etapa: String(r[eIdx] || "").trim(), material: String(r[mIdx] || "").trim(), peso: String(r[pIdx] || "").trim() }; }
         });
         const uniq = [...new Set(codes)]; const labels = cfgList.map((c) => c.label).join(", "); if (!uniq.length) { notify(`Nenhum código encontrado para: ${labels}.`, "warning"); return; }
-        S.db = [...new Set([...S.db, ...uniq])]; S.confType = labels; save(); cloudEnsureSession().then(() => cloudSyncDatabase()); updateDBUI(); closeConferenceTypeModal(); notify(`✅ ${uniq.length} códigos únicos importados de ${matched} linhas filtradas. Duplicados foram ignorados.`);
+        S.meta = replaceExisting ? nextMeta : { ...S.meta, ...nextMeta };
+        S.db = replaceExisting ? uniq : [...new Set([...S.db, ...uniq])];
+        S.confType = labels; save(); cloudEnsureSession().then(() => cloudSyncDatabase()); updateDBUI(); closeConferenceTypeModal(); updateImportActionButtons(); notify(`✅ ${uniq.length} códigos únicos importados de ${matched} linhas filtradas. Duplicados foram ignorados.`);
       }
       function previewCol() {
         const ci = parseInt(document.getElementById("colSelect").value); const hh = document.getElementById("hasHeader").checked; const rows = S.fileData || [], box = document.getElementById("previewBox"); if (!rows.length) return;
@@ -1532,6 +1596,7 @@
         const c = S.db.length; document.getElementById("dbCount").textContent = `${c} código${c !== 1 ? "s" : ""}`; document.getElementById("scanBadge").textContent = S.checked.size;
         if (c === 0) { document.getElementById("dbEmpty").style.display = "block"; document.getElementById("dbContent").style.display = "none"; }
         else { document.getElementById("dbEmpty").style.display = "none"; document.getElementById("dbContent").style.display = "block"; renderDB(); }
+        updateImportActionButtons();
       }
       function renderDB(filter = "") {
         const tbody = document.getElementById("dbBody"); let f = S.db; if (filter) f = f.filter((c) => c.toLowerCase().includes(filter.toLowerCase())); const d = f.slice(0, 200);
@@ -1546,9 +1611,9 @@
       }
       function removeDB(c) { S.db = S.db.filter((x) => x !== c); S.checked.delete(c); save(); updateDBUI(); updateStats(); }
       function confirmClear() {
-        showModal("🗑️ Limpar Tudo", "Remover TODOS os códigos e resetar conferência?", () => {
-          S.db = []; S.scanned = []; S.checked = new Set(); S.extras = []; S.meta = {}; S.confType = ""; S.checkerName = ""; S.cloudSessionId = "";
-          Object.keys(localStorage).filter((k) => k.startsWith("photo_")).forEach((k) => localStorage.removeItem(k)); save(); updateDBUI(); updateStats(); updateHistory(); notify("Banco limpo!");
+        showModal("🗑️ Limpar bobinas", "Remover todas as bobinas e limpar a conferência atual?", () => {
+          resetConferenceData({ keepImportedFile: true });
+          notify("Bobinas removidas.");
         });
       }
       function exportDB() { download(S.db.join("\n"), "bobinas_banco.csv", "text/csv"); notify("Lista exportada!"); }
@@ -1887,5 +1952,5 @@
       }
       init();
     </script>
-  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a176ed90ea04d824',t:'MTc4MzQyODEzNA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a176f89e9f77de31',t:'MTc4MzQyODU4Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
