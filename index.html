@@ -1090,7 +1090,13 @@
         setTimeout(() => document.getElementById("baseNameInput").focus(), 120);
       }
       function closeBaseNameModal() {
-        document.getElementById("baseNameModal").classList.remove("show");
+        const modal = document.getElementById("baseNameModal");
+        if (modal) {
+          modal.classList.remove("show");
+          modal.style.display = "none";
+          setTimeout(() => { modal.style.display = ""; }, 0);
+        }
+        document.getElementById("baseNameError").style.display = "none";
         const input = document.getElementById("leaderBaseFileInput");
         if (input) input.value = "";
       }
@@ -1159,10 +1165,11 @@
             storagePath: uploaded.path,
             storageUrl: uploaded.publicUrl,
           }, { merge: true });
-          cloudSetStatus("ok", "☁️ Arquivo-base salvo");
-          notify("Arquivo-base salvo na nuvem!");
           closeBaseNameModal();
           pendingLeaderBaseUpload = null;
+          cloudSetStatus("ok", "☁️ Arquivo-base salvo");
+          notify("Arquivo-base salvo na nuvem!");
+          setTimeout(() => closeBaseNameModal(), 50);
           cloudRefreshBaseFiles();
         } catch (e) {
           console.error(e);
@@ -2222,6 +2229,18 @@
         });
       }
       function exportDB() { download(S.db.join("\n"), "bobinas_banco.csv", "text/csv"); notify("Lista exportada!"); }
+      function showCollectorOverlay() {
+        const overlay = document.getElementById("collectorOverlay");
+        if (!overlay) return;
+        overlay.classList.add("show");
+        document.body.style.overflow = "hidden";
+      }
+      function hideCollectorOverlay() {
+        const overlay = document.getElementById("collectorOverlay");
+        if (!overlay) return;
+        overlay.classList.remove("show");
+        document.body.style.overflow = "";
+      }
       function updateCollectorModeUI() {
         const onBtn = document.getElementById("collectorModeOnBtn");
         const offBtn = document.getElementById("collectorModeOffBtn");
@@ -2237,15 +2256,13 @@
           startBtn.textContent = "▶️ Iniciar conferência";
           help.textContent = S.collectorActive ? "Leia a etiqueta com o laser. Se surgir uma não prevista, tire as fotos antes de confirmar." : "Modo coletor ativado. Toque em iniciar para abrir a tela de conferência do coletor.";
           panel.classList.remove("active");
-          overlay.classList.toggle("show", !!S.collectorActive);
-          document.body.style.overflow = S.collectorActive ? "hidden" : "";
+          if (S.collectorActive) showCollectorOverlay(); else hideCollectorOverlay();
         } else {
           offBtn.classList.add("active-off");
           startBtn.textContent = "▶️ Iniciar conferência";
           help.textContent = "A câmera abrirá em tela cheia";
           panel.classList.remove("active");
-          overlay.classList.remove("show");
-          document.body.style.overflow = "";
+          hideCollectorOverlay();
         }
       }
       function setCollectorMode(enabled) {
@@ -2306,6 +2323,7 @@
         if (input) input.value = "";
         clearTimeout(collectorReadTimer);
         save();
+        hideCollectorOverlay();
         updateCollectorModeUI();
         setCollectorLastRead("Conferência no coletor encerrada.", "warn");
         updateCollectorOverlayCenter("Conferência encerrada", "Toque em iniciar conferência para voltar ao modo coletor.");
@@ -2327,6 +2345,7 @@
         }
         S.collectorActive = true;
         save();
+        showCollectorOverlay();
         updateCollectorModeUI();
         setCollectorLastRead("Pronto para receber leitura do coletor.");
         updateCollectorOverlayCenter("Aguardando leitura...", "Leia a etiqueta com o laser do coletor.");
@@ -2840,5 +2859,5 @@
       }
       init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17a7e035f472395',t:'MTc4MzQ2NTUwOA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17a843b0c9cda79',t:'MTc4MzQ2NTc2Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
