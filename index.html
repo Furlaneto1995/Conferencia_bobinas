@@ -552,7 +552,7 @@
         </button>
       </div>
       <div class="section active" id="sectionImport">
-        <div class="card">
+        <div class="card" style="display:none">
           <div class="card-title">📋 Importar Lista de Bobinas</div>
           <div class="card-sub">Importe os códigos de barras do sistema</div>
           <div class="import-grid" style="display:none">
@@ -584,6 +584,10 @@
             </div>
           </div>
           <div class="empty" style="padding:18px 14px; margin-top: 4px;"><div class="e-icon" style="font-size:2.1em">☁️</div><h3>Base centralizada na nuvem</h3><p>O envio de novos arquivos-base agora é feito no menu do líder. Aqui os dispositivos apenas carregam a base salva abaixo.</p></div>
+        </div>
+        <div class="card">
+          <div class="card-title">☁️ Base carregada da nuvem</div>
+          <div class="card-sub">O envio do arquivo-base foi migrado para o menu do líder. Aqui os dispositivos apenas atualizam e carregam a base salva.</div>
         </div>
         <div class="card">
           <div class="card-title">☁️ Arquivos-base na nuvem <span class="card-actions-inline"><button class="btn btn-outline btn-sm" onclick="cloudRefreshBaseFiles()">🔄 Atualizar</button></span></div>
@@ -806,7 +810,8 @@
         cloudDetailConfId = "", cloudMergeSelectedIds = new Set(), cloudMergedReport = null,
         cloudSessionUnsub = null, cloudLeaderUnlocked = false, cloudSecretTimer = null,
         cloudBaseFilesUnsub = null, cloudBaseFilesDocs = [], cloudBaseFilesSearch = "",
-        cloudDetailLiveUnsubs = [], cloudDetailRefreshTimer = null;
+        cloudDetailLiveUnsubs = [], cloudDetailRefreshTimer = null,
+        cloudDeletedUnsub = null, cloudDeletedIds = new Set();
       let camScanner = null, camVideoTrack = null, camTorchOn = false, camZoomValue = null,
         camZoomMin = 1, camZoomMax = 1, camZoomStepSize = 0.25, camZoomApplyTimer = null,
         camCooldown = false, camPendingExtra = null, camManualMode = "extra",
@@ -1319,6 +1324,11 @@
           box.innerHTML = '<div class="empty">☁️ Conectando consulta em tempo real...</div>';
           try {
             if (!(await cloudInit())) { box.innerHTML = '<div class="empty">Firebase não configurado ou sem conexão.</div>'; cloudSetStatus("error", "☁️ Nuvem indisponível"); return; }
+            if (cloudDeletedUnsub) cloudDeletedUnsub();
+            cloudDeletedUnsub = cloudDb.collection("conferencias_excluidas").limit(300).onSnapshot((snap) => {
+              cloudDeletedIds = new Set(snap.docs.map((d) => d.id));
+              cloudRenderConsultList(document.getElementById("cloudSearch")?.value || "");
+            }, () => {});
             cloudConsultUnsub = cloudDb.collection("conferencias").orderBy("atualizadoEm", "desc").limit(80).onSnapshot(
               (snap) => { cloudConsultDocs = snap.docs.map((d) => ({ id: d.id, ...d.data() })); cloudRenderConsultList(document.getElementById("cloudSearch")?.value || ""); if (cloudDetailConfId && cloudDetailConfId !== "__merged__" && document.getElementById("cloudDetailBox")?.classList.contains("show")) cloudOpenConference(cloudDetailConfId, { silent: true }); cloudSetStatus("ok", "☁️ Consulta em tempo real"); },
               (e) => { console.error(e); box.innerHTML = '<div class="empty">Erro ao consultar nuvem. Veja o console.</div>'; cloudSetStatus("error", "☁️ Erro na consulta"); },
@@ -1331,7 +1341,7 @@
       function cloudRenderConsultList(search = "") {
         const box = document.getElementById("cloudConsultBox"); if (!box) return;
         const q = String(search || "").trim().toLowerCase();
-        let docs = (cloudConsultDocs || []).filter((d) => !d.deleted);
+        let docs = (cloudConsultDocs || []).filter((d) => !d.deleted && !d.hidden && d.status !== "deleted" && !cloudDeletedIds.has(d.id));
         if (q) docs = docs.filter((d) => [d.operador, d.operadorKey, d.data, d.tipo, d.status, d.id].join(" ").toLowerCase().includes(q));
         if (cloudListStatusFilter !== "all") docs = docs.filter((d) => (d.status || "em_andamento") === cloudListStatusFilter);
         if (!docs.length) { box.innerHTML = '<div class="empty">Nenhuma conferência encontrada.</div>'; return; }
@@ -1819,7 +1829,9 @@
           cloudSetStatus("sync", "☁️ Excluindo conferência...");
           if (!(await cloudInit())) throw new Error("Firebase indisponível");
           const ref = cloudDb.collection("conferencias").doc(confId);
-          await ref.set({ deleted: true, deletedAt: firebase.firestore.FieldValue.serverTimestamp(), atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+          await cloudDb.collection("conferencias_excluidas").doc(confId).set({ id: confId, deletedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+          await ref.set({ deleted: true, hidden: true, status: "deleted", deletedAt: firebase.firestore.FieldValue.serverTimestamp(), atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+          cloudDeletedIds.add(confId);
           cloudConsultDocs = (cloudConsultDocs || []).filter((d) => d.id !== confId);
           cloudRenderConsultList(document.getElementById("cloudSearch")?.value || "");
           if (cloudDetailConfId === confId) cloudCloseConferenceDetail();
@@ -2729,5 +2741,5 @@
       }
       init();
     </script>
-  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17a25a5ab8f261c',t:'MTc4MzQ2MTg4OA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1777a535de4920d',t:'MTc4MzQzMzkwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17a2d8c384af8bf',t:'MTc4MzQ2MjIxMg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
