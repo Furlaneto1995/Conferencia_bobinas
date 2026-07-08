@@ -836,13 +836,22 @@
         mimeType: "text/plain",
       };
       let pendingExtraMain = null;
-      let pendingExtraMainPhotoEtiqueta = null;
-      let pendingExtraMainPhotoBobina = null;
-      let checkerStartCallback = null;
-      let collectorReadTimer = null;
-      let collectorKeyBuffer = "";
-      let collectorKeyTimer = null;
-      let confTypeModalMode = "import";
+let pendingExtraMainPhotoEtiqueta = null;
+let pendingExtraMainPhotoBobina = null;
+let pendingLeaderBaseUpload = null;
+let checkerStartCallback = null;
+let collectorReadTimer = null;
+let collectorKeyBuffer = "";
+let collectorKeyTimer = null;
+let collectorProcessing = false; 
+let confTypeModalMode = "import";
+const CLOUD_BUFFER_FLUSH_INTERVAL = 30000; // flush a cada 30s
+const CLOUD_BUFFER_MAX_SIZE = 25;          // flush ao atingir 25 leituras
+let cloudWriteBuffer = [];
+let cloudBufferTimer = null;
+let cloudDatabaseSynced = false;
+let cloudHeaderDirty = false;
+let cloudLastHeaderWrite = 0;
       let cloudReady = false, cloudDb = null, cloudStorage = null, cloudSummaryTimer = null,
         cloudConsultUnsub = null, cloudConsultDocs = [], cloudListStatusFilter = "all",
         cloudDetailRows = [], cloudDetailFilter = "all", cloudDetailSearch = "",
@@ -873,30 +882,35 @@
 
       function esc(v) { return String(v ?? "").replace(/[&<>"]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[m]); }
       function load() {
-        try {
-          const s = JSON.parse(localStorage.getItem("bob3"));
-          if (s) {
-            S.db = s.db || [];
-            S.scanned = s.scanned || [];
-            S.checked = new Set(s.checked || []);
-            S.extras = s.extras || [];
-            S.meta = s.meta || {};
-            S.confType = s.confType || "";
-            S.checkerName = s.checkerName || "";
-            S.cloudSessionId = s.cloudSessionId || "";
-            S.collectorMode = !!s.collectorMode;
-            S.collectorActive = !!s.collectorActive;
-          }
-        } catch (e) {}
-      }
+  try {
+    const s = JSON.parse(localStorage.getItem("bob3"));
+    if (s) {
+      S.db = s.db || [];
+      S.scanned = s.scanned || [];
+      S.checked = new Set(s.checked || []);
+      S.extras = s.extras || [];
+      S.meta = s.meta || {};
+      S.confType = s.confType || "";
+      S.checkerName = s.checkerName || "";
+      S.cloudSessionId = s.cloudSessionId || "";
+      S.collectorMode = !!s.collectorMode;
+      // BUG 1 CORRIGIDO: nunca restaurar collectorActive = true
+      // O operador deve iniciar manualmente após recarregar
+      S.collectorActive = false;
+    }
+  } catch (e) {}
+}
       function save() {
-        try {
-          localStorage.setItem("bob3", JSON.stringify({
-            db: S.db, scanned: S.scanned, checked: Array.from(S.checked), extras: S.extras,
-            meta: S.meta, confType: S.confType, checkerName: S.checkerName, cloudSessionId: S.cloudSessionId, collectorMode: S.collectorMode, collectorActive: S.collectorActive,
-          }));
-        } catch (e) {}
-      }
+  try {
+    localStorage.setItem("bob3", JSON.stringify({
+      db: S.db, scanned: S.scanned, checked: Array.from(S.checked), extras: S.extras,
+      meta: S.meta, confType: S.confType, checkerName: S.checkerName,
+      cloudSessionId: S.cloudSessionId, collectorMode: S.collectorMode,
+      // BUG 1 CORRIGIDO: sempre grava false para não reabrir ativo
+      collectorActive: false,
+    }));
+  } catch (e) {}
+}
       function download(content, name, type) {
         const blob = new Blob(["\uFEFF" + content], { type: type + ";charset=utf-8" });
         const a = document.createElement("a");
@@ -977,23 +991,39 @@
         }
       }
       async function cloudEnsureSession() {
-        if (!(await cloudInit())) return null;
-        if (!S.checkerName) return null;
-        if (!S.cloudSessionId) { S.cloudSessionId = cloudMakeSessionId(); save(); }
-        await cloudSaveConferenceHeader();
-        cloudWatchCurrentConference();
-        return S.cloudSessionId;
-      }
+  if (!(await cloudInit())) return null;
+  if (!S.checkerName) return null;
+  if (!S.cloudSessionId) { S.cloudSessionId = cloudMakeSessionId(); save(); }
+  await cloudSaveConferenceHeader();
+  cloudWatchCurrentConference();
+  cloudStartBufferFlushTimer(); // ← inicia o timer de flush
+  return S.cloudSessionId;
+}
       function cloudConferenceRef() { if (!cloudReady || !S.cloudSessionId) return null; return cloudDb.collection("conferencias").doc(S.cloudSessionId); }
       function cloudSummary() {
         const total = S.db.length, checked = S.checked.size;
         return { total, conferidos: checked, pendentes: total - checked, naoPrevistas: [...new Set(S.extras)].length, percentual: total > 0 ? Number(((checked / total) * 100).toFixed(1)) : 0 };
       }
-      async function cloudSaveConferenceHeader() {
-        const ref = cloudConferenceRef(); if (!ref) return;
-        const now = new Date();
-        await ref.set({ id: S.cloudSessionId, operador: S.checkerName || "", operadorKey: cloudOperatorKey(), data: cloudDateKey(now), tipo: S.confType || "", status: "em_andamento", resumo: cloudSummary(), atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(), criadoEmLocal: now.toISOString() }, { merge: true });
-      }
+      async function cloudSaveConferenceHeader(force = false) {
+  const ref = cloudConferenceRef(); if (!ref) return;
+  const now = Date.now();
+  // Só grava se forçado OU se passou 15s desde a última gravação
+  if (!force && (now - cloudLastHeaderWrite) < 15000) {
+    cloudHeaderDirty = true; // marca para gravar no próximo flush
+    return;
+  }
+  cloudLastHeaderWrite = now;
+  cloudHeaderDirty = false;
+  const d = new Date();
+  await cloudConferenceRef().set({
+    id: S.cloudSessionId, operador: S.checkerName || "",
+    operadorKey: cloudOperatorKey(), data: cloudDateKey(d),
+    tipo: S.confType || "", status: "em_andamento",
+    resumo: cloudSummary(),
+    atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+    criadoEmLocal: d.toISOString()
+  }, { merge: true });
+}
       function cloudWatchCurrentConference() {
         try {
           const ref = cloudConferenceRef(); if (!ref || cloudSessionUnsub) return;
@@ -1001,49 +1031,117 @@
         } catch (e) { console.warn("Não foi possível monitorar a conferência:", e); }
       }
       function cloudUpdateSummaryDebounced() {
-        if (!cloudIsConfigured() || !S.cloudSessionId) return;
-        clearTimeout(cloudSummaryTimer);
-        cloudSummaryTimer = setTimeout(async () => {
-          try {
-            await cloudEnsureSession();
-            const ref = cloudConferenceRef();
-            if (ref) await ref.set({ resumo: cloudSummary(), atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-          } catch (e) { console.warn("Falha ao atualizar resumo na nuvem:", e); }
-        }, 800);
+  if (!cloudIsConfigured() || !S.cloudSessionId) return;
+  // Apenas marca como dirty — será gravado no próximo flush do buffer
+  cloudHeaderDirty = true;
+}
+     async function cloudSyncDatabase() {
+  // Só sincroniza uma vez por sessão
+  if (cloudDatabaseSynced) return;
+  try {
+    cloudSetStatus("sync", "☁️ Sincronizando base...");
+    await cloudEnsureSession();
+    const ref = cloudConferenceRef(); if (!ref) return;
+    const codes = [...new Set((S.db || []).map((code) => String(code)))];
+    const CHUNK = 400;
+    for (let i = 0; i < codes.length; i += CHUNK) {
+      const batch = cloudDb.batch();
+      codes.slice(i, i + CHUNK).forEach((code) => {
+        const meta = S.meta && S.meta[code] ? S.meta[code] : {};
+        batch.set(ref.collection("bobinas").doc(String(code)), {
+          codigo: String(code), op: meta.op || "-", peso: meta.peso || "-",
+          etapa: meta.etapa || "", material: meta.material || "",
+          atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      });
+      await batch.commit();
+    }
+    await cloudSaveConferenceHeader(true); // força gravação do header
+    cloudDatabaseSynced = true; // ← não sincroniza de novo nesta sessão
+    cloudSetStatus("ok", "☁️ Base sincronizada");
+  } catch (e) {
+    cloudSetStatus("error", "☁️ Erro ao sincronizar base");
+    console.warn("Falha ao sincronizar banco na nuvem:", e);
+  }
+}
+      // Agora apenas enfileira no buffer — não grava imediatamente
+function cloudSyncReading(scan) {
+  if (!cloudIsConfigured() || !S.cloudSessionId || !scan || !scan.code) return;
+  cloudWriteBuffer.push({ ...scan, _bufferedAt: Date.now() });
+  cloudHeaderDirty = true;
+  // Flush automático se atingiu o limite de 25 leituras
+  if (cloudWriteBuffer.length >= CLOUD_BUFFER_MAX_SIZE) {
+    cloudFlushBuffer();
+  }
+}
+
+// Nova função: grava o buffer inteiro em um único batch
+async function cloudFlushBuffer(force = false) {
+  if (!cloudWriteBuffer.length && !cloudHeaderDirty) return;
+  if (!cloudReady || !S.cloudSessionId) return;
+  const ref = cloudConferenceRef(); if (!ref) return;
+
+  const toFlush = [...cloudWriteBuffer];
+  cloudWriteBuffer = []; // limpa atomicamente
+
+  try {
+    cloudSetStatus("sync", "☁️ Sincronizando...");
+    const batch = cloudDb.batch();
+
+    for (const scan of toFlush) {
+      if (!scan || !scan.code) continue;
+      const meta = S.meta && S.meta[scan.code] ? S.meta[scan.code] : {};
+      // Gravação da leitura
+      batch.set(ref.collection("leituras").doc(String(scan.code)), {
+        codigo: String(scan.code), status: scan.status || "found",
+        op: meta.op || "-", peso: meta.peso || "-",
+        manual: !!scan.manual, location: scan.location || "",
+        observation: scan.observation || "", hasPhoto: !!scan.hasPhoto,
+        horaLocal: scan.time || "",
+        criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      // Não prevista
+      if (scan.status === "not-found") {
+        batch.set(ref.collection("nao_previstas").doc(String(scan.code)), {
+          codigo: String(scan.code), location: scan.location || "",
+          observation: scan.observation || "", hasPhoto: !!scan.hasPhoto,
+          horaLocal: scan.time || "",
+          atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
       }
-      async function cloudSyncDatabase() {
-        try {
-          cloudSetStatus("sync", "☁️ Sincronizando...");
-          await cloudEnsureSession();
-          const ref = cloudConferenceRef(); if (!ref) return;
-          const codes = [...new Set((S.db || []).map((code) => String(code)))];
-          const CHUNK = 400;
-          for (let i = 0; i < codes.length; i += CHUNK) {
-            const batch = cloudDb.batch();
-            codes.slice(i, i + CHUNK).forEach((code) => {
-              const meta = S.meta && S.meta[code] ? S.meta[code] : {};
-              batch.set(ref.collection("bobinas").doc(String(code)), { codigo: String(code), op: meta.op || "-", peso: meta.peso || "-", etapa: meta.etapa || "", material: meta.material || "", atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-            });
-            await batch.commit();
-          }
-          await cloudSaveConferenceHeader();
-          cloudSetStatus("ok", "☁️ Dados sincronizados");
-        } catch (e) { cloudSetStatus("error", "☁️ Erro ao sincronizar"); console.warn("Falha ao sincronizar banco na nuvem:", e); }
-      }
-      async function cloudSyncReading(scan) {
-        try {
-          cloudSetStatus("sync", "☁️ Salvando leitura...");
-          await cloudEnsureSession();
-          const ref = cloudConferenceRef(); if (!ref || !scan || !scan.code) return;
-          const meta = S.meta && S.meta[scan.code] ? S.meta[scan.code] : {};
-          await ref.collection("leituras").doc(String(scan.code)).set({ codigo: String(scan.code), status: scan.status || "found", op: meta.op || "-", peso: meta.peso || "-", manual: !!scan.manual, location: scan.location || "", observation: scan.observation || "", hasPhoto: !!scan.hasPhoto, horaLocal: scan.time || "", criadoEm: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-          if (scan.status === "not-found") {
-            await ref.collection("nao_previstas").doc(String(scan.code)).set({ codigo: String(scan.code), location: scan.location || "", observation: scan.observation || "", hasPhoto: !!scan.hasPhoto, horaLocal: scan.time || "", atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-          }
-          cloudUpdateSummaryDebounced();
-          cloudSetStatus("ok", "☁️ Leitura sincronizada");
-        } catch (e) { cloudSetStatus("error", "☁️ Leitura pendente"); console.warn("Falha ao sincronizar leitura na nuvem:", e); }
-      }
+    }
+
+    // Header: uma gravação para o lote todo
+    if (toFlush.length > 0 || cloudHeaderDirty) {
+      batch.set(ref, {
+        resumo: cloudSummary(),
+        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      cloudLastHeaderWrite = Date.now();
+      cloudHeaderDirty = false;
+    }
+
+    await batch.commit();
+    cloudSetStatus("ok", `☁️ ${toFlush.length} leituras salvas`);
+  } catch (e) {
+    console.warn("Falha no flush. Devolvendo ao buffer:", e);
+    cloudSetStatus("error", "☁️ Erro ao sincronizar lote");
+    // Devolve ao buffer para tentar novamente
+    cloudWriteBuffer = [...toFlush, ...cloudWriteBuffer];
+  }
+}
+
+// Timer de flush periódico
+function cloudStartBufferFlushTimer() {
+  if (cloudBufferTimer) return;
+  cloudBufferTimer = setInterval(() => cloudFlushBuffer(), CLOUD_BUFFER_FLUSH_INTERVAL);
+}
+
+function cloudStopBufferFlushTimer() {
+  if (cloudBufferTimer) { clearInterval(cloudBufferTimer); cloudBufferTimer = null; }
+}
+
+
       function cloudDataUrlToBlob(dataUrl) {
         const parts = String(dataUrl || "").split(",");
         const mime = (parts[0].match(/:(.*?);/) || [])[1] || "image/jpeg";
@@ -1411,12 +1509,25 @@
         }
       }
       async function cloudMarkFinished() {
-        try {
-          await cloudEnsureSession(); const ref = cloudConferenceRef(); if (!ref) return false;
-          await ref.set({ status: "finalizada", resumo: cloudSummary(), finalizadoEm: firebase.firestore.FieldValue.serverTimestamp(), atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-          cloudSetStatus("ok", "☁️ Conferência finalizada na nuvem"); return true;
-        } catch (e) { console.warn("Falha ao finalizar na nuvem:", e); cloudSetStatus("error", "☁️ Erro ao finalizar"); return false; }
-      }
+  try {
+    // Garante que todas as leituras pendentes sejam gravadas antes de finalizar
+    await cloudFlushBuffer();
+    await cloudEnsureSession();
+    const ref = cloudConferenceRef(); if (!ref) return false;
+    await ref.set({
+      status: "finalizada", resumo: cloudSummary(),
+      finalizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    cloudStopBufferFlushTimer();
+    cloudSetStatus("ok", "☁️ Conferência finalizada na nuvem");
+    return true;
+  } catch (e) {
+    console.warn("Falha ao finalizar na nuvem:", e);
+    cloudSetStatus("error", "☁️ Erro ao finalizar");
+    return false;
+  }
+}
       async function finishConference() {
         const ok = await cloudMarkFinished();
         notify(ok ? "Conferência finalizada na nuvem." : "Não foi possível finalizar na nuvem.", ok ? "success" : "warning");
@@ -2008,37 +2119,48 @@
       dz.addEventListener("dragleave", () => dz.classList.remove("over"));
       dz.addEventListener("drop", (e) => { e.preventDefault(); dz.classList.remove("over"); if (e.dataTransfer.files.length) handleFile({ target: { files: e.dataTransfer.files } }); });
       function resetConferenceData({ keepImportedFile = false } = {}) {
-        if (!keepImportedFile) {
-          S.fileData = null;
-          S.fileLayout = null;
-          currentImportedFile = { name: "", content: "", source: "", mimeType: "text/plain" };
-          const fi = document.getElementById("fileIn"); if (fi) fi.value = "";
-          const info = document.getElementById("fileInfo"); if (info) info.style.display = "none";
-          const name = document.getElementById("fileName"); if (name) name.textContent = "";
-          const col = document.getElementById("colSel"); if (col) col.style.display = "none";
-          const prev = document.getElementById("previewBox"); if (prev) prev.innerHTML = "";
-        }
-        const modal = document.getElementById("confTypeModal"); if (modal) modal.classList.remove("show");
-        S.meta = {};
-        S.confType = "";
-        S.cloudSessionId = "";
-        S.db = [];
-        S.scanned = [];
-        S.checked = new Set();
-        S.extras = [];
-        S.collectorActive = false;
-        pendingExtraMain = null;
-        pendingExtraMainPhotoEtiqueta = null;
-        pendingExtraMainPhotoBobina = null;
-        Object.keys(localStorage).filter((k) => k.startsWith("photo_")).forEach((k) => localStorage.removeItem(k));
-        save();
-        updateDBUI();
-        updateStats();
-        updateHistory();
-        updateReport();
-        updateCollectorModeUI();
-        document.getElementById("btnUndo").disabled = true;
-      }
+  // BUG 4 CORRIGIDO: flush e cancelamento do listener Firestore
+  cloudFlushBuffer();
+  if (cloudSessionUnsub) {
+    try { cloudSessionUnsub(); } catch (e) {}
+    cloudSessionUnsub = null;
+  }
+  cloudStopBufferFlushTimer();
+  cloudDatabaseSynced = false;
+  cloudHeaderDirty = false;
+  cloudWriteBuffer = [];
+
+  if (!keepImportedFile) {
+    S.fileData = null;
+    S.fileLayout = null;
+    currentImportedFile = { name: "", content: "", source: "", mimeType: "text/plain" };
+    const fi = document.getElementById("fileIn"); if (fi) fi.value = "";
+    const info = document.getElementById("fileInfo"); if (info) info.style.display = "none";
+    const name = document.getElementById("fileName"); if (name) name.textContent = "";
+    const col = document.getElementById("colSel"); if (col) col.style.display = "none";
+    const prev = document.getElementById("previewBox"); if (prev) prev.innerHTML = "";
+  }
+  const modal = document.getElementById("confTypeModal"); if (modal) modal.classList.remove("show");
+  S.meta = {};
+  S.confType = "";
+  S.cloudSessionId = "";
+  S.db = [];
+  S.scanned = [];
+  S.checked = new Set();
+  S.extras = [];
+  S.collectorActive = false;
+  pendingExtraMain = null;
+  pendingExtraMainPhotoEtiqueta = null;
+  pendingExtraMainPhotoBobina = null;
+  Object.keys(localStorage).filter((k) => k.startsWith("photo_")).forEach((k) => localStorage.removeItem(k));
+  save();
+  updateDBUI();
+  updateStats();
+  updateHistory();
+  updateReport();
+  updateCollectorModeUI();
+  document.getElementById("btnUndo").disabled = true;
+}
       function clearImportedFile(ev) {
         if (ev) ev.stopPropagation();
         resetConferenceData({ keepImportedFile: false });
@@ -2287,10 +2409,13 @@
         const panel = document.getElementById("collectorPanel");
         const overlay = document.getElementById("collectorOverlay");
         if (!onBtn || !offBtn || !startBtn || !help || !panel || !overlay) return;
-        onBtn.className = "collector-toggle-seg";
-        offBtn.className = "collector-toggle-seg";
-        if (S.collectorMode) {
-          onBtn.classList.add("active-on");
+        // BUG 9 CORRIGIDO: resetar ambos antes de aplicar estado
+onBtn.className = "collector-toggle-seg";
+offBtn.className = "collector-toggle-seg";
+onBtn.classList.remove("active-on", "active-off");
+offBtn.classList.remove("active-on", "active-off");
+if (S.collectorMode) {
+  onBtn.classList.add("active-on");
           startBtn.textContent = "▶️ Iniciar conferência";
           help.textContent = S.collectorActive ? "Leia a etiqueta com o laser. Se surgir uma não prevista, tire as fotos antes de confirmar." : "Modo coletor ativado. Toque em iniciar para abrir a tela de conferência do coletor.";
           panel.classList.remove("active");
@@ -2399,29 +2524,45 @@
         console.log("Teste visual do coletor encerrado.");
       }
       function collectorCanFocus() {
-        return !!(S.collectorMode && S.collectorActive && !document.getElementById("locModal")?.classList.contains("show") && !document.getElementById("checkerModal")?.classList.contains("show") && !document.getElementById("modal")?.classList.contains("show") && !document.getElementById("confTypeModal")?.classList.contains("show"));
-      }
+  if (!S.collectorMode || !S.collectorActive) return false;
+  // BUG 3 CORRIGIDO: verificar todos os modais em loop
+  const modals = ["locModal", "checkerModal", "modal", "confTypeModal", "baseNameModal"];
+  for (const id of modals) {
+    const el = document.getElementById(id);
+    if (el && el.classList.contains("show")) return false;
+  }
+  return true;
+}
       function focusCollectorInput() {
-        if (!collectorCanFocus()) return;
-        const input = document.getElementById("collectorInput");
-        if (!input) return;
-        input.focus();
-        try { input.select(); } catch (e) {}
-      }
+  if (!collectorCanFocus()) return;
+  const input = document.getElementById("collectorInput");
+  if (!input) return;
+  // BUG 3 CORRIGIDO: usar requestAnimationFrame para garantir
+  // que o DOM terminou de atualizar antes de focar
+  requestAnimationFrame(() => {
+    input.focus({ preventScroll: true });
+    try { input.select(); } catch (e) {}
+  });
+}
       function stopCollectorConference(silent = false) {
-        S.collectorActive = false;
-        const input = document.getElementById("collectorInput");
-        if (input) input.value = "";
-        clearTimeout(collectorReadTimer);
-        clearTimeout(collectorKeyTimer);
-        collectorKeyBuffer = "";
-        save();
-        hideCollectorOverlay();
-        updateCollectorModeUI();
-        setCollectorLastRead("Conferência no coletor encerrada.", "warn");
-        updateCollectorOverlayCenter("Conferência encerrada", "Toque em iniciar conferência para voltar ao modo coletor.", "—");
-        if (!silent) notify("Conferência via coletor encerrada.", "warning");
-      }
+  S.collectorActive = false;
+  const input = document.getElementById("collectorInput");
+  if (input) input.value = "";
+  clearTimeout(collectorReadTimer);
+  collectorReadTimer = null;
+  clearTimeout(collectorKeyTimer);
+  collectorKeyTimer = null;
+  collectorKeyBuffer = "";
+  collectorProcessing = false;
+  // Flush do buffer antes de encerrar
+  cloudFlushBuffer();
+  save();
+  hideCollectorOverlay();
+  updateCollectorModeUI();
+  setCollectorLastRead("Conferência no coletor encerrada.", "warn");
+  updateCollectorOverlayCenter("Conferência encerrada", "Toque em iniciar conferência para voltar ao modo coletor.", "—");
+  if (!silent) notify("Conferência via coletor encerrada.", "warning");
+}
       function normalizeCollectorCode(raw) {
         const text = String(raw || "").replace(/[\r\n\t]+/g, "").trim();
         if (!text) return "";
@@ -2462,102 +2603,145 @@
         })();
       }
       function processCollectorCode(rawCode) {
-        const code = normalizeCollectorCode(rawCode);
-        const time = new Date().toLocaleTimeString("pt-BR");
-        if (!code) { setTimeout(focusCollectorInput, 80); return; }
-        if (!/^(500|700)\d{8,9}$/.test(code)) {
-          setTimeout(focusCollectorInput, 80);
-          return;
-        }
-        if (S.checked.has(code)) {
-          collectorShowBigStatus("yellow", "⚠️ JÁ LIDA", code, 1500);
-          setCollectorLastRead(`⚠️ ${code} já conferido.`, "warn");
-          updateCollectorOverlayCenter("Já lida", "Esta bobina já foi conferida.", code);
-          setTimeout(focusCollectorInput, 80);
-          return;
-        }
-        if (S.extras.includes(code)) {
-          collectorShowBigStatus("yellow", "⚠️ JÁ REGISTRADA", code, 1600);
-          setCollectorLastRead(`⚠️ ${code} já registrado como não prevista.`, "warn");
-          updateCollectorOverlayCenter("Já registrada", "Já registrada como não prevista.", code);
-          setTimeout(focusCollectorInput, 80);
-          return;
-        }
-        if (S.db.includes(code)) {
-          const scanItem = { code, time, status: "found", source: "collector" };
-          S.checked.add(code);
-          S.scanned.unshift(scanItem);
-          save();
-          cloudSyncReading(scanItem);
-          updateStats(); updateHistory(); updateDBUI(); updateReport();
-          document.getElementById("btnUndo").disabled = false;
-          collectorShowBigStatus("green", "✅ LIDA", code, 1400);
-          setCollectorLastRead(`✅ ${code} conferido.`, "ok");
-          updateCollectorOverlayCenter("Lida com sucesso", "Bobina prevista conferida com sucesso.", code);
-          setTimeout(focusCollectorInput, 80);
-          return;
-        }
-        collectorShowBigStatus("red", "⚠️ NÃO PREVISTA", code, 1200);
-        setCollectorLastRead(`⚠️ ${code} não prevista. Informe a localização.`, "warn");
-        updateCollectorOverlayCenter("Bobina não prevista", "Abrindo o fluxo de localização e fotos.", code);
-        showLocModal(code, time, "collector");
-      }
+  // BUG 2 CORRIGIDO: trava anti duplo disparo
+  if (collectorProcessing) return;
+  collectorProcessing = true;
+
+  const code = normalizeCollectorCode(rawCode);
+  const time = new Date().toLocaleTimeString("pt-BR");
+
+  if (!code) {
+    collectorProcessing = false;
+    setTimeout(focusCollectorInput, 80);
+    return;
+  }
+
+  // BUG 6 CORRIGIDO: feedback visual para código inválido
+  if (!/^(500|700)\d{8,9}$/.test(code)) {
+    collectorShowBigStatus("red", "❌ CÓDIGO INVÁLIDO", code, 1800);
+    setCollectorLastRead(`❌ "${code}" — formato inválido.`, "err");
+    updateCollectorOverlayCenter("Código inválido", "Formato não reconhecido. Releia a etiqueta.", code);
+    collectorProcessing = false;
+    setTimeout(focusCollectorInput, 80);
+    return;
+  }
+
+  if (S.checked.has(code)) {
+    collectorShowBigStatus("yellow", "⚠️ JÁ LIDA", code, 1500);
+    setCollectorLastRead(`⚠️ ${code} já conferido.`, "warn");
+    updateCollectorOverlayCenter("Já lida", "Esta bobina já foi conferida.", code);
+    collectorProcessing = false;
+    setTimeout(focusCollectorInput, 80);
+    return;
+  }
+
+  if (S.extras.includes(code)) {
+    collectorShowBigStatus("yellow", "⚠️ JÁ REGISTRADA", code, 1600);
+    setCollectorLastRead(`⚠️ ${code} já registrado como não prevista.`, "warn");
+    updateCollectorOverlayCenter("Já registrada", "Já registrada como não prevista.", code);
+    collectorProcessing = false;
+    setTimeout(focusCollectorInput, 80);
+    return;
+  }
+
+  if (S.db.includes(code)) {
+    const scanItem = { code, time, status: "found", source: "collector" };
+    S.checked.add(code);
+    S.scanned.unshift(scanItem);
+    save();
+    cloudSyncReading(scanItem);
+    updateStats(); updateHistory(); updateDBUI(); updateReport();
+    document.getElementById("btnUndo").disabled = false;
+    collectorShowBigStatus("green", "✅ LIDA", code, 1400);
+    setCollectorLastRead(`✅ ${code} conferido.`, "ok");
+    updateCollectorOverlayCenter("Lida com sucesso", "Bobina prevista conferida com sucesso.", code);
+    collectorProcessing = false;
+    setTimeout(focusCollectorInput, 80);
+    return;
+  }
+
+  // Não prevista
+  collectorShowBigStatus("red", "⚠️ NÃO PREVISTA", code, 1200);
+  setCollectorLastRead(`⚠️ ${code} não prevista. Informe a localização.`, "warn");
+  updateCollectorOverlayCenter("Bobina não prevista", "Abrindo o fluxo de localização e fotos.", code);
+  collectorProcessing = false;
+  showLocModal(code, time, "collector");
+}
       function handleCollectorRead(rawValue = null) {
-        const input = document.getElementById("collectorInput");
-        const raw = rawValue != null ? String(rawValue) : (input ? input.value : "");
-        if (input) input.value = "";
-        clearTimeout(collectorReadTimer);
-        clearTimeout(collectorKeyTimer);
-        collectorKeyBuffer = "";
-        processCollectorCode(raw);
-      }
+  const input = document.getElementById("collectorInput");
+  const raw = rawValue != null ? String(rawValue) : (input ? input.value : "");
+  if (input) input.value = "";
+  // BUG 2 CORRIGIDO: cancelar AMBOS os timers e zerar o buffer
+  clearTimeout(collectorReadTimer);
+  collectorReadTimer = null;
+  clearTimeout(collectorKeyTimer);
+  collectorKeyTimer = null;
+  collectorKeyBuffer = "";
+  processCollectorCode(raw);
+}
       function initCollectorMode() {
-        const input = document.getElementById("collectorInput");
-        if (!input) return;
-        input.addEventListener("keydown", (event) => {
-          if (!S.collectorMode || !S.collectorActive) return;
-          if (event.key === "Enter" || event.key === "Tab") {
-            event.preventDefault();
-            handleCollectorRead();
-          }
-        });
-        input.addEventListener("input", () => {
-          if (!S.collectorMode || !S.collectorActive) return;
-          clearTimeout(collectorReadTimer);
-          collectorReadTimer = setTimeout(() => {
-            if ((input.value || "").trim().length >= 10) handleCollectorRead();
-          }, 150);
-        });
-        input.addEventListener("blur", () => {
-          if (collectorCanFocus()) setTimeout(focusCollectorInput, 80);
-        });
+  const input = document.getElementById("collectorInput");
+  if (!input) return;
 
-        document.addEventListener("keydown", (event) => {
-          if (!collectorCanFocus()) return;
-          const target = event.target;
-          const tag = (target && target.tagName || "").toLowerCase();
-          const isEditable = tag === "input" || tag === "textarea" || tag === "select" || target?.isContentEditable;
-          const isCollectorInput = target === input;
-          if (isEditable && !isCollectorInput) return;
+  input.addEventListener("keydown", (event) => {
+    if (!S.collectorMode || !S.collectorActive) return;
+    if (event.key === "Enter" || event.key === "Tab") {
+      event.preventDefault();
+      handleCollectorRead();
+    }
+  });
 
-          if (event.key === "Enter" || event.key === "Tab") {
-            if (collectorKeyBuffer) {
-              event.preventDefault();
-              handleCollectorRead(collectorKeyBuffer);
-            }
-            return;
-          }
+  input.addEventListener("input", () => {
+    if (!S.collectorMode || !S.collectorActive) return;
+    // BUG 2 CORRIGIDO: cancelar o timer global também
+    clearTimeout(collectorKeyTimer);
+    collectorKeyTimer = null;
+    collectorKeyBuffer = "";
+    clearTimeout(collectorReadTimer);
+    collectorReadTimer = setTimeout(() => {
+      if ((input.value || "").trim().length >= 10) handleCollectorRead();
+    }, 200); // ← aumentado de 150 para 200ms
+  });
 
-          if (event.key && event.key.length === 1) {
-            collectorKeyBuffer += event.key;
-            clearTimeout(collectorKeyTimer);
-            collectorKeyTimer = setTimeout(() => {
-              if (collectorKeyBuffer.length >= 10) handleCollectorRead(collectorKeyBuffer);
-              else collectorKeyBuffer = "";
-            }, 120);
-          }
-        }, true);
+  // BUG 3 CORRIGIDO: delay maior para esperar modal fechar
+  input.addEventListener("blur", () => {
+    setTimeout(() => {
+      if (collectorCanFocus()) focusCollectorInput();
+    }, 300); // ← era 80ms, agora 300ms
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (!collectorCanFocus()) return;
+    const target = event.target;
+    const tag = (target && target.tagName || "").toLowerCase();
+    const isEditable = tag === "input" || tag === "textarea" || tag === "select" || target?.isContentEditable;
+    const isCollectorInput = target === input;
+    if (isEditable && !isCollectorInput) return;
+
+    if (event.key === "Enter" || event.key === "Tab") {
+      if (collectorKeyBuffer) {
+        event.preventDefault();
+        // BUG 2 CORRIGIDO: cancelar o timer do input também
+        clearTimeout(collectorReadTimer);
+        collectorReadTimer = null;
+        handleCollectorRead(collectorKeyBuffer);
       }
+      return;
+    }
+
+    if (event.key && event.key.length === 1) {
+      // BUG 2 CORRIGIDO: cancelar o timer do input para evitar duplo
+      clearTimeout(collectorReadTimer);
+      collectorReadTimer = null;
+      collectorKeyBuffer += event.key;
+      clearTimeout(collectorKeyTimer);
+      collectorKeyTimer = setTimeout(() => {
+        if (collectorKeyBuffer.length >= 10) handleCollectorRead(collectorKeyBuffer);
+        else collectorKeyBuffer = "";
+      }, 180); // ← aumentado de 120 para 180ms
+    }
+  }, true);
+}
       function openCamera(skipChecker = false) {
         if (S.db.length === 0) { notify("Importe os dados primeiro!", "error"); return; }
         if (!skipChecker && !ensureCheckerName(() => startConference())) return;
@@ -2573,23 +2757,50 @@
         updateCollectorOverlayMeta();
       }
       function updateHistory() {
-        const box = document.getElementById("historyBox"), empty = document.getElementById("hEmpty"); box.querySelectorAll(".h-item").forEach((el) => el.remove());
-        const overlayBox = document.getElementById("collectorOverlayHistory");
-        const overlayEmpty = document.getElementById("collectorOverlayEmpty");
-        if (overlayBox) overlayBox.querySelectorAll(".s-h-item").forEach((el) => el.remove());
-        if (S.scanned.length === 0) {
-          empty.style.display = "block"; document.getElementById("hCount").textContent = "0 leituras";
-          if (overlayEmpty) overlayEmpty.style.display = "block";
-          return;
-        }
-        empty.style.display = "none"; document.getElementById("hCount").textContent = `${S.scanned.length} leituras`;
-        if (overlayEmpty) overlayEmpty.style.display = "none";
-        let html = ""; let overlayHtml = "";
-        S.scanned.slice(0, 100).forEach((s) => { if (s.status === "found") html += `<div class="h-item found"><span>✅</span><strong>${esc(s.code)}</strong><span style="margin-left:auto">OK</span><small>${esc(s.time || "")}</small></div>`; else html += `<div class="h-item extra"><span>⚠️</span><strong>${esc(s.code)}</strong><span>${s.location ? "📌 " + esc(s.location) : ""}</span><span>${s.hasPhoto ? "📸" : ""}</span><span style="margin-left:auto">Extra</span><small>${esc(s.time || "")}</small></div>`; });
-        S.scanned.slice(0, 30).forEach((s) => { if (s.status === "found") overlayHtml += `<div class="s-h-item found"><span>✅</span><span class="sh-code">${esc(s.code)}</span><span class="sh-time">${esc(s.time || "")}</span></div>`; else overlayHtml += `<div class="s-h-item not-found"><span>⚠️</span><span class="sh-code">${esc(s.code)}</span>${s.location ? `<span class="sh-loc">📌${esc(s.location)}</span>` : ""}<span class="sh-time">${esc(s.time || "")}</span></div>`; });
-        box.insertAdjacentHTML("beforeend", html);
-        if (overlayBox) overlayBox.insertAdjacentHTML("beforeend", overlayHtml);
+  const box = document.getElementById("historyBox");
+  const empty = document.getElementById("hEmpty");
+  const overlayBox = document.getElementById("collectorOverlayHistory");
+  const overlayEmpty = document.getElementById("collectorOverlayEmpty");
+
+  if (S.scanned.length === 0) {
+    box.querySelectorAll(".h-item").forEach((el) => el.remove());
+    empty.style.display = "block";
+    document.getElementById("hCount").textContent = "0 leituras";
+    if (overlayBox) overlayBox.querySelectorAll(".s-h-item").forEach((el) => el.remove());
+    if (overlayEmpty) overlayEmpty.style.display = "block";
+    return;
+  }
+
+  empty.style.display = "none";
+  document.getElementById("hCount").textContent = `${S.scanned.length} leituras`;
+  if (overlayEmpty) overlayEmpty.style.display = "none";
+
+  // BUG 8 CORRIGIDO: substituir tudo de uma vez via innerHTML
+  let html = "";
+  S.scanned.slice(0, 100).forEach((s) => {
+    if (s.status === "found") {
+      html += `<div class="h-item found"><span>✅</span><strong>${esc(s.code)}</strong><span style="margin-left:auto">OK</span><small>${esc(s.time || "")}</small></div>`;
+    } else {
+      html += `<div class="h-item extra"><span>⚠️</span><strong>${esc(s.code)}</strong><span>${s.location ? "📌 " + esc(s.location) : ""}</span><span>${s.hasPhoto ? "📸" : ""}</span><span style="margin-left:auto">Extra</span><small>${esc(s.time || "")}</small></div>`;
+    }
+  });
+  // Preserva o elemento .empty e substitui o restante
+  box.innerHTML = html;
+  box.appendChild(empty);
+
+  if (overlayBox) {
+    let overlayHtml = "";
+    S.scanned.slice(0, 30).forEach((s) => {
+      if (s.status === "found") {
+        overlayHtml += `<div class="s-h-item found"><span>✅</span><span class="sh-code">${esc(s.code)}</span><span class="sh-time">${esc(s.time || "")}</span></div>`;
+      } else {
+        overlayHtml += `<div class="s-h-item not-found"><span>⚠️</span><span class="sh-code">${esc(s.code)}</span>${s.location ? `<span class="sh-loc">📌${esc(s.location)}</span>` : ""}<span class="sh-time">${esc(s.time || "")}</span></div>`;
       }
+    });
+    overlayBox.innerHTML = overlayHtml;
+    if (overlayEmpty) overlayBox.appendChild(overlayEmpty);
+  }
+}
       function undoLast() {
         if (!S.scanned.length) return; const last = S.scanned.shift(); if (last.status === "found") S.checked.delete(last.code); else if (last.status === "not-found") { const i = S.extras.indexOf(last.code); if (i > -1) S.extras.splice(i, 1); try { localStorage.removeItem("photo_" + last.code); } catch (e) {} }
         document.getElementById("btnUndo").disabled = !S.scanned.length; save(); updateStats(); updateHistory(); updateDBUI(); notify(`↩️ Desfeito: ${last.code}`);
@@ -2971,14 +3182,46 @@
           pendingExtraMain = null;
         }
         resetLocPhotoState();
-        document.getElementById("locModal").classList.remove("show");
-        if (collectorCanFocus()) setTimeout(focusCollectorInput, 80);
-      }
-      function cancelLocMain() { pendingExtraMain = null; resetLocPhotoState(); document.getElementById("locModal").classList.remove("show"); if (collectorCanFocus()) setTimeout(focusCollectorInput, 80); }
+          document.getElementById("locModal").classList.remove("show");
+  // BUG 3 CORRIGIDO: delay maior para garantir que modal fechou
+  setTimeout(() => { if (collectorCanFocus()) focusCollectorInput(); }, 400);
+}
+      function cancelLocMain() {
+  pendingExtraMain = null;
+  resetLocPhotoState();
+  document.getElementById("locModal").classList.remove("show");
+  // BUG 3 CORRIGIDO: delay maior
+  setTimeout(() => { if (collectorCanFocus()) focusCollectorInput(); }, 400);
+}
       function init() {
-        setupMobileCopyProtection(); load(); initCollectorMode(); updateDBUI(); updateStats(); updateHistory(); updateReport(); updateCollectorModeUI(); document.getElementById("btnUndo").disabled = !S.scanned.length; if (S.collectorMode && S.collectorActive) setTimeout(focusCollectorInput, 120); cloudEnsureSession().then((ok) => { if (ok && S.db.length) cloudSyncDatabase(); else if (!ok && cloudIsConfigured()) cloudSetStatus("error", "☁️ Aguardando nuvem"); });
-      }
-      init();
+  setupMobileCopyProtection();
+  load();
+  initCollectorMode();
+  updateDBUI();
+  updateStats();
+  updateHistory();
+  updateReport();
+  updateCollectorModeUI();
+  document.getElementById("btnUndo").disabled = !S.scanned.length;
+  // BUG 1 CORRIGIDO: não tenta reativar o coletor automaticamente
+  if (S.collectorMode) {
+    setCollectorLastRead("Modo coletor ativado. Toque em iniciar para conferir.");
+  }
+  cloudEnsureSession().then((ok) => {
+    if (ok && S.db.length) cloudSyncDatabase();
+    else if (!ok && cloudIsConfigured()) cloudSetStatus("error", "☁️ Aguardando nuvem");
+  });
+}
+
+// Flush ao trocar de aba ou fechar (mobile e desktop)
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") cloudFlushBuffer();
+});
+window.addEventListener("beforeunload", () => {
+  try { cloudFlushBuffer(); } catch (e) {}
+});
+
+init();
     </script>
 <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
