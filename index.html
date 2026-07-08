@@ -66,8 +66,8 @@
         -webkit-font-smoothing: antialiased;
         padding-bottom: var(--safe-bottom);
       }
-      .app { position: relative; z-index: 1; max-width: 800px; margin: 0 auto; padding: 12px; }
-      .header { text-align: center; padding: 20px 0; margin-bottom: 16px; position: relative; }
+      .app { position: relative; z-index: 1; max-width: 800px; margin: 0 auto; padding: 8px 12px 12px; }
+      .header { text-align: center; padding: 12px 0 10px; margin-bottom: 10px; position: relative; }
       .header::after {
         content: ""; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
         width: 120px; height: 2px;
@@ -81,9 +81,9 @@
       }
       .header p { color: var(--text-secondary); font-size: 0.85em; }
       .tabs {
-        display: flex; gap: 3px; background: var(--bg-input); border-radius: 12px; padding: 4px;
-        margin-bottom: 16px; border: 1px solid var(--border); position: sticky; top: 0;
-        z-index: 90; backdrop-filter: blur(10px);
+        display: flex; gap: 3px; background: rgba(241,245,249,.96); border-radius: 12px; padding: 4px;
+        margin-bottom: 10px; border: 1px solid var(--border); position: sticky; top: 0;
+        z-index: 600; backdrop-filter: blur(10px); box-shadow: 0 6px 16px rgba(15,23,42,.06);
       }
       .tab {
         flex: 1; padding: 10px 8px; border: none; background: transparent; color: var(--text-secondary);
@@ -167,10 +167,10 @@
       .prog-fill { height: 100%; background: linear-gradient(90deg, var(--accent-blue), var(--accent-green)); border-radius: 6px; transition: width 0.5s; }
       .camera-area { text-align: center; padding: 20px 12px; }
       .camera-area p { color: var(--text-muted); font-size: 0.78em; margin-top: 10px; }
-      .collector-topbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: center; margin-top: 10px; }
-      .collector-toggle-wrap { display: inline-flex; align-items: center; background: #e5e7eb; border: 1px solid #cbd5e1; border-radius: 999px; padding: 4px; gap: 4px; }
-      .collector-toggle-label { padding: 8px 12px; font-weight: 700; color: #334155; font-size: 0.9rem; white-space: nowrap; }
-      .collector-toggle-seg { border: none; border-radius: 999px; padding: 8px 14px; font-weight: 700; cursor: pointer; white-space: nowrap; background: transparent; color: #334155; }
+      .collector-topbar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; justify-content: center; margin-top: 8px; }
+      .collector-toggle-wrap { display: inline-flex; align-items: center; background: #e5e7eb; border: 1px solid #cbd5e1; border-radius: 999px; padding: 2px; gap: 2px; }
+      .collector-toggle-label { padding: 5px 7px; font-weight: 700; color: #334155; font-size: 0.72rem; white-space: nowrap; }
+      .collector-toggle-seg { border: none; border-radius: 999px; padding: 5px 9px; font-size: 0.72rem; font-weight: 800; cursor: pointer; white-space: nowrap; background: transparent; color: #334155; }
       .collector-toggle-seg.active-on { background: linear-gradient(135deg, var(--accent-blue), #2563eb); color: #fff; }
       .collector-toggle-seg.active-off { background: #475569; color: #fff; }
       .collector-panel { display: none; margin-top: 12px; padding: 12px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.18); background: rgba(59, 130, 246, 0.04); text-align: left; }
@@ -190,8 +190,8 @@
       .collector-overlay-center h2 { margin: 0 0 6px; font-size: 1.35rem; font-weight: 900; color: #0f172a; }
       .collector-overlay-center p { margin: 0; color: #64748b; }
       .collector-overlay-code { margin-top: 10px; font-family: monospace; font-size: 1rem; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #dbe3ef; border-radius: 12px; padding: 10px 12px; }
-      .collector-overlay-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin-top: 14px; }
-      .collector-overlay-card { background: #f8fafc; border: 1px solid #dbe3ef; border-radius: 12px; padding: 12px 10px; text-align: center; }
+      .collector-overlay-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin-top: 12px; }
+      .collector-overlay-card { background: #f8fafc; border: 1px solid #dbe3ef; border-radius: 12px; padding: 9px 8px; text-align: center; }
       .collector-overlay-card .lbl { font-size: .78rem; color: #64748b; margin-bottom: 4px; }
       .collector-overlay-card .val { font-size: 1.08rem; font-weight: 900; color: #0f172a; }
       .collector-overlay-guide { margin-top: 14px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; border-radius: 12px; padding: 12px 14px; font-size: .88rem; line-height: 1.45; }
@@ -203,7 +203,7 @@
       .collector-overlay-stats .se { color: #ef4444; font-weight: 700; font-size: 1.1em; }
       .collector-overlay-history { overflow-y: auto; padding: 4px 0 0; -webkit-overflow-scrolling: touch; }
       .collector-overlay-empty { text-align: center; padding: 10px; color: #94a3b8; }
-      @media (max-width: 640px) { .collector-overlay-grid { grid-template-columns: 1fr; } }
+      @media (max-width: 640px) { .collector-overlay-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
       /* Campo usado pelo coletor tipo teclado (DataWedge / HID).
          Ele precisa estar em um elemento VISÍVEL/focável; input dentro de display:none não recebe leitura. */
       .collector-input-hidden {
@@ -552,6 +552,17 @@
   </head>
   <body>
     <div class="app">
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('import')" id="tabImport">
+          <span class="t-icon">📥</span><span class="t-text">Importar</span>
+        </button>
+        <button class="tab" onclick="switchTab('scan')" id="tabScan">
+          <span class="t-icon">📷</span><span class="t-text">Conferir</span><span class="badge" id="scanBadge">0</span>
+        </button>
+        <button class="tab" onclick="switchTab('report')" id="tabReport">
+          <span class="t-icon">📊</span><span class="t-text">Relatório</span>
+        </button>
+      </div>
       <div class="header">
         <h1>📦 Conferência de Bobinas</h1>
         <p>Sistema de conferência por código de barras</p>
@@ -570,19 +581,8 @@
           onpointerleave="cloudCancelSecretPress()"
           onpointercancel="cloudCancelSecretPress()"
           oncontextmenu="return false"
-        >☁️ Nuvem: local</div>
+        >⚙️ Líder</div>
         </div>
-      </div>
-      <div class="tabs">
-        <button class="tab active" onclick="switchTab('import')" id="tabImport">
-          <span class="t-icon">📥</span><span class="t-text">Importar</span>
-        </button>
-        <button class="tab" onclick="switchTab('scan')" id="tabScan">
-          <span class="t-icon">📷</span><span class="t-text">Conferir</span><span class="badge" id="scanBadge">0</span>
-        </button>
-        <button class="tab" onclick="switchTab('report')" id="tabReport">
-          <span class="t-icon">📊</span><span class="t-text">Relatório</span>
-        </button>
       </div>
       <div class="section active" id="sectionImport">
         <div class="card" style="display:none">
@@ -603,7 +603,7 @@
               </div>
               <div class="btn-group" id="importActions" style="display:none; margin-top:8px">
                 <button class="btn btn-outline btn-sm" id="changeConfTypeBtn" onclick="changeConferenceType()">🔁 Alterar tipo de conferência</button>
-                <button class="btn btn-primary btn-sm" id="saveBaseFileBtn" onclick="cloudSaveCurrentFileBase()">☁️ Salvar arquivo-base na nuvem</button>
+                <button class="btn btn-primary btn-sm" id="saveBaseFileBtn" onclick="cloudSaveCurrentFileBase()">✅ Salvar como base ativa</button>
               </div>
               <div class="col-sel" id="colSel">
                 <label>Coluna com os códigos:</label>
@@ -616,11 +616,10 @@
               </div>
             </div>
           </div>
-          <div class="empty" style="padding:18px 14px; margin-top: 4px;"><div class="e-icon" style="font-size:2.1em">☁️</div><h3>Base centralizada na nuvem</h3><p>O envio de novos arquivos-base agora é feito no menu do líder. Aqui os dispositivos apenas carregam a base salva abaixo.</p></div>
+          <div class="empty" style="padding:18px 14px; margin-top: 4px;"><div class="e-icon" style="font-size:2.1em">📁</div><h3>Base ativa</h3></div>
         </div>
                 <div class="card">
-          <div class="card-title">☁️ Arquivo-base ativo <span class="card-actions-inline"><button class="btn btn-outline btn-sm" onclick="cloudRefreshBaseFiles()">🔄 Atualizar</button></span></div>
-          <div class="card-sub">Baixe a base atual definida pelo líder. Usa apenas 1 leitura no Firestore para consultar.</div>
+          <div class="card-title">📁 Base ativa <span class="card-actions-inline"><button class="btn btn-outline btn-sm" onclick="cloudRefreshBaseFiles()">🔄 Atualizar</button></span></div>
           <div id="cloudBaseFilesBox" class="cloud-list"><div class="empty">Clique em atualizar para consultar a base ativa.</div></div>
         </div>
         <div class="card">
@@ -646,7 +645,7 @@
           <div class="prog-wrap"><div class="prog-head"><span>Progresso</span><span class="pct" id="pPct">0%</span></div><div class="prog-bar"><div class="prog-fill" id="pFill" style="width: 0%"></div></div></div>
           <div class="camera-area">
             <button class="btn btn-camera" id="startConferenceBtn" onclick="startConference()">▶️ Iniciar conferência</button>
-            <p id="startConferenceHelp">A câmera abrirá em tela cheia</p>
+            <p id="startConferenceHelp"></p>
             <div class="collector-panel" id="collectorPanel">
               <input type="text" id="collectorInput" class="collector-input-hidden" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="none" />
               <div class="collector-last-read" id="collectorLastRead">Pronto para iniciar.</div>
@@ -696,7 +695,7 @@
               <tbody id="rptBody"></tbody>
             </table>
           </div>
-          <div class="btn-group" style="justify-content: center; margin-top: 10px"><button class="btn btn-primary" onclick="finishConference()">☁️ Finalizar e salvar na nuvem</button><button class="btn btn-outline" onclick="exportRpt('csv')">📄 CSV local</button><button class="btn btn-outline" onclick="exportRpt('txt')">📝 TXT local</button></div><div style="margin-top: 8px; color: var(--text-muted); font-size: 0.82em; text-align: center;">Modo econômico: a nuvem só é gravada ao finalizar.</div>
+          <div class="btn-group" style="justify-content: center; margin-top: 10px"><button class="btn btn-primary" onclick="finishConference()">✅ Finalizar</button><button class="btn btn-outline" onclick="exportRpt('csv')">📄 CSV local</button><button class="btn btn-outline" onclick="exportRpt('txt')">📝 TXT local</button></div>
         </div>
       </div>
       <div class="section" id="sectionCloud">
@@ -709,8 +708,8 @@
           </div>
         </div>
         <div class="card">
-          <div class="card-title">☁️ Consulta na Nuvem <span class="card-actions-inline"><button class="btn btn-outline btn-sm" onclick="renderCloudConsult(document.getElementById('cloudSearch')?.value || '')">🔄 Atualizar</button></span></div>
-          <div class="card-sub">Conferências finalizadas. A consulta é manual para economizar leituras do Firestore.</div>
+          <div class="card-title">📋 Conferências salvas <span class="card-actions-inline"><button class="btn btn-outline btn-sm" onclick="renderCloudConsult(document.getElementById('cloudSearch')?.value || '')">🔄 Atualizar</button></span></div>
+          
           <div class="search-wrap"><span class="si">🔍</span><input class="search-input" id="cloudSearch" placeholder="Buscar por operador, data ou tipo..." oninput="cloudRenderConsultList(this.value)" /></div>
           <div class="cloud-filters">
             <button class="cloud-filter-btn active" id="cloudFilterAll" onclick="cloudSetListFilter('all')">Todas</button>
@@ -734,19 +733,14 @@
           <div class="collector-overlay-center">
             <div class="collector-overlay-badge">✅ Coletor ativo</div>
             <h2 id="collectorOverlayTitle">Aguardando leitura...</h2>
-            <p id="collectorOverlaySub">Leia a etiqueta com o laser do coletor.</p>
+            <p id="collectorOverlaySub"></p>
             <div class="collector-overlay-code" id="collectorOverlayCode">—</div>
             <div class="collector-overlay-grid">
               <div class="collector-overlay-card"><div class="lbl">Total</div><div class="val" id="collectorOverlayTotal">0</div></div>
               <div class="collector-overlay-card"><div class="lbl">Conferidos</div><div class="val" id="collectorOverlayChecked">0</div></div>
               <div class="collector-overlay-card"><div class="lbl">Pendentes</div><div class="val" id="collectorOverlayPending">0</div></div>
-            </div>
-            <div class="collector-overlay-grid" style="margin-top:10px;">
               <div class="collector-overlay-card"><div class="lbl">Não previstas</div><div class="val" id="collectorOverlayExtra">0</div></div>
-              <div class="collector-overlay-card"><div class="lbl">Conferente</div><div class="val" id="collectorOverlayChecker">—</div></div>
-              <div class="collector-overlay-card"><div class="lbl">Tipo</div><div class="val" id="collectorOverlayType">—</div></div>
             </div>
-            <div class="collector-overlay-guide"><strong>Como usar:</strong><br>Leia a etiqueta com o coletor. Se a bobina não for prevista, o sistema abrirá o fluxo de localização e fotos.</div>
           </div>
           <div class="collector-overlay-history-card">
             <div style="font-weight:900; margin-bottom:10px;">Últimas leituras</div>
@@ -820,7 +814,7 @@
     </div>
 
     <div class="modal-bg" id="modal"><div class="modal"><h2 id="mTitle">⚠️</h2><p id="mMsg"></p><div class="btn-group"><button class="btn btn-danger" id="mConfirm">Confirmar</button><button class="btn btn-outline" onclick="closeModal()">Cancelar</button></div></div></div>
-    <div class="modal-bg" id="checkerModal"><div class="modal"><h2>👤 Conferente</h2><p>Informe o nome da pessoa que irá fazer a conferência:</p><input type="text" id="checkerInput" class="loc-input-main" placeholder="Digite o nome do conferente" onkeydown="if (event.key === 'Enter') confirmCheckerName();" autocomplete="name" /><div id="checkerError" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Nome obrigatório!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmCheckerName()">✅ Iniciar conferência</button><button class="btn btn-outline" onclick="closeCheckerModal()">Cancelar</button></div></div></div>
+    <div class="modal-bg" id="checkerModal"><div class="modal"><h2>👤 Operador</h2><p>Informe o nome do operador desta conferência:</p><input type="text" id="checkerInput" class="loc-input-main" placeholder="Digite o nome do operador" onkeydown="if (event.key === 'Enter') confirmCheckerName();" autocomplete="name" /><div id="checkerError" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Nome obrigatório!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmCheckerName()">✅ Iniciar conferência</button><button class="btn btn-outline" onclick="closeCheckerModal()">Cancelar</button></div></div></div>
     <div class="modal-bg" id="confTypeModal"><div class="modal" style="max-height: calc(100dvh - 32px); overflow: auto"><h2>📋 Tipo de Conferência</h2><p style="margin-bottom: 10px">Marque o que deve aparecer na conferência:</p><div style="display: grid; grid-template-columns: 1fr; gap: 8px">
       <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="bases_todas" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">Bases - Todas</span><small style="color: var(--text-muted)">Etapa 20</small></label>
       <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="bases_peliculas" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">Bases - Películas</span><small style="color: var(--text-muted)">BOPP/PP/PET</small></label>
@@ -831,7 +825,7 @@
       <button class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px 14px" onclick="importSelectedConferenceTypes()">📥 Importar selecionados</button>
       <button class="btn btn-outline" style="width: 100%; justify-content: center; padding: 12px 14px" onclick="closeConferenceTypeModal()">Cancelar</button>
     </div></div></div>
-    <div class="modal-bg" id="baseNameModal"><div class="modal"><h2>☁️ Nome do arquivo-base</h2><p>Digite o nome da base ativa que os outros dispositivos irão baixar.</p><input type="text" id="baseNameInput" class="loc-input-main" placeholder="Ex: Base Agosto turno A" onkeydown="if (event.key === 'Enter') confirmBaseNameUpload();" autocomplete="off" /><div id="baseNameError" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Nome obrigatório!</div><div class="btn-group"><button class="btn btn-primary" id="baseNameSaveBtn" onclick="confirmBaseNameUpload()">✅ Salvar como base ativa</button><button class="btn btn-outline" onclick="closeBaseNameModal()">Cancelar</button></div></div></div>
+    <div class="modal-bg" id="baseNameModal"><div class="modal"><h2>📁 Nome do arquivo-base</h2><p>Digite o nome da base ativa que os outros dispositivos irão baixar.</p><input type="text" id="baseNameInput" class="loc-input-main" placeholder="Ex: Base Agosto turno A" onkeydown="if (event.key === 'Enter') confirmBaseNameUpload();" autocomplete="off" /><div id="baseNameError" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Nome obrigatório!</div><div class="btn-group"><button class="btn btn-primary" id="baseNameSaveBtn" onclick="confirmBaseNameUpload()">✅ Salvar como base ativa</button><button class="btn btn-outline" onclick="closeBaseNameModal()">Cancelar</button></div></div></div>
 
     <div class="modal-bg" id="locModal"><div class="modal" style="border-color: var(--accent-red)"><h2 style="color: var(--accent-red)">⚠️ Bobina Não Prevista</h2><div class="loc-code-display" id="locCodeMain"></div><p id="locModalDesc">Informe a localização desta bobina:</p><input type="text" id="locInputMain" class="loc-input-main" placeholder="Ex: Galpão A, Corredor 3..." onkeydown="if (event.key === 'Enter') confirmLocMain();" autocomplete="off" /><textarea id="locObsMain" class="loc-input-main" placeholder="Observação (opcional)" style="min-height: 76px; resize: vertical; font-family: inherit;"></textarea><div class="loc-photo-section" id="locPhotoSection"><div class="loc-photo-grid"><div><div class="loc-photo-label">🏷️ Foto da etiqueta <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnEtiqueta" onclick="document.getElementById('locPhotoInputEtiqueta').click()">📷 Tirar foto da etiqueta<input type="file" id="locPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'etiqueta')" /></div><div class="loc-photo-preview" id="locPhotoPreviewEtiqueta"><img id="locPhotoImgEtiqueta" src="" /><button class="loc-photo-remove" onclick="locRemovePhoto('etiqueta')">✕</button></div><div class="loc-photo-error" id="locPhotoErrorEtiqueta">⚠️ Foto da etiqueta obrigatória!</div></div><div><div class="loc-photo-label">📦 Foto da bobina <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnBobina" onclick="document.getElementById('locPhotoInputBobina').click()">📷 Tirar foto da bobina<input type="file" id="locPhotoInputBobina" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'bobina')" /></div><div class="loc-photo-preview" id="locPhotoPreviewBobina"><img id="locPhotoImgBobina" src="" /><button class="loc-photo-remove" onclick="locRemovePhoto('bobina')">✕</button></div><div class="loc-photo-error" id="locPhotoErrorBobina">⚠️ Foto da bobina obrigatória!</div></div></div></div><div id="locErrorMain" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Localização obrigatória!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmLocMain()">✅ Confirmar</button><button class="btn btn-outline" onclick="cancelLocMain()">Cancelar</button></div></div></div>
     <div class="photo-modal" id="photoModal"><div style="text-align: center; color: #fff; font-weight: 700; max-width: 100%; max-height: 82vh; overflow: auto;">🏷️ Etiqueta + 📦 Bobina<br /><img id="photoModalImg" src="" /></div><button class="photo-modal-close" onclick="closePhotoModal()">✕ Fechar</button></div>
@@ -1110,7 +1104,7 @@ let cloudLastHeaderWrite = 0;
           size: new Blob([content]).size,
         };
       }
-      function cloudSetStatus(type, text) { const el = document.getElementById("cloudStatus"); if (!el) return; el.className = "cloud-status" + (type ? " " + type : ""); el.textContent = text; }
+      function cloudSetStatus(type, text) { const el = document.getElementById("cloudStatus"); if (!el) return; el.className = "cloud-status"; el.textContent = "⚙️ Líder"; }
       function cloudMimeTypeFromFileName(name = "") {
         const lower = String(name).toLowerCase();
         if (lower.endsWith(".csv")) return "text/csv";
@@ -1287,7 +1281,7 @@ let cloudLastHeaderWrite = 0;
             uploaded,
           });
           cloudSetStatus("ok", "☁️ Arquivo-base ativo salvo");
-          notify("Arquivo-base ativo salvo na nuvem!");
+          notify("Base ativa salva!");
         } catch (e) {
           console.error(e);
           cloudSetStatus("error", "☁️ Erro ao salvar arquivo-base");
@@ -1297,7 +1291,7 @@ let cloudLastHeaderWrite = 0;
       async function cloudSaveCurrentFileBase() {
         try {
           if (!currentImportedFile.content) {
-            notify("Importe ou carregue um arquivo antes de salvar na nuvem.", "warning");
+            notify("Importe ou carregue um arquivo antes de salvar.", "warning");
             return;
           }
           if (!(await cloudInit())) throw new Error("Firebase indisponível");
@@ -1317,7 +1311,7 @@ let cloudLastHeaderWrite = 0;
             uploaded,
           });
           cloudSetStatus("ok", "☁️ Arquivo-base ativo salvo");
-          notify("Arquivo-base ativo salvo na nuvem!");
+          notify("Base ativa salva!");
         } catch (e) {
           console.error(e);
           cloudSetStatus("error", "☁️ Erro ao salvar arquivo-base");
@@ -1329,7 +1323,7 @@ let cloudLastHeaderWrite = 0;
         if (!box) return;
         const docs = (cloudBaseFilesDocs || []).filter((d) => d && !d.deleted && !d.hidden && d.status !== "deleted");
         if (!docs.length) {
-          box.innerHTML = '<div class="empty"><div class="e-icon">☁️</div><h3>Nenhuma base ativa</h3><p>O líder deve salvar um arquivo-base ativo.</p></div>';
+          box.innerHTML = '<div class="empty"><div class="e-icon">📁</div><h3>Nenhuma base ativa</h3></div>';
           return;
         }
         const d = docs[0];
@@ -1352,7 +1346,7 @@ let cloudLastHeaderWrite = 0;
       }
       async function cloudRefreshBaseFiles() {
         const box = document.getElementById("cloudBaseFilesBox");
-        if (box) box.innerHTML = '<div class="empty">☁️ Consultando base ativa...</div>';
+        if (box) box.innerHTML = '<div class="empty">Consultando base ativa...</div>';
         try {
           if (!(await cloudInit())) {
             if (box) box.innerHTML = '<div class="empty">Firebase não configurado ou sem conexão.</div>';
@@ -1418,7 +1412,7 @@ let cloudLastHeaderWrite = 0;
             data = { id: doc.id, ...doc.data() };
           }
           if (!data.storageUrl) throw new Error("Base ativa sem URL de armazenamento");
-          cloudSetStatus("sync", "☁️ Baixando base ativa...");
+          cloudSetStatus("sync", "Baixando base ativa...");
           const res = await fetch(data.storageUrl, { cache: "no-store" });
           if (!res.ok) throw new Error("Falha ao baixar base ativa");
           const content = await res.text();
@@ -1434,12 +1428,12 @@ let cloudLastHeaderWrite = 0;
           const info = document.getElementById("fileInfo");
           const name = document.getElementById("fileName");
           if (info) info.style.display = "flex";
-          if (name) name.textContent = `☁️ ${currentImportedFile.name}`;
+          if (name) name.textContent = `📁 ${currentImportedFile.name}`;
           parseFileForConferenceSelection(content);
           updateImportActionButtons();
           switchTab("import");
           cloudSetStatus("ok", "☁️ Base ativa carregada");
-          notify("Base ativa carregada da nuvem!");
+          notify("Base ativa carregada!");
         } catch (e) {
           console.error(e);
           cloudSetStatus("error", "☁️ Erro ao carregar base ativa");
@@ -1451,7 +1445,7 @@ let cloudLastHeaderWrite = 0;
           cloudRequestLeaderAccess();
           return;
         }
-        if (!confirm("Remover a base ativa da nuvem? Os aparelhos não conseguirão carregar até o líder salvar outra base.")) return;
+        if (!confirm("Remover a base ativa? Os aparelhos não conseguirão carregar até o líder salvar outra base.")) return;
         try {
           if (!(await cloudInit())) throw new Error("Firebase indisponível");
           const ref = cloudDb.collection("arquivos_base").doc(CLOUD_ACTIVE_BASE_DOC_ID);
@@ -1511,10 +1505,10 @@ let cloudLastHeaderWrite = 0;
         const uploads = {};
         const items = getReportItems().filter((i) => i.hasPhoto && getPhoto(i.code));
         if (!items.length) return uploads;
-        if (progress) { progress.classList.add("show"); progress.textContent = `☁️ Enviando fotos 0/${items.length}...`; }
+        if (progress) { progress.classList.add("show"); progress.textContent = `Enviando fotos 0/${items.length}...`; }
         for (let i = 0; i < items.length; i++) {
           const item = items[i];
-          if (progress) progress.textContent = `☁️ Enviando fotos ${i + 1}/${items.length}...`;
+          if (progress) progress.textContent = `Enviando fotos ${i + 1}/${items.length}...`;
           const up = await cloudUploadPhoto(item.code, getPhoto(item.code));
           if (up && up.url) uploads[item.code] = up;
         }
@@ -1536,9 +1530,9 @@ let cloudLastHeaderWrite = 0;
         }
         try {
           if (!S.db.length) { notify("Importe uma base antes de finalizar.", "warning"); return false; }
-          if (!(await cloudEnsureSession())) throw new Error("Nuvem indisponível ou conferente não informado");
-          cloudSetStatus("sync", "☁️ Finalizando em modo econômico...");
-          if (progress) { progress.classList.add("show"); progress.textContent = "☁️ Preparando relatório final..."; }
+          if (!(await cloudEnsureSession())) throw new Error("Serviço indisponível ou operador não informado");
+          cloudSetStatus("sync", "Finalizando...");
+          if (progress) { progress.classList.add("show"); progress.textContent = "Preparando relatório final..."; }
 
           const photoUploads = await cloudUploadLocalPhotosForFinalReport();
           const reportData = cloudBuildLocalFinalReportData(photoUploads);
@@ -1546,11 +1540,11 @@ let cloudLastHeaderWrite = 0;
           reportData.confIds = [S.cloudSessionId];
           reportData.photoUploadSummary = { totalLocal: Object.keys(photoUploads).length };
 
-          if (progress) progress.textContent = "☁️ Enviando relatório final...";
+          if (progress) progress.textContent = "Enviando relatório final...";
           const reportPath = `conferencias/${cloudDateKey()}/${S.cloudSessionId}_relatorio.json`;
           const reportUpload = await cloudUploadJsonObject(reportPath, reportData);
 
-          if (progress) progress.textContent = "☁️ Gravando resumo no Firestore...";
+          if (progress) progress.textContent = "Gravando resumo...";
           const d = new Date();
           await cloudDb.collection("conferencias").doc(S.cloudSessionId).set({
             id: S.cloudSessionId,
@@ -1580,7 +1574,7 @@ let cloudLastHeaderWrite = 0;
           if (cloudLeaderUnlocked) renderCloudConsult(document.getElementById("cloudSearch")?.value || "");
           return true;
         } catch (e) {
-          console.warn("Falha ao finalizar na nuvem:", e);
+          console.warn("Falha ao finalizar:", e);
           cloudSetStatus("error", "☁️ Erro ao finalizar");
           if (progress) progress.classList.remove("show");
           notify("Erro ao finalizar: " + (e.message || e), "error");
@@ -1589,9 +1583,9 @@ let cloudLastHeaderWrite = 0;
       }
       async function finishConference() {
         if (!S.checkerName) { showCheckerModal(() => finishConference()); return; }
-        if (!confirm("Finalizar e salvar esta conferência na nuvem? Depois disso, as leituras serão enviadas em um único relatório econômico.")) return;
+        if (!confirm("Finalizar esta conferência?")) return;
         const ok = await cloudMarkFinished();
-        notify(ok ? "Conferência finalizada e salva na nuvem." : "Não foi possível finalizar na nuvem.", ok ? "success" : "warning");
+        notify(ok ? "Conferência finalizada." : "Não foi possível finalizar.", ok ? "success" : "warning");
       }
       function cloudSetListFilter(filter) {
         cloudListStatusFilter = filter || "all";
@@ -1604,7 +1598,7 @@ let cloudLastHeaderWrite = 0;
       async function renderCloudConsult(search = "") {
         const box = document.getElementById("cloudConsultBox"); if (!box) return;
         if (!cloudLeaderUnlocked) { box.innerHTML = '<div class="empty">Área restrita ao líder. Segure o botão ☁️ por 2 segundos.</div>'; return; }
-        box.innerHTML = '<div class="empty">☁️ Consultando conferências...</div>';
+        box.innerHTML = '<div class="empty">Consultando conferências...</div>';
         try {
           if (!(await cloudInit())) { box.innerHTML = '<div class="empty">Firebase não configurado ou sem conexão.</div>'; cloudSetStatus("error", "☁️ Nuvem indisponível"); return; }
           // MODO ECONÔMICO: consulta pontual. Sem onSnapshot para não gastar reads em tempo real.
@@ -1614,7 +1608,7 @@ let cloudLastHeaderWrite = 0;
           cloudRenderConsultList(search);
         } catch (e) {
           console.error(e);
-          box.innerHTML = '<div class="empty">Erro ao consultar nuvem. Veja o console.</div>';
+          box.innerHTML = '<div class="empty">Erro ao consultar. Veja o console.</div>';
           cloudSetStatus("error", "☁️ Erro na consulta");
         }
       }
@@ -1835,7 +1829,7 @@ let cloudLastHeaderWrite = 0;
         if (!cloudLeaderUnlocked) return;
         if (confId === "__merged__") { cloudExportMergedReport(fmt, scope); return; }
         try {
-          cloudSetStatus("sync", "☁️ Gerando relatório da nuvem...");
+          cloudSetStatus("sync", "Gerando relatório...");
           const data = await cloudBuildExportData(confId);
           const dateStr = new Date().toISOString().slice(0, 10);
           const scopeLabelMap = { all: "completo", pending: "pendentes", extra: "nao_previstas", checked: "conferidas" };
@@ -1852,16 +1846,16 @@ let cloudLastHeaderWrite = 0;
             csv += (data.opSummary || []).map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`).join("\n");
             csv += `\n\nBOBINAS\nCódigo;OP;Peso;Status;Hora;Localização;Observação;Foto\n`;
             csv += exportItems.map((i) => `${i.code};${i.op};${i.peso};${i.status};${i.time};${i.location};${i.observation};${i.fotoUrl || (i.hasPhoto ? "Sim" : "Não")}`).join("\n");
-            download(csv, `${scopeLabel}_conferencia_nuvem_${data.id}_${dateStr}.csv`, "text/csv");
+            download(csv, `${scopeLabel}_conferencia_${data.id}_${dateStr}.csv`, "text/csv");
           } else {
             let txt = `RELATÓRIO DE CONFERÊNCIA - NUVEM (${scopeTitle})\nData: ${new Date().toLocaleDateString("pt-BR")} ${new Date().toLocaleTimeString("pt-BR")}\nConferente: ${data.operador}\nTipo de Conferência: ${data.tipo}\nID: ${data.id}\nStatus: ${data.status}\n${"=".repeat(95)}\n\nTotal: ${data.resumo.total}\nConferidos: ${data.resumo.conferidos}\nPendentes: ${data.resumo.pendentes}\nNão Previstas: ${data.resumo.naoPrevistas}\nPercentual: ${data.resumo.percentual}%\n\n${"=".repeat(95)}\nRESUMO POR OP\n${"=".repeat(95)}\n`;
             txt += (data.opSummary || []).map((op) => `OP: ${String(op.op || "-").padEnd(15)} | Encontradas: ${String(op.checked + "/" + op.total).padEnd(8)} | ${op.pct}%`).join("\n");
             txt += `\n\n${"=".repeat(95)}\nBOBINAS\n${"=".repeat(95)}\n\n`;
             txt += exportItems.map((i) => `${String(i.code).padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${String(i.status).padEnd(16)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.fotoUrl ? "📸 " + i.fotoUrl : (i.hasPhoto ? "📸 Sim" : "—")}`).join("\n");
-            download(txt, `${scopeLabel}_conferencia_nuvem_${data.id}_${dateStr}.txt`, "text/plain");
+            download(txt, `${scopeLabel}_conferencia_${data.id}_${dateStr}.txt`, "text/plain");
           }
-          cloudSetStatus("ok", "☁️ Relatório da nuvem gerado"); notify("Relatório da nuvem exportado!");
-        } catch (e) { console.error(e); cloudSetStatus("error", "☁️ Erro no relatório"); notify("Erro ao exportar relatório da nuvem: " + (e.message || e), "error"); }
+          cloudSetStatus("ok", "☁️ Relatório da nuvem gerado"); notify("Relatório exportado!");
+        } catch (e) { console.error(e); cloudSetStatus("error", "☁️ Erro no relatório"); notify("Erro ao exportar relatório: " + (e.message || e), "error"); }
       }
       function cloudClearDetailLiveListeners() {
         (cloudDetailLiveUnsubs || []).forEach((fn) => { try { fn && fn(); } catch (e) {} });
@@ -1883,7 +1877,7 @@ let cloudLastHeaderWrite = 0;
         const box = document.getElementById("cloudDetailBox");
         if (!box) return;
         box.className = "cloud-detail show";
-        if (!silent) box.innerHTML = '<div class="empty">☁️ Abrindo conferência...</div>';
+        if (!silent) box.innerHTML = '<div class="empty">Abrindo conferência...</div>';
         try {
           const data = await cloudBuildExportData(confId);
           cloudDetailRows = data.rows;
@@ -1904,7 +1898,7 @@ let cloudLastHeaderWrite = 0;
             <button class="cloud-report-btn" onclick="cloudShowExportModal(cloudDetailConfId)">Exportar</button>
           </div>
           <div class="search-wrap" style="margin-bottom: 8px"><span class="si">🔍</span><input class="search-input" id="cloudDetailSearch" placeholder="Buscar código, OP, status ou observação..." oninput="cloudDetailSearch=this.value; cloudRenderDetailRows(); cloudRenderDetailOpSummary()" /></div>
-          ${data.missingBobinas ? `<div style="margin:8px 0 0; padding:10px 12px; border-radius:10px; border:1px solid rgba(245,158,11,.28); background: rgba(245,158,11,.08); color: var(--accent-yellow); font-size:.82em; font-weight:700;">⚠️ Conferência antiga sem base de bobinas na nuvem.</div>` : ""}
+          ${data.missingBobinas ? `<div style="margin:8px 0 0; padding:10px 12px; border-radius:10px; border:1px solid rgba(245,158,11,.28); background: rgba(245,158,11,.08); color: var(--accent-yellow); font-size:.82em; font-weight:700;">⚠️ Conferência antiga sem base de bobinas.</div>` : ""}
           <div class="cloud-detail-scroll" style="margin-top: 8px"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>`;
           const detailSearchInput = document.getElementById("cloudDetailSearch"); if (detailSearchInput) detailSearchInput.value = cloudDetailSearch || "";
           cloudApplyDetailFilterUI();
@@ -2059,7 +2053,7 @@ let cloudLastHeaderWrite = 0;
       async function cloudMergeSelectedConferences() {
         if (!cloudLeaderUnlocked) return;
         const ids = Array.from(cloudMergeSelectedIds); if (ids.length < 2) { notify("Selecione pelo menos 2 conferências para juntar.", "warning"); return; }
-        const box = document.getElementById("cloudDetailBox"); if (box) { box.className = "cloud-detail show"; box.innerHTML = '<div class="empty">☁️ Juntando conferências...</div>'; }
+        const box = document.getElementById("cloudDetailBox"); if (box) { box.className = "cloud-detail show"; box.innerHTML = '<div class="empty">Juntando conferências...</div>'; }
         try {
           const allRows = [], confs = [];
           for (const confId of ids) {
@@ -2181,7 +2175,7 @@ let cloudLastHeaderWrite = 0;
       }
       function showModal(title, msg, fn) { document.getElementById("mTitle").textContent = title; document.getElementById("mMsg").textContent = msg; document.getElementById("modal").classList.add("show"); document.getElementById("mConfirm").onclick = () => { closeModal(); fn(); }; }
       function closeModal() { document.getElementById("modal").classList.remove("show"); }
-      function showCheckerModal(cb) { checkerStartCallback = typeof cb === "function" ? cb : null; document.getElementById("checkerInput").value = S.checkerName || ""; document.getElementById("checkerError").style.display = "none"; document.getElementById("checkerModal").classList.add("show"); setTimeout(() => document.getElementById("checkerInput").focus(), 300); }
+      function showCheckerModal(cb) { checkerStartCallback = typeof cb === "function" ? cb : null; document.getElementById("checkerInput").value = S.checkerName || ""; document.getElementById("checkerError").style.display = "none"; const btn = document.querySelector("#checkerModal .btn-primary"); if (btn) btn.textContent = checkerStartCallback ? "✅ Iniciar conferência" : "✅ Confirmar operador"; document.getElementById("checkerModal").classList.add("show"); setTimeout(() => document.getElementById("checkerInput").focus(), 300); }
       function closeCheckerModal() { checkerStartCallback = null; document.getElementById("checkerModal").classList.remove("show"); }
       function confirmCheckerName() {
         const name = document.getElementById("checkerInput").value.trim();
@@ -2412,9 +2406,14 @@ let cloudLastHeaderWrite = 0;
         importByConferenceTypes([cfg], { replaceExisting: confTypeModalMode === "change" });
       }
       function syncCurrentConferenceToCloud() {
-        // Modo econômico: importar/carregar base NÃO grava na nuvem.
-        // A nuvem só recebe dados quando o operador clica em "Finalizar e salvar na nuvem".
+        // Modo econômico: importar/carregar base NÃO grava no servidor.
+        // O servidor só recebe dados quando o operador clica em "Finalizar".
+        // Cada nova importação/conferência deve pedir o operador do aparelho.
+        S.checkerName = "";
+        save();
+        if (document.getElementById("rCheckerName")) document.getElementById("rCheckerName").textContent = "—";
         cloudSetStatus("ok", "☁️ Modo econômico: salva ao finalizar");
+        setTimeout(() => showCheckerModal(), 180);
       }
       function importByConferenceTypes(cfgList, { replaceExisting = false } = {}) {
         if (!S.fileData || !S.fileLayout) { notify("Arquivo não encontrado para importar.", "error"); return; }
@@ -2502,7 +2501,7 @@ let cloudLastHeaderWrite = 0;
         if (!S.collectorMode || !S.collectorActive) return;
         mountCollectorInputForFocus();
         focusCollectorInput(true);
-        setCollectorLastRead("🎯 Captura do coletor focada. Leia a etiqueta.");
+        setCollectorLastRead("🎯 Captura do coletor focada.");
       }
       function showCollectorOverlay() {
         const overlay = document.getElementById("collectorOverlay");
@@ -2536,13 +2535,13 @@ offBtn.classList.remove("active-on", "active-off");
 if (S.collectorMode) {
   onBtn.classList.add("active-on");
           startBtn.textContent = "▶️ Iniciar conferência";
-          help.textContent = S.collectorActive ? "Leia a etiqueta com o laser. Se surgir uma não prevista, tire as fotos antes de confirmar." : "Modo coletor ativado. Toque em iniciar para abrir a tela de conferência do coletor.";
+          help.textContent = "";
           panel.classList.remove("active");
           if (S.collectorActive) showCollectorOverlay(); else hideCollectorOverlay();
         } else {
           offBtn.classList.add("active-off");
           startBtn.textContent = "▶️ Iniciar conferência";
-          help.textContent = "A câmera abrirá em tela cheia";
+          help.textContent = "";
           panel.classList.remove("active");
           hideCollectorOverlay();
         }
@@ -2557,7 +2556,7 @@ if (S.collectorMode) {
         if (!S.collectorMode) stopCollectorConference(true);
         save();
         updateCollectorModeUI();
-        setCollectorLastRead(S.collectorMode ? "Modo coletor ativado. Toque em iniciar." : "Pronto para iniciar.");
+        setCollectorLastRead(S.collectorMode ? "Coletor ativado." : "");
         notify(S.collectorMode ? "Modo coletor ativado." : "Modo coletor desativado.", S.collectorMode ? "success" : "warning");
       }
       function collectorShowBigStatus(cls, main, code = "", ms = 1400) {
@@ -2601,7 +2600,7 @@ if (S.collectorMode) {
         if (checkerEl) checkerEl.textContent = S.checkerName || "—";
         if (typeEl) typeEl.textContent = S.confType || "—";
       }
-      function updateCollectorOverlayCenter(title = "Aguardando leitura...", sub = "Leia a etiqueta com o laser do coletor.", code = "—") {
+      function updateCollectorOverlayCenter(title = "Aguardando leitura...", sub = "", code = "—") {
         const titleEl = document.getElementById("collectorOverlayTitle");
         const subEl = document.getElementById("collectorOverlaySub");
         const codeEl = document.getElementById("collectorOverlayCode");
@@ -2631,7 +2630,7 @@ if (S.collectorMode) {
         showCollectorOverlay();
         updateCollectorModeUI();
         setCollectorLastRead("Pronto para receber leitura do coletor.");
-        updateCollectorOverlayCenter("Aguardando leitura...", "Leia a etiqueta com o laser do coletor.", "—");
+        updateCollectorOverlayCenter("Aguardando leitura...", "", "—");
         setTimeout(() => { try { focusCollectorInput(); } catch (e) {} }, 120);
         console.log("Teste visual do coletor iniciado. Use runCollectorVisualCode('5001234567890') para simular leitura prevista ou runCollectorVisualCode('5009999999999') para não prevista.");
       }
@@ -2710,7 +2709,7 @@ if (S.collectorMode) {
         showCollectorOverlay();
         updateCollectorModeUI();
         setCollectorLastRead("Pronto para receber leitura do coletor.");
-        updateCollectorOverlayCenter("Aguardando leitura...", "Leia a etiqueta com o laser do coletor.", "—");
+        updateCollectorOverlayCenter("Aguardando leitura...", "", "—");
         setTimeout(focusCollectorInput, 120);
         notify("Conferência iniciada no modo coletor.");
       }
@@ -3348,7 +3347,7 @@ if (S.collectorMode) {
   document.getElementById("btnUndo").disabled = !S.scanned.length;
   // BUG 1 CORRIGIDO: não tenta reativar o coletor automaticamente
   if (S.collectorMode) {
-    setCollectorLastRead("Modo coletor ativado. Toque em iniciar para conferir.");
+    setCollectorLastRead("Coletor ativado.");
   }
   cloudSetStatus(cloudIsConfigured() ? "ok" : "", cloudIsConfigured() ? "☁️ Modo econômico" : "☁️ Nuvem: local");
 }
@@ -3363,5 +3362,5 @@ window.addEventListener("beforeunload", () => {
 
 init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17f3ac7fbeb8e5a',t:'MTc4MzUxNTE4Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17f55f77ade1f69',t:'MTc4MzUxNjI5Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
