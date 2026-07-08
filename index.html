@@ -2150,11 +2150,8 @@ let cloudLastHeaderWrite = 0;
           cloudSetStatus("sync", "☁️ Excluindo conferência...");
           if (!(await cloudInit())) throw new Error("Firebase indisponível");
           const ref = cloudDb.collection("conferencias").doc(confId);
-          await cloudDb.collection("conferencias_excluidas").doc(confId).set({ id: confId, deletedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-          await ref.set({ deleted: true, hidden: true, status: "deleted", deletedAt: firebase.firestore.FieldValue.serverTimestamp(), atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-          cloudDeletedIds.add(confId);
-          cloudConsultDocs = (cloudConsultDocs || []).filter((d) => d.id !== confId);
-          cloudRenderConsultList(document.getElementById("cloudSearch")?.value || "");
+          // Exclusão econômica: não grava mais em "conferencias_excluidas" e não faz marcação deleted.
+          // Remove arquivos do Supabase, subcoleções antigas se existirem, e apaga o documento principal.
           if (cloudDetailConfId === confId) cloudCloseConferenceDetail();
           await cloudDeleteSupabasePhotos(ref);
           for (const sub of ["bobinas", "leituras", "nao_previstas", "fotos"]) {
@@ -2164,6 +2161,9 @@ let cloudLastHeaderWrite = 0;
             } while (removed > 0);
           }
           await ref.delete();
+          cloudDeletedIds.add(confId);
+          cloudConsultDocs = (cloudConsultDocs || []).filter((d) => d.id !== confId);
+          cloudRenderConsultList(document.getElementById("cloudSearch")?.value || "");
           notify("Conferência excluída.");
           cloudSetStatus("ok", "☁️ Conferência excluída");
         } catch (e) {
