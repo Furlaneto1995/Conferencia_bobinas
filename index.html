@@ -840,6 +840,8 @@
       let pendingExtraMainPhotoBobina = null;
       let checkerStartCallback = null;
       let collectorReadTimer = null;
+      let collectorKeyBuffer = "";
+      let collectorKeyTimer = null;
       let confTypeModalMode = "import";
       let cloudReady = false, cloudDb = null, cloudStorage = null, cloudSummaryTimer = null,
         cloudConsultUnsub = null, cloudConsultDocs = [], cloudListStatusFilter = "all",
@@ -2411,6 +2413,8 @@
         const input = document.getElementById("collectorInput");
         if (input) input.value = "";
         clearTimeout(collectorReadTimer);
+        clearTimeout(collectorKeyTimer);
+        collectorKeyBuffer = "";
         save();
         hideCollectorOverlay();
         updateCollectorModeUI();
@@ -2498,12 +2502,13 @@
         updateCollectorOverlayCenter("Bobina não prevista", "Abrindo o fluxo de localização e fotos.", code);
         showLocModal(code, time, "collector");
       }
-      function handleCollectorRead() {
+      function handleCollectorRead(rawValue = null) {
         const input = document.getElementById("collectorInput");
-        if (!input) return;
-        const raw = input.value;
-        input.value = "";
+        const raw = rawValue != null ? String(rawValue) : (input ? input.value : "");
+        if (input) input.value = "";
         clearTimeout(collectorReadTimer);
+        clearTimeout(collectorKeyTimer);
+        collectorKeyBuffer = "";
         processCollectorCode(raw);
       }
       function initCollectorMode() {
@@ -2526,6 +2531,32 @@
         input.addEventListener("blur", () => {
           if (collectorCanFocus()) setTimeout(focusCollectorInput, 80);
         });
+
+        document.addEventListener("keydown", (event) => {
+          if (!collectorCanFocus()) return;
+          const target = event.target;
+          const tag = (target && target.tagName || "").toLowerCase();
+          const isEditable = tag === "input" || tag === "textarea" || tag === "select" || target?.isContentEditable;
+          const isCollectorInput = target === input;
+          if (isEditable && !isCollectorInput) return;
+
+          if (event.key === "Enter" || event.key === "Tab") {
+            if (collectorKeyBuffer) {
+              event.preventDefault();
+              handleCollectorRead(collectorKeyBuffer);
+            }
+            return;
+          }
+
+          if (event.key && event.key.length === 1) {
+            collectorKeyBuffer += event.key;
+            clearTimeout(collectorKeyTimer);
+            collectorKeyTimer = setTimeout(() => {
+              if (collectorKeyBuffer.length >= 10) handleCollectorRead(collectorKeyBuffer);
+              else collectorKeyBuffer = "";
+            }, 120);
+          }
+        }, true);
       }
       function openCamera(skipChecker = false) {
         if (S.db.length === 0) { notify("Importe os dados primeiro!", "error"); return; }
@@ -2949,5 +2980,5 @@
       }
       init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ad315bd260e8a',t:'MTc4MzQ2ODk5Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
