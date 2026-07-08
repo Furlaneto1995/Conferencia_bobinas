@@ -619,10 +619,9 @@
           <div class="empty" style="padding:18px 14px; margin-top: 4px;"><div class="e-icon" style="font-size:2.1em">☁️</div><h3>Base centralizada na nuvem</h3><p>O envio de novos arquivos-base agora é feito no menu do líder. Aqui os dispositivos apenas carregam a base salva abaixo.</p></div>
         </div>
                 <div class="card">
-          <div class="card-title">☁️ Arquivos-base na nuvem <span class="card-actions-inline"><button class="btn btn-outline btn-sm" onclick="cloudRefreshBaseFiles()">🔄 Atualizar</button></span></div>
-          <div class="card-sub">Carregue em outros dispositivos sem precisar do arquivo no aparelho</div>
-          <div class="search-wrap"><span class="si">🔍</span><input class="search-input" id="cloudBaseSearch" placeholder="Buscar arquivo-base..." oninput="cloudBaseFilesSearch=this.value; cloudRenderBaseFiles()" /></div>
-          <div id="cloudBaseFilesBox" class="cloud-list"><div class="empty">Clique em atualizar para consultar.</div></div>
+          <div class="card-title">☁️ Arquivo-base ativo <span class="card-actions-inline"><button class="btn btn-outline btn-sm" onclick="cloudRefreshBaseFiles()">🔄 Atualizar</button></span></div>
+          <div class="card-sub">Baixe a base atual definida pelo líder. Usa apenas 1 leitura no Firestore para consultar.</div>
+          <div id="cloudBaseFilesBox" class="cloud-list"><div class="empty">Clique em atualizar para consultar a base ativa.</div></div>
         </div>
         <div class="card">
           <div class="card-title">🗄️ Banco de Dados <span style="margin-left: auto; font-size: 0.75em; color: var(--text-muted);" id="dbCount">0 códigos</span><span class="card-actions-inline"><button class="btn btn-outline btn-sm" id="dbClearBtn" style="display:none" onclick="confirmClear()">🗑️ Limpar bobinas</button></span></div>
@@ -703,7 +702,7 @@
       <div class="section" id="sectionCloud">
         <div class="card">
           <div class="card-title">📤 Arquivo-base do líder</div>
-          <div class="card-sub">Importe a planilha completa do dispositivo do líder, dê um nome e salve para os outros dispositivos baixarem.</div>
+          <div class="card-sub">Importe a planilha completa, dê um nome e defina como a única base ativa para os outros dispositivos baixarem.</div>
           <input type="file" id="leaderBaseFileInput" accept=".csv,.txt,.tsv,.text" style="display:none" onchange="cloudHandleLeaderBaseFile(event)" />
           <div class="btn-group" style="margin-top:0">
             <button class="btn btn-primary" onclick="cloudPickLeaderBaseFile()">📁 Importar arquivo do dispositivo</button>
@@ -832,7 +831,7 @@
       <button class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px 14px" onclick="importSelectedConferenceTypes()">📥 Importar selecionados</button>
       <button class="btn btn-outline" style="width: 100%; justify-content: center; padding: 12px 14px" onclick="closeConferenceTypeModal()">Cancelar</button>
     </div></div></div>
-    <div class="modal-bg" id="baseNameModal"><div class="modal"><h2>☁️ Nome do arquivo-base</h2><p>Digite o nome que os outros dispositivos verão para baixar esta base.</p><input type="text" id="baseNameInput" class="loc-input-main" placeholder="Ex: Base Agosto turno A" onkeydown="if (event.key === 'Enter') confirmBaseNameUpload();" autocomplete="off" /><div id="baseNameError" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Nome obrigatório!</div><div class="btn-group"><button class="btn btn-primary" id="baseNameSaveBtn" onclick="confirmBaseNameUpload()">✅ Salvar arquivo-base</button><button class="btn btn-outline" onclick="closeBaseNameModal()">Cancelar</button></div></div></div>
+    <div class="modal-bg" id="baseNameModal"><div class="modal"><h2>☁️ Nome do arquivo-base</h2><p>Digite o nome da base ativa que os outros dispositivos irão baixar.</p><input type="text" id="baseNameInput" class="loc-input-main" placeholder="Ex: Base Agosto turno A" onkeydown="if (event.key === 'Enter') confirmBaseNameUpload();" autocomplete="off" /><div id="baseNameError" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Nome obrigatório!</div><div class="btn-group"><button class="btn btn-primary" id="baseNameSaveBtn" onclick="confirmBaseNameUpload()">✅ Salvar como base ativa</button><button class="btn btn-outline" onclick="closeBaseNameModal()">Cancelar</button></div></div></div>
 
     <div class="modal-bg" id="locModal"><div class="modal" style="border-color: var(--accent-red)"><h2 style="color: var(--accent-red)">⚠️ Bobina Não Prevista</h2><div class="loc-code-display" id="locCodeMain"></div><p id="locModalDesc">Informe a localização desta bobina:</p><input type="text" id="locInputMain" class="loc-input-main" placeholder="Ex: Galpão A, Corredor 3..." onkeydown="if (event.key === 'Enter') confirmLocMain();" autocomplete="off" /><textarea id="locObsMain" class="loc-input-main" placeholder="Observação (opcional)" style="min-height: 76px; resize: vertical; font-family: inherit;"></textarea><div class="loc-photo-section" id="locPhotoSection"><div class="loc-photo-grid"><div><div class="loc-photo-label">🏷️ Foto da etiqueta <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnEtiqueta" onclick="document.getElementById('locPhotoInputEtiqueta').click()">📷 Tirar foto da etiqueta<input type="file" id="locPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'etiqueta')" /></div><div class="loc-photo-preview" id="locPhotoPreviewEtiqueta"><img id="locPhotoImgEtiqueta" src="" /><button class="loc-photo-remove" onclick="locRemovePhoto('etiqueta')">✕</button></div><div class="loc-photo-error" id="locPhotoErrorEtiqueta">⚠️ Foto da etiqueta obrigatória!</div></div><div><div class="loc-photo-label">📦 Foto da bobina <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnBobina" onclick="document.getElementById('locPhotoInputBobina').click()">📷 Tirar foto da bobina<input type="file" id="locPhotoInputBobina" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'bobina')" /></div><div class="loc-photo-preview" id="locPhotoPreviewBobina"><img id="locPhotoImgBobina" src="" /><button class="loc-photo-remove" onclick="locRemovePhoto('bobina')">✕</button></div><div class="loc-photo-error" id="locPhotoErrorBobina">⚠️ Foto da bobina obrigatória!</div></div></div></div><div id="locErrorMain" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Localização obrigatória!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmLocMain()">✅ Confirmar</button><button class="btn btn-outline" onclick="cancelLocMain()">Cancelar</button></div></div></div>
     <div class="photo-modal" id="photoModal"><div style="text-align: center; color: #fff; font-weight: 700; max-width: 100%; max-height: 82vh; overflow: auto;">🏷️ Etiqueta + 📦 Bobina<br /><img id="photoModalImg" src="" /></div><button class="photo-modal-close" onclick="closePhotoModal()">✕ Fechar</button></div>
@@ -894,6 +893,7 @@ let cloudLastHeaderWrite = 0;
       const SUPABASE_URL = "https://uovfzdcbapcrinjpeada.supabase.co";
       const SUPABASE_ANON_KEY = "sb_publishable_xShr3sQbRBvInga95QTJRg_8XcGYNbJ";
       const SUPABASE_BUCKET = "bobinas-fotos";
+      const CLOUD_ACTIVE_BASE_DOC_ID = "base_atual";
 
       function esc(v) { return String(v ?? "").replace(/[&<>"]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[m]); }
       function load() {
@@ -1144,6 +1144,59 @@ let cloudLastHeaderWrite = 0;
         const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`;
         return { path, publicUrl };
       }
+      async function cloudDeleteSupabasePrefixes(prefixes = []) {
+        const clean = [...new Set((prefixes || []).filter(Boolean))];
+        if (!clean.length || !SUPABASE_URL || !SUPABASE_ANON_KEY) return;
+        for (let i = 0; i < clean.length; i += 100) {
+          const batch = clean.slice(i, i + 100);
+          const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}`, {
+            method: "DELETE",
+            headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ prefixes: batch }),
+          });
+          if (!res.ok) {
+            const txt = await res.text().catch(() => "");
+            console.warn("Falha ao excluir arquivo antigo no Supabase:", res.status, txt);
+          }
+        }
+      }
+      async function cloudSaveActiveBaseDoc({ baseId, fileName, mimeType, content, totalCodigos, origem, tipoConferencia, uploaded }) {
+        const ref = cloudDb.collection("arquivos_base").doc(CLOUD_ACTIVE_BASE_DOC_ID);
+        let previousPath = "";
+        try {
+          const prev = await ref.get();
+          if (prev.exists) previousPath = (prev.data() || {}).storagePath || "";
+        } catch (e) {
+          console.warn("Não foi possível ler base ativa anterior:", e);
+        }
+        const activeData = {
+          id: CLOUD_ACTIVE_BASE_DOC_ID,
+          baseId,
+          version: baseId,
+          nome: fileName,
+          operador: S.checkerName || "",
+          operadorKey: cloudOperatorKey(),
+          criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+          atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+          data: cloudDateKey(),
+          linhas: String(content || "").split(/\r?\n/).filter((l) => l.trim()).length,
+          totalCodigos: totalCodigos || 0,
+          tipoConferencia: tipoConferencia || "Arquivo completo",
+          origem: origem || "leader-device",
+          mimeType: mimeType || cloudMimeTypeFromFileName(fileName),
+          storagePath: uploaded.path,
+          storageUrl: uploaded.publicUrl,
+          status: "ativo",
+          ativo: true,
+        };
+        await ref.set(activeData); // sem merge: mantém somente a base ativa atual
+        if (previousPath && previousPath !== uploaded.path) {
+          cloudDeleteSupabasePrefixes([previousPath]).catch(() => {});
+        }
+        cloudBaseFilesDocs = [{ ...activeData, id: CLOUD_ACTIVE_BASE_DOC_ID }];
+        cloudRenderBaseFiles();
+        return activeData;
+      }
       function cloudPickLeaderBaseFile() {
         if (!cloudLeaderUnlocked) { cloudRequestLeaderAccess(); return; }
         document.getElementById("leaderBaseFileInput")?.click();
@@ -1153,7 +1206,7 @@ let cloudLastHeaderWrite = 0;
         document.getElementById("baseNameInput").value = clean;
         document.getElementById("baseNameError").style.display = "none";
         const saveBtn = document.getElementById("baseNameSaveBtn");
-        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "✅ Salvar arquivo-base"; }
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "✅ Salvar como base ativa"; }
         const modal = document.getElementById("baseNameModal");
         if (modal) modal.classList.add("show");
         setTimeout(() => document.getElementById("baseNameInput").focus(), 120);
@@ -1221,26 +1274,20 @@ let cloudLastHeaderWrite = 0;
           const baseId = `base_${Date.now()}`;
           const ext = (uploadData.originalName.match(/\.[^.]+$/) || [""])[0];
           const fileName = name.includes(".") ? name : (name + (ext || ".csv"));
-          cloudSetStatus("sync", "☁️ Salvando arquivo-base...");
+          cloudSetStatus("sync", "☁️ Salvando arquivo-base ativo...");
           const uploaded = await cloudUploadBaseFile(baseId, fileName, uploadData.content, uploadData.mimeType);
-          await cloudDb.collection("arquivos_base").doc(baseId).set({
-            id: baseId,
-            nome: fileName,
-            operador: S.checkerName || "",
-            operadorKey: cloudOperatorKey(),
-            criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-            data: cloudDateKey(),
-            linhas: uploadData.content.split(/\r?\n/).filter((l) => l.trim()).length,
+          await cloudSaveActiveBaseDoc({
+            baseId,
+            fileName,
+            content: uploadData.content,
+            mimeType: uploadData.mimeType,
             totalCodigos: uploadData.totalCodigos || 0,
             tipoConferencia: "Arquivo completo",
             origem: "leader-device",
-            mimeType: uploadData.mimeType,
-            storagePath: uploaded.path,
-            storageUrl: uploaded.publicUrl,
-          }, { merge: true });
-          cloudSetStatus("ok", "☁️ Arquivo-base salvo");
-          notify("Arquivo-base salvo na nuvem!");
-          cloudRefreshBaseFiles();
+            uploaded,
+          });
+          cloudSetStatus("ok", "☁️ Arquivo-base ativo salvo");
+          notify("Arquivo-base ativo salvo na nuvem!");
         } catch (e) {
           console.error(e);
           cloudSetStatus("error", "☁️ Erro ao salvar arquivo-base");
@@ -1257,26 +1304,20 @@ let cloudLastHeaderWrite = 0;
           const baseId = `base_${Date.now()}`;
           const fileName = currentImportedFile.name || "arquivo-base.txt";
           const mimeType = currentImportedFile.mimeType || cloudMimeTypeFromFileName(fileName);
-          cloudSetStatus("sync", "☁️ Salvando arquivo-base...");
+          cloudSetStatus("sync", "☁️ Salvando arquivo-base ativo...");
           const uploaded = await cloudUploadBaseFile(baseId, fileName, currentImportedFile.content, mimeType);
-          await cloudDb.collection("arquivos_base").doc(baseId).set({
-            id: baseId,
-            nome: fileName,
-            operador: S.checkerName || "",
-            operadorKey: cloudOperatorKey(),
-            criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-            data: cloudDateKey(),
-            linhas: currentImportedFile.content.split(/\r?\n/).filter((l) => l.trim()).length,
-            totalCodigos: S.db.length || 0,
-            tipoConferencia: S.confType || "",
-            origem: currentImportedFile.source || "local",
+          await cloudSaveActiveBaseDoc({
+            baseId,
+            fileName,
+            content: currentImportedFile.content,
             mimeType,
-            storagePath: uploaded.path,
-            storageUrl: uploaded.publicUrl,
-          }, { merge: true });
-          cloudSetStatus("ok", "☁️ Arquivo-base salvo");
-          notify("Arquivo-base salvo na nuvem!");
-          cloudRefreshBaseFiles();
+            totalCodigos: S.db.length || 0,
+            tipoConferencia: S.confType || "Arquivo completo",
+            origem: currentImportedFile.source || "local",
+            uploaded,
+          });
+          cloudSetStatus("ok", "☁️ Arquivo-base ativo salvo");
+          notify("Arquivo-base ativo salvo na nuvem!");
         } catch (e) {
           console.error(e);
           cloudSetStatus("error", "☁️ Erro ao salvar arquivo-base");
@@ -1286,55 +1327,49 @@ let cloudLastHeaderWrite = 0;
       function cloudRenderBaseFiles() {
         const box = document.getElementById("cloudBaseFilesBox");
         if (!box) return;
-        const q = String(cloudBaseFilesSearch || "").trim().toLowerCase();
-        let docs = (cloudBaseFilesDocs || []).filter((d) => !d.deleted && !d.hidden && d.status !== "deleted" && !cloudBaseDeletedIds.has(d.id));
-        if (q) {
-          docs = docs.filter((d) => [d.nome, d.operador, d.data, d.tipoConferencia, d.id].join(" ").toLowerCase().includes(q));
-        }
+        const docs = (cloudBaseFilesDocs || []).filter((d) => d && !d.deleted && !d.hidden && d.status !== "deleted");
         if (!docs.length) {
-          box.innerHTML = '<div class="empty">Nenhum arquivo-base salvo na nuvem.</div>';
+          box.innerHTML = '<div class="empty"><div class="e-icon">☁️</div><h3>Nenhuma base ativa</h3><p>O líder deve salvar um arquivo-base ativo.</p></div>';
           return;
         }
-        box.innerHTML = docs.map((d) => `
-          <div class="cloud-item">
+        const d = docs[0];
+        box.innerHTML = `
+          <div class="cloud-item current">
             <div class="cloud-item-head">
-              <div class="cloud-item-title">${esc(d.nome || "arquivo-base")}</div>
+              <div class="cloud-item-title">⭐ Base ativa: ${esc(d.nome || "arquivo-base")}</div>
               <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end">
-                <button class="cloud-report-btn" onclick="cloudLoadBaseFile('${esc(d.id).replace(/'/g, "&#39;")}')">📥 Carregar</button>
-                ${cloudLeaderUnlocked ? `<button class="cloud-delete-btn" onclick="cloudDeleteBaseFile('${esc(d.id).replace(/'/g, "&#39;")}')">🗑️ Excluir</button>` : ""}
+                <button class="cloud-report-btn" onclick="cloudLoadBaseFile('${CLOUD_ACTIVE_BASE_DOC_ID}')">📥 Carregar base ativa</button>
+                ${cloudLeaderUnlocked ? `<button class="cloud-delete-btn" onclick="cloudDeleteBaseFile('${CLOUD_ACTIVE_BASE_DOC_ID}')">🗑️ Remover ativa</button>` : ""}
               </div>
             </div>
             <div class="cloud-item-info">
-              <span>👤 <strong>${esc(d.operador || "-")}</strong></span>
               <span>📅 <strong>${esc(d.data || "-")}</strong></span>
               <span>📦 Códigos: <strong>${d.totalCodigos ?? 0}</strong></span>
-              <span>📋 Tipo: <strong>${esc(d.tipoConferencia || "-")}</strong></span>
+              <span>📋 Tipo: <strong>${esc(d.tipoConferencia || "Arquivo completo")}</strong></span>
+              <span>🔖 Versão: <strong>${esc(d.version || d.baseId || "-")}</strong></span>
             </div>
-          </div>
-        `).join("");
+          </div>`;
       }
       async function cloudRefreshBaseFiles() {
         const box = document.getElementById("cloudBaseFilesBox");
-        if (box) box.innerHTML = '<div class="empty">☁️ Consultando arquivos-base...</div>';
+        if (box) box.innerHTML = '<div class="empty">☁️ Consultando base ativa...</div>';
         try {
           if (!(await cloudInit())) {
             if (box) box.innerHTML = '<div class="empty">Firebase não configurado ou sem conexão.</div>';
             return;
           }
-          let deletedIds = new Set();
-          try {
-            const deletedSnap = await cloudDb.collection("arquivos_base_excluidos").limit(300).get();
-            deletedIds = new Set(deletedSnap.docs.map((d) => d.id));
-          } catch (e) {
-            console.warn("Sem permissão para ler arquivos_base_excluidos, seguindo sem essa coleção.", e);
+          // Opção B: apenas 1 documento fixo. Cada aparelho faz só 1 read para descobrir a base ativa.
+          const doc = await cloudDb.collection("arquivos_base").doc(CLOUD_ACTIVE_BASE_DOC_ID).get();
+          if (!doc.exists) {
+            cloudBaseFilesDocs = [];
+          } else {
+            const data = { id: doc.id, ...doc.data() };
+            cloudBaseFilesDocs = (!data.deleted && !data.hidden && data.status !== "deleted") ? [data] : [];
           }
-          const filesSnap = await cloudDb.collection("arquivos_base").orderBy("criadoEm", "desc").limit(80).get();
-          cloudBaseDeletedIds = deletedIds;
-          cloudBaseFilesDocs = filesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
           cloudRenderBaseFiles();
         } catch (e) {
           console.error(e);
-          if (box) box.innerHTML = '<div class="empty">Erro ao consultar arquivos-base.</div>';
+          if (box) box.innerHTML = '<div class="empty">Erro ao consultar base ativa.</div>';
         }
       }
       function parseFileForConferenceSelection(content) {
@@ -1372,16 +1407,20 @@ let cloudLastHeaderWrite = 0;
         previewCol();
         return rows.length;
       }
-      async function cloudLoadBaseFile(baseId) {
+      async function cloudLoadBaseFile(baseId = CLOUD_ACTIVE_BASE_DOC_ID) {
         try {
           if (!(await cloudInit())) throw new Error("Firebase indisponível");
-          const doc = await cloudDb.collection("arquivos_base").doc(baseId).get();
-          if (!doc.exists) throw new Error("Arquivo-base não encontrado");
-          const data = { id: doc.id, ...doc.data() };
-          if (!data.storageUrl) throw new Error("Arquivo-base sem URL de armazenamento");
-          cloudSetStatus("sync", "☁️ Baixando arquivo-base...");
-          const res = await fetch(data.storageUrl);
-          if (!res.ok) throw new Error("Falha ao baixar arquivo-base");
+          let data = (cloudBaseFilesDocs || []).find((d) => d.id === CLOUD_ACTIVE_BASE_DOC_ID);
+          if (!data) {
+            // Fallback: se o usuário clicar em carregar sem atualizar antes, faz 1 read do documento ativo.
+            const doc = await cloudDb.collection("arquivos_base").doc(CLOUD_ACTIVE_BASE_DOC_ID).get();
+            if (!doc.exists) throw new Error("Nenhuma base ativa encontrada");
+            data = { id: doc.id, ...doc.data() };
+          }
+          if (!data.storageUrl) throw new Error("Base ativa sem URL de armazenamento");
+          cloudSetStatus("sync", "☁️ Baixando base ativa...");
+          const res = await fetch(data.storageUrl, { cache: "no-store" });
+          if (!res.ok) throw new Error("Falha ao baixar base ativa");
           const content = await res.text();
 
           resetConferenceData({ keepImportedFile: false });
@@ -1389,7 +1428,7 @@ let cloudLastHeaderWrite = 0;
           currentImportedFile = {
             name: data.nome || "arquivo-base.txt",
             content,
-            source: "cloud",
+            source: "cloud-active",
             mimeType: data.mimeType || cloudMimeTypeFromFileName(data.nome || "arquivo-base.txt"),
           };
           const info = document.getElementById("fileInfo");
@@ -1399,47 +1438,34 @@ let cloudLastHeaderWrite = 0;
           parseFileForConferenceSelection(content);
           updateImportActionButtons();
           switchTab("import");
-          cloudSetStatus("ok", "☁️ Arquivo-base carregado");
-          notify("Arquivo-base carregado da nuvem!");
+          cloudSetStatus("ok", "☁️ Base ativa carregada");
+          notify("Base ativa carregada da nuvem!");
         } catch (e) {
           console.error(e);
-          cloudSetStatus("error", "☁️ Erro ao carregar arquivo-base");
-          notify("Erro ao carregar arquivo-base: " + (e.message || e), "error");
+          cloudSetStatus("error", "☁️ Erro ao carregar base ativa");
+          notify("Erro ao carregar base ativa: " + (e.message || e), "error");
         }
       }
-      async function cloudDeleteBaseFile(baseId) {
+      async function cloudDeleteBaseFile(baseId = CLOUD_ACTIVE_BASE_DOC_ID) {
         if (!cloudLeaderUnlocked) {
           cloudRequestLeaderAccess();
           return;
         }
-        if (!confirm(`Excluir definitivamente o arquivo-base ${baseId}?`)) return;
+        if (!confirm("Remover a base ativa da nuvem? Os aparelhos não conseguirão carregar até o líder salvar outra base.")) return;
         try {
           if (!(await cloudInit())) throw new Error("Firebase indisponível");
-          const ref = cloudDb.collection("arquivos_base").doc(baseId);
+          const ref = cloudDb.collection("arquivos_base").doc(CLOUD_ACTIVE_BASE_DOC_ID);
           const snap = await ref.get();
-          if (!snap.exists) throw new Error("Arquivo-base não encontrado");
+          if (!snap.exists) throw new Error("Base ativa não encontrada");
           const data = snap.data() || {};
-          await cloudDb.collection("arquivos_base_excluidos").doc(baseId).set({ id: baseId, deletedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-          await ref.set({ deleted: true, hidden: true, status: "deleted", deletedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-          cloudBaseDeletedIds.add(baseId);
-          cloudBaseFilesDocs = (cloudBaseFilesDocs || []).filter((d) => d.id !== baseId);
-          cloudRenderBaseFiles();
-          if (data.storagePath && SUPABASE_URL && SUPABASE_ANON_KEY) {
-            await fetch(`${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}`, {
-              method: "DELETE",
-              headers: {
-                apikey: SUPABASE_ANON_KEY,
-                Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ prefixes: [data.storagePath] }),
-            }).catch(() => {});
-          }
           await ref.delete();
-          notify("Arquivo-base excluído.");
+          cloudBaseFilesDocs = [];
+          cloudRenderBaseFiles();
+          if (data.storagePath) await cloudDeleteSupabasePrefixes([data.storagePath]).catch(() => {});
+          notify("Base ativa removida.");
         } catch (e) {
           console.error(e);
-          notify("Erro ao excluir arquivo-base: " + (e.message || e), "error");
+          notify("Erro ao remover base ativa: " + (e.message || e), "error");
         }
       }
       function cloudBuildLocalFinalReportData(photoUploads = {}) {
@@ -2386,8 +2412,9 @@ let cloudLastHeaderWrite = 0;
         importByConferenceTypes([cfg], { replaceExisting: confTypeModalMode === "change" });
       }
       function syncCurrentConferenceToCloud() {
-        if (S.checkerName) finishConference();
-        else showCheckerModal(() => finishConference());
+        // Modo econômico: importar/carregar base NÃO grava na nuvem.
+        // A nuvem só recebe dados quando o operador clica em "Finalizar e salvar na nuvem".
+        cloudSetStatus("ok", "☁️ Modo econômico: salva ao finalizar");
       }
       function importByConferenceTypes(cfgList, { replaceExisting = false } = {}) {
         if (!S.fileData || !S.fileLayout) { notify("Arquivo não encontrado para importar.", "error"); return; }
@@ -3336,5 +3363,5 @@ window.addEventListener("beforeunload", () => {
 
 init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17f2e682eb1f90f',t:'MTc4MzUxNDY3Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17f3ac7fbeb8e5a',t:'MTc4MzUxNTE4Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
