@@ -176,24 +176,34 @@
       .collector-panel { display: none; margin-top: 12px; padding: 12px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.18); background: rgba(59, 130, 246, 0.04); text-align: left; }
       .collector-panel.active { display: block; }
       .collector-panel .hint { color: var(--text-secondary); font-size: 0.8em; margin-bottom: 8px; }
-      .collector-overlay { position: fixed; inset: 0; z-index: 5050; background: #000; color: #e2e8f0; display: none; overflow: hidden; }
+      .collector-overlay { position: fixed; inset: 0; z-index: 5050; background: #f8fafc; color: #0f172a; display: none; overflow: hidden; }
       .collector-overlay.show { display: block; }
       .collector-overlay-page { display: flex; flex-direction: column; height: 100%; height: 100dvh; position: relative; }
-      .collector-overlay-header { position: absolute; top: 0; left: 0; right: 0; z-index: 50; padding: max(env(safe-area-inset-top, 8px), 8px) 12px 8px; display: flex; align-items: center; justify-content: space-between; background: linear-gradient(180deg, rgba(0,0,0,.88), rgba(0,0,0,.4), transparent); }
-      .collector-overlay-title { font-weight: 700; font-size: .9em; display: flex; align-items: center; gap: 6px; }
-      .collector-overlay-dot { width: 7px; height: 7px; border-radius: 50%; background: #ef4444; animation: blink 1s infinite; }
-      .collector-overlay-close { width: 40px; height: 40px; border-radius: 50%; background: rgba(239,68,68,.3); border: 2px solid rgba(239,68,68,.6); color: #fff; font-size: 1.2em; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-      .collector-overlay-body { flex: 1; display: flex; align-items: center; justify-content: center; padding: 70px 16px 180px; }
-      .collector-overlay-center { text-align: center; max-width: 92vw; }
-      .collector-overlay-center h2 { font-size: 1.3em; margin-bottom: 8px; }
-      .collector-overlay-center p { color: rgba(255,255,255,.72); font-size: .92em; }
-      .collector-overlay-footer { position: absolute; left: 0; right: 0; bottom: 0; z-index: 50; background: rgba(0,0,0,.92); backdrop-filter: blur(10px); display: flex; flex-direction: column; max-height: 260px; padding-bottom: max(env(safe-area-inset-bottom, 8px), 8px); }
-      .collector-overlay-result { padding: 8px 12px; text-align: center; font-weight: 700; font-size: .85em; color: #94a3b8; }
-      .collector-overlay-stats { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 6px 12px; font-size: .78em; color: #94a3b8; border-bottom: 1px solid rgba(255,255,255,.08); }
+      .collector-overlay-header { background: #fff; border-bottom: 1px solid #dbe3ef; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06); position: absolute; top: 0; left: 0; right: 0; z-index: 50; }
+      .collector-overlay-title { font-size: 1.05rem; font-weight: 900; display: flex; align-items: center; gap: 6px; color: #0f172a; }
+      .collector-overlay-dot { width: 7px; height: 7px; border-radius: 50%; background: #10b981; animation: blink 1s infinite; }
+      .collector-overlay-close { border: none; border-radius: 10px; background: #475569; color: #fff; padding: 10px 14px; cursor: pointer; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
+      .collector-overlay-body { flex: 1; padding: 18px 16px 180px; overflow: auto; }
+      .collector-overlay-center,
+      .collector-overlay-history-card { width: min(100%, 780px); margin: 0 auto 14px; background: #fff; border: 1px solid #dbe3ef; border-radius: 18px; padding: 18px; box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08); }
+      .collector-overlay-badge { display: inline-flex; align-items: center; gap: 8px; background: #ecfeff; border: 1px solid #a5f3fc; color: #0f766e; border-radius: 999px; padding: 6px 10px; font-size: .8rem; font-weight: 800; margin-bottom: 10px; }
+      .collector-overlay-center h2 { margin: 0 0 6px; font-size: 1.35rem; font-weight: 900; color: #0f172a; }
+      .collector-overlay-center p { margin: 0; color: #64748b; }
+      .collector-overlay-code { margin-top: 10px; font-family: monospace; font-size: 1rem; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #dbe3ef; border-radius: 12px; padding: 10px 12px; }
+      .collector-overlay-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin-top: 14px; }
+      .collector-overlay-card { background: #f8fafc; border: 1px solid #dbe3ef; border-radius: 12px; padding: 12px 10px; text-align: center; }
+      .collector-overlay-card .lbl { font-size: .78rem; color: #64748b; margin-bottom: 4px; }
+      .collector-overlay-card .val { font-size: 1.08rem; font-weight: 900; color: #0f172a; }
+      .collector-overlay-guide { margin-top: 14px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; border-radius: 12px; padding: 12px 14px; font-size: .88rem; line-height: 1.45; }
+      .collector-overlay-guide strong { color: #1e3a8a; }
+      .collector-overlay-footer { position: absolute; left: 0; right: 0; bottom: 0; z-index: 50; background: rgba(255,255,255,.96); backdrop-filter: blur(10px); display: flex; flex-direction: column; max-height: 170px; padding-bottom: max(env(safe-area-inset-bottom, 8px), 8px); border-top: 1px solid var(--border); }
+      .collector-overlay-result { padding: 10px 12px; text-align: center; font-weight: 700; font-size: .9em; color: #334155; }
+      .collector-overlay-stats { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 8px 12px; font-size: .78em; color: #475569; border-bottom: 1px solid var(--border); }
       .collector-overlay-stats .sv { color: #10b981; font-weight: 700; font-size: 1.1em; }
       .collector-overlay-stats .se { color: #ef4444; font-weight: 700; font-size: 1.1em; }
-      .collector-overlay-history { flex: 1; overflow-y: auto; padding: 4px 8px 8px; -webkit-overflow-scrolling: touch; }
-      .collector-overlay-empty { text-align: center; padding: 16px; color: rgba(255,255,255,.25); font-size: .78em; }
+      .collector-overlay-history { overflow-y: auto; padding: 4px 0 0; -webkit-overflow-scrolling: touch; }
+      .collector-overlay-empty { text-align: center; padding: 10px; color: #94a3b8; }
+      @media (max-width: 640px) { .collector-overlay-grid { grid-template-columns: 1fr; } }
       .collector-input-hidden { position: absolute; left: -9999px; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
       .collector-last-read { margin-top: 8px; color: var(--text-muted); font-size: 0.78em; min-height: 1.2em; }
       .collector-last-read.ok { color: var(--accent-green); }
@@ -707,8 +717,30 @@
     <div class="collector-overlay" id="collectorOverlay">
       <div class="collector-overlay-page">
         <div class="collector-overlay-header"><div class="collector-overlay-title"><span class="collector-overlay-dot"></span> Conferência por Coletor</div><button class="collector-overlay-close" onclick="stopCollectorConference()">✕</button></div>
-        <div class="collector-overlay-body"><div class="collector-overlay-center"><h2 id="collectorOverlayTitle">Aguardando leitura...</h2><p id="collectorOverlaySub">Leia a etiqueta com o laser do coletor.</p></div></div>
-        <div class="collector-overlay-footer"><div class="collector-overlay-result" id="collectorOverlayResult">Pronto para receber leitura.</div><div class="collector-overlay-stats">✅ <span class="sv" id="collectorCntFound">0</span> conferidos &nbsp;│&nbsp; ⚠️ <span class="se" id="collectorCntExtra">0</span> não previstas</div><div class="collector-overlay-history" id="collectorOverlayHistory"><div class="collector-overlay-empty" id="collectorOverlayEmpty">Aguardando leitura...</div></div></div>
+        <div class="collector-overlay-body">
+          <div class="collector-overlay-center">
+            <div class="collector-overlay-badge">✅ Coletor ativo</div>
+            <h2 id="collectorOverlayTitle">Aguardando leitura...</h2>
+            <p id="collectorOverlaySub">Leia a etiqueta com o laser do coletor.</p>
+            <div class="collector-overlay-code" id="collectorOverlayCode">—</div>
+            <div class="collector-overlay-grid">
+              <div class="collector-overlay-card"><div class="lbl">Total</div><div class="val" id="collectorOverlayTotal">0</div></div>
+              <div class="collector-overlay-card"><div class="lbl">Conferidos</div><div class="val" id="collectorOverlayChecked">0</div></div>
+              <div class="collector-overlay-card"><div class="lbl">Pendentes</div><div class="val" id="collectorOverlayPending">0</div></div>
+            </div>
+            <div class="collector-overlay-grid" style="margin-top:10px;">
+              <div class="collector-overlay-card"><div class="lbl">Não previstas</div><div class="val" id="collectorOverlayExtra">0</div></div>
+              <div class="collector-overlay-card"><div class="lbl">Conferente</div><div class="val" id="collectorOverlayChecker">—</div></div>
+              <div class="collector-overlay-card"><div class="lbl">Tipo</div><div class="val" id="collectorOverlayType">—</div></div>
+            </div>
+            <div class="collector-overlay-guide"><strong>Como usar:</strong><br>Leia a etiqueta com o coletor. Se a bobina não for prevista, o sistema abrirá o fluxo de localização e fotos.</div>
+          </div>
+          <div class="collector-overlay-history-card">
+            <div style="font-weight:900; margin-bottom:10px;">Últimas leituras</div>
+            <div class="collector-overlay-history" id="collectorOverlayHistory"><div class="collector-overlay-empty" id="collectorOverlayEmpty">Aguardando leitura...</div></div>
+          </div>
+        </div>
+        <div class="collector-overlay-footer"><div class="collector-overlay-result" id="collectorOverlayResult">Pronto para receber leitura.</div><div class="collector-overlay-stats">✅ <span class="sv" id="collectorCntFound">0</span> conferidos &nbsp;│&nbsp; ⚠️ <span class="se" id="collectorCntExtra">0</span> não previstas</div></div>
       </div>
     </div>
 
@@ -786,7 +818,7 @@
       <button class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px 14px" onclick="importSelectedConferenceTypes()">📥 Importar selecionados</button>
       <button class="btn btn-outline" style="width: 100%; justify-content: center; padding: 12px 14px" onclick="closeConferenceTypeModal()">Cancelar</button>
     </div></div></div>
-    <div class="modal-bg" id="baseNameModal"><div class="modal"><h2>☁️ Nome do arquivo-base</h2><p>Digite o nome que os outros dispositivos verão para baixar esta base.</p><input type="text" id="baseNameInput" class="loc-input-main" placeholder="Ex: Base Agosto turno A" onkeydown="if (event.key === 'Enter') confirmBaseNameUpload();" autocomplete="off" /><div id="baseNameError" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Nome obrigatório!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmBaseNameUpload()">✅ Salvar arquivo-base</button><button class="btn btn-outline" onclick="closeBaseNameModal()">Cancelar</button></div></div></div>
+    <div class="modal-bg" id="baseNameModal"><div class="modal"><h2>☁️ Nome do arquivo-base</h2><p>Digite o nome que os outros dispositivos verão para baixar esta base.</p><input type="text" id="baseNameInput" class="loc-input-main" placeholder="Ex: Base Agosto turno A" onkeydown="if (event.key === 'Enter') confirmBaseNameUpload();" autocomplete="off" /><div id="baseNameError" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Nome obrigatório!</div><div class="btn-group"><button class="btn btn-primary" id="baseNameSaveBtn" onclick="confirmBaseNameUpload()">✅ Salvar arquivo-base</button><button class="btn btn-outline" onclick="closeBaseNameModal()">Cancelar</button></div></div></div>
 
     <div class="modal-bg" id="locModal"><div class="modal" style="border-color: var(--accent-red)"><h2 style="color: var(--accent-red)">⚠️ Bobina Não Prevista</h2><div class="loc-code-display" id="locCodeMain"></div><p id="locModalDesc">Informe a localização desta bobina:</p><input type="text" id="locInputMain" class="loc-input-main" placeholder="Ex: Galpão A, Corredor 3..." onkeydown="if (event.key === 'Enter') confirmLocMain();" autocomplete="off" /><textarea id="locObsMain" class="loc-input-main" placeholder="Observação (opcional)" style="min-height: 76px; resize: vertical; font-family: inherit;"></textarea><div class="loc-photo-section" id="locPhotoSection"><div class="loc-photo-grid"><div><div class="loc-photo-label">🏷️ Foto da etiqueta <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnEtiqueta" onclick="document.getElementById('locPhotoInputEtiqueta').click()">📷 Tirar foto da etiqueta<input type="file" id="locPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'etiqueta')" /></div><div class="loc-photo-preview" id="locPhotoPreviewEtiqueta"><img id="locPhotoImgEtiqueta" src="" /><button class="loc-photo-remove" onclick="locRemovePhoto('etiqueta')">✕</button></div><div class="loc-photo-error" id="locPhotoErrorEtiqueta">⚠️ Foto da etiqueta obrigatória!</div></div><div><div class="loc-photo-label">📦 Foto da bobina <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnBobina" onclick="document.getElementById('locPhotoInputBobina').click()">📷 Tirar foto da bobina<input type="file" id="locPhotoInputBobina" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'bobina')" /></div><div class="loc-photo-preview" id="locPhotoPreviewBobina"><img id="locPhotoImgBobina" src="" /><button class="loc-photo-remove" onclick="locRemovePhoto('bobina')">✕</button></div><div class="loc-photo-error" id="locPhotoErrorBobina">⚠️ Foto da bobina obrigatória!</div></div></div></div><div id="locErrorMain" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Localização obrigatória!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmLocMain()">✅ Confirmar</button><button class="btn btn-outline" onclick="cancelLocMain()">Cancelar</button></div></div></div>
     <div class="photo-modal" id="photoModal"><div style="text-align: center; color: #fff; font-weight: 700; max-width: 100%; max-height: 82vh; overflow: auto;">🏷️ Etiqueta + 📦 Bobina<br /><img id="photoModalImg" src="" /></div><button class="photo-modal-close" onclick="closePhotoModal()">✕ Fechar</button></div>
@@ -1086,17 +1118,18 @@
         const clean = String(defaultName || "").replace(/\.[^.]+$/, "").trim();
         document.getElementById("baseNameInput").value = clean;
         document.getElementById("baseNameError").style.display = "none";
-        document.getElementById("baseNameModal").classList.add("show");
+        const saveBtn = document.getElementById("baseNameSaveBtn");
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "✅ Salvar arquivo-base"; }
+        const modal = document.getElementById("baseNameModal");
+        if (modal) modal.classList.add("show");
         setTimeout(() => document.getElementById("baseNameInput").focus(), 120);
       }
       function closeBaseNameModal() {
         const modal = document.getElementById("baseNameModal");
-        if (modal) {
-          modal.classList.remove("show");
-          modal.style.display = "none";
-          setTimeout(() => { modal.style.display = ""; }, 0);
-        }
+        if (modal) modal.classList.remove("show");
         document.getElementById("baseNameError").style.display = "none";
+        const saveBtn = document.getElementById("baseNameSaveBtn");
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "✅ Salvar arquivo-base"; }
         const input = document.getElementById("leaderBaseFileInput");
         if (input) input.value = "";
       }
@@ -1143,13 +1176,19 @@
           return;
         }
         if (!pendingLeaderBaseUpload) return;
+        const saveBtn = document.getElementById("baseNameSaveBtn");
+        if (saveBtn && saveBtn.disabled) return;
+        if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = "Salvando..."; }
+        const uploadData = { ...pendingLeaderBaseUpload };
+        pendingLeaderBaseUpload = null;
+        closeBaseNameModal();
         try {
           if (!(await cloudInit())) throw new Error("Firebase indisponível");
           const baseId = `base_${Date.now()}`;
-          const ext = (pendingLeaderBaseUpload.originalName.match(/\.[^.]+$/) || [""])[0];
+          const ext = (uploadData.originalName.match(/\.[^.]+$/) || [""])[0];
           const fileName = name.includes(".") ? name : (name + (ext || ".csv"));
           cloudSetStatus("sync", "☁️ Salvando arquivo-base...");
-          const uploaded = await cloudUploadBaseFile(baseId, fileName, pendingLeaderBaseUpload.content, pendingLeaderBaseUpload.mimeType);
+          const uploaded = await cloudUploadBaseFile(baseId, fileName, uploadData.content, uploadData.mimeType);
           await cloudDb.collection("arquivos_base").doc(baseId).set({
             id: baseId,
             nome: fileName,
@@ -1157,19 +1196,16 @@
             operadorKey: cloudOperatorKey(),
             criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
             data: cloudDateKey(),
-            linhas: pendingLeaderBaseUpload.content.split(/\r?\n/).filter((l) => l.trim()).length,
-            totalCodigos: pendingLeaderBaseUpload.totalCodigos || 0,
+            linhas: uploadData.content.split(/\r?\n/).filter((l) => l.trim()).length,
+            totalCodigos: uploadData.totalCodigos || 0,
             tipoConferencia: "Arquivo completo",
             origem: "leader-device",
-            mimeType: pendingLeaderBaseUpload.mimeType,
+            mimeType: uploadData.mimeType,
             storagePath: uploaded.path,
             storageUrl: uploaded.publicUrl,
           }, { merge: true });
-          closeBaseNameModal();
-          pendingLeaderBaseUpload = null;
           cloudSetStatus("ok", "☁️ Arquivo-base salvo");
           notify("Arquivo-base salvo na nuvem!");
-          setTimeout(() => closeBaseNameModal(), 50);
           cloudRefreshBaseFiles();
         } catch (e) {
           console.error(e);
@@ -2301,11 +2337,64 @@
         const result = document.getElementById("collectorOverlayResult");
         if (result) result.textContent = message;
       }
-      function updateCollectorOverlayCenter(title = "Aguardando leitura...", sub = "Leia a etiqueta com o laser do coletor.") {
+      function updateCollectorOverlayMeta() {
+        const totalEl = document.getElementById("collectorOverlayTotal");
+        const checkedEl = document.getElementById("collectorOverlayChecked");
+        const pendingEl = document.getElementById("collectorOverlayPending");
+        const extraEl = document.getElementById("collectorOverlayExtra");
+        const checkerEl = document.getElementById("collectorOverlayChecker");
+        const typeEl = document.getElementById("collectorOverlayType");
+        const total = S.db.length;
+        const checked = S.checked.size;
+        const extra = [...new Set(S.extras)].length;
+        const pending = Math.max(0, total - checked);
+        if (totalEl) totalEl.textContent = total;
+        if (checkedEl) checkedEl.textContent = checked;
+        if (pendingEl) pendingEl.textContent = pending;
+        if (extraEl) extraEl.textContent = extra;
+        if (checkerEl) checkerEl.textContent = S.checkerName || "—";
+        if (typeEl) typeEl.textContent = S.confType || "—";
+      }
+      function updateCollectorOverlayCenter(title = "Aguardando leitura...", sub = "Leia a etiqueta com o laser do coletor.", code = "—") {
         const titleEl = document.getElementById("collectorOverlayTitle");
         const subEl = document.getElementById("collectorOverlaySub");
+        const codeEl = document.getElementById("collectorOverlayCode");
         if (titleEl) titleEl.textContent = title;
         if (subEl) subEl.textContent = sub;
+        if (codeEl) codeEl.textContent = code || "—";
+        updateCollectorOverlayMeta();
+      }
+      function runCollectorVisualTest() {
+        S.checkerName = S.checkerName || "Teste PC";
+        S.confType = S.confType || "Teste visual";
+        if (!S.db.length) {
+          S.db = ["5001234567890", "5001234567891", "7001234567892"];
+          S.meta = {
+            "5001234567890": { op: "OP-001", peso: "120" },
+            "5001234567891": { op: "OP-001", peso: "118" },
+            "7001234567892": { op: "OP-002", peso: "95" },
+          };
+        }
+        S.collectorMode = true;
+        S.collectorActive = true;
+        save();
+        updateDBUI();
+        updateStats();
+        updateHistory();
+        updateReport();
+        showCollectorOverlay();
+        updateCollectorModeUI();
+        setCollectorLastRead("Pronto para receber leitura do coletor.");
+        updateCollectorOverlayCenter("Aguardando leitura...", "Leia a etiqueta com o laser do coletor.", "—");
+        setTimeout(() => { try { focusCollectorInput(); } catch (e) {} }, 120);
+        console.log("Teste visual do coletor iniciado. Use runCollectorVisualCode('5001234567890') para simular leitura prevista ou runCollectorVisualCode('5009999999999') para não prevista.");
+      }
+      function runCollectorVisualCode(code) {
+        processCollectorCode(String(code || ""));
+      }
+      function stopCollectorVisualTest() {
+        stopCollectorConference(true);
+        console.log("Teste visual do coletor encerrado.");
       }
       function collectorCanFocus() {
         return !!(S.collectorMode && S.collectorActive && !document.getElementById("locModal")?.classList.contains("show") && !document.getElementById("checkerModal")?.classList.contains("show") && !document.getElementById("modal")?.classList.contains("show") && !document.getElementById("confTypeModal")?.classList.contains("show"));
@@ -2326,7 +2415,7 @@
         hideCollectorOverlay();
         updateCollectorModeUI();
         setCollectorLastRead("Conferência no coletor encerrada.", "warn");
-        updateCollectorOverlayCenter("Conferência encerrada", "Toque em iniciar conferência para voltar ao modo coletor.");
+        updateCollectorOverlayCenter("Conferência encerrada", "Toque em iniciar conferência para voltar ao modo coletor.", "—");
         if (!silent) notify("Conferência via coletor encerrada.", "warning");
       }
       function normalizeCollectorCode(raw) {
@@ -2348,7 +2437,7 @@
         showCollectorOverlay();
         updateCollectorModeUI();
         setCollectorLastRead("Pronto para receber leitura do coletor.");
-        updateCollectorOverlayCenter("Aguardando leitura...", "Leia a etiqueta com o laser do coletor.");
+        updateCollectorOverlayCenter("Aguardando leitura...", "Leia a etiqueta com o laser do coletor.", "—");
         setTimeout(focusCollectorInput, 120);
         notify("Conferência iniciada no modo coletor.");
       }
@@ -2379,14 +2468,14 @@
         if (S.checked.has(code)) {
           collectorShowBigStatus("yellow", "⚠️ JÁ LIDA", code, 1500);
           setCollectorLastRead(`⚠️ ${code} já conferido.`, "warn");
-          updateCollectorOverlayCenter("Já lida", code);
+          updateCollectorOverlayCenter("Já lida", "Esta bobina já foi conferida.", code);
           setTimeout(focusCollectorInput, 80);
           return;
         }
         if (S.extras.includes(code)) {
           collectorShowBigStatus("yellow", "⚠️ JÁ REGISTRADA", code, 1600);
           setCollectorLastRead(`⚠️ ${code} já registrado como não prevista.`, "warn");
-          updateCollectorOverlayCenter("Já registrada", code);
+          updateCollectorOverlayCenter("Já registrada", "Já registrada como não prevista.", code);
           setTimeout(focusCollectorInput, 80);
           return;
         }
@@ -2400,13 +2489,13 @@
           document.getElementById("btnUndo").disabled = false;
           collectorShowBigStatus("green", "✅ LIDA", code, 1400);
           setCollectorLastRead(`✅ ${code} conferido.`, "ok");
-          updateCollectorOverlayCenter("Lida com sucesso", code);
+          updateCollectorOverlayCenter("Lida com sucesso", "Bobina prevista conferida com sucesso.", code);
           setTimeout(focusCollectorInput, 80);
           return;
         }
         collectorShowBigStatus("red", "⚠️ NÃO PREVISTA", code, 1200);
         setCollectorLastRead(`⚠️ ${code} não prevista. Informe a localização.`, "warn");
-        updateCollectorOverlayCenter("Bobina não prevista", code);
+        updateCollectorOverlayCenter("Bobina não prevista", "Abrindo o fluxo de localização e fotos.", code);
         showLocModal(code, time, "collector");
       }
       function handleCollectorRead() {
@@ -2450,6 +2539,7 @@
         const found = document.getElementById("collectorCntFound"); const extra = document.getElementById("collectorCntExtra");
         if (found) found.textContent = chk;
         if (extra) extra.textContent = ext;
+        updateCollectorOverlayMeta();
       }
       function updateHistory() {
         const box = document.getElementById("historyBox"), empty = document.getElementById("hEmpty"); box.querySelectorAll(".h-item").forEach((el) => el.remove());
@@ -2859,5 +2949,5 @@
       }
       init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17a843b0c9cda79',t:'MTc4MzQ2NTc2Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ad315bd260e8a',t:'MTc4MzQ2ODk5Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
