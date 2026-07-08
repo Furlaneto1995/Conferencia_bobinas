@@ -697,7 +697,7 @@
               <tbody id="rptBody"></tbody>
             </table>
           </div>
-          <div style="margin-top: 10px; color: var(--text-muted); font-size: 0.82em; text-align: center;">Exportações e finalização ficam no menu secreto do líder.</div>
+          <div class="btn-group" style="justify-content: center; margin-top: 10px"><button class="btn btn-primary" onclick="finishConference()">☁️ Finalizar e salvar na nuvem</button><button class="btn btn-outline" onclick="exportRpt('csv')">📄 CSV local</button><button class="btn btn-outline" onclick="exportRpt('txt')">📝 TXT local</button></div><div style="margin-top: 8px; color: var(--text-muted); font-size: 0.82em; text-align: center;">Modo econômico: a nuvem só é gravada ao finalizar.</div>
         </div>
       </div>
       <div class="section" id="sectionCloud">
@@ -710,9 +710,9 @@
           </div>
         </div>
         <div class="card">
-          <div class="card-title">☁️ Consulta na Nuvem</div>
-          <div class="card-sub">Conferências salvas no Firestore por operador e data</div>
-          <div class="search-wrap"><span class="si">🔍</span><input class="search-input" id="cloudSearch" placeholder="Buscar por operador, data ou tipo..." oninput="renderCloudConsult(this.value)" /></div>
+          <div class="card-title">☁️ Consulta na Nuvem <span class="card-actions-inline"><button class="btn btn-outline btn-sm" onclick="renderCloudConsult(document.getElementById('cloudSearch')?.value || '')">🔄 Atualizar</button></span></div>
+          <div class="card-sub">Conferências finalizadas. A consulta é manual para economizar leituras do Firestore.</div>
+          <div class="search-wrap"><span class="si">🔍</span><input class="search-input" id="cloudSearch" placeholder="Buscar por operador, data ou tipo..." oninput="cloudRenderConsultList(this.value)" /></div>
           <div class="cloud-filters">
             <button class="cloud-filter-btn active" id="cloudFilterAll" onclick="cloudSetListFilter('all')">Todas</button>
             <button class="cloud-filter-btn" id="cloudFilterOpen" onclick="cloudSetListFilter('em_andamento')">Em andamento</button>
@@ -754,7 +754,7 @@
             <div class="collector-overlay-history" id="collectorOverlayHistory"><div class="collector-overlay-empty" id="collectorOverlayEmpty">Aguardando leitura...</div></div>
           </div>
         </div>
-        <div class="collector-overlay-footer"><div class="collector-overlay-result" id="collectorOverlayResult">Pronto para receber leitura.</div><button type="button" class="collector-focus-btn" id="collectorFocusBtn" onclick="forceCollectorFocus()">🎯 Captura ligada — toque aqui se o coletor não ler</button><div class="collector-overlay-stats">✅ <span class="sv" id="collectorCntFound">0</span> conferidos &nbsp;│&nbsp; ⚠️ <span class="se" id="collectorCntExtra">0</span> não previstas</div></div>
+        <div class="collector-overlay-footer"><div class="collector-overlay-result" id="collectorOverlayResult">Pronto para receber leitura.</div><div class="collector-overlay-stats">✅ <span class="sv" id="collectorCntFound">0</span> conferidos &nbsp;│&nbsp; ⚠️ <span class="se" id="collectorCntExtra">0</span> não previstas</div></div>
       </div>
     </div>
 
@@ -1006,156 +1006,49 @@ let cloudLastHeaderWrite = 0;
         }
       }
       async function cloudEnsureSession() {
-  if (!(await cloudInit())) return null;
-  if (!S.checkerName) return null;
-  if (!S.cloudSessionId) { S.cloudSessionId = cloudMakeSessionId(); save(); }
-  await cloudSaveConferenceHeader();
-  cloudWatchCurrentConference();
-  cloudStartBufferFlushTimer(); // ← inicia o timer de flush
-  return S.cloudSessionId;
-}
+        // MODO ECONÔMICO: apenas prepara a conexão e o ID local.
+        // Não grava cabeçalho, base, leituras nem abre listeners durante a conferência.
+        if (!(await cloudInit())) return null;
+        if (!S.checkerName) return null;
+        if (!S.cloudSessionId) { S.cloudSessionId = cloudMakeSessionId(); save(); }
+        cloudSetStatus("ok", "☁️ Nuvem pronta — salvar ao finalizar");
+        return S.cloudSessionId;
+      }
       function cloudConferenceRef() { if (!cloudReady || !S.cloudSessionId) return null; return cloudDb.collection("conferencias").doc(S.cloudSessionId); }
       function cloudSummary() {
         const total = S.db.length, checked = S.checked.size;
-        return { total, conferidos: checked, pendentes: total - checked, naoPrevistas: [...new Set(S.extras)].length, percentual: total > 0 ? Number(((checked / total) * 100).toFixed(1)) : 0 };
+        return { total, conferidos: checked, pendentes: Math.max(0, total - checked), naoPrevistas: [...new Set(S.extras)].length, percentual: total > 0 ? Number(((checked / total) * 100).toFixed(1)) : 0 };
       }
       async function cloudSaveConferenceHeader(force = false) {
-  const ref = cloudConferenceRef(); if (!ref) return;
-  const now = Date.now();
-  // Só grava se forçado OU se passou 15s desde a última gravação
-  if (!force && (now - cloudLastHeaderWrite) < 15000) {
-    cloudHeaderDirty = true; // marca para gravar no próximo flush
-    return;
-  }
-  cloudLastHeaderWrite = now;
-  cloudHeaderDirty = false;
-  const d = new Date();
-  await cloudConferenceRef().set({
-    id: S.cloudSessionId, operador: S.checkerName || "",
-    operadorKey: cloudOperatorKey(), data: cloudDateKey(d),
-    tipo: S.confType || "", status: "em_andamento",
-    resumo: cloudSummary(),
-    atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-    criadoEmLocal: d.toISOString()
-  }, { merge: true });
-}
+        // Desativado no modo econômico: o Firestore só recebe 1 documento na finalização.
+        cloudHeaderDirty = true;
+      }
       function cloudWatchCurrentConference() {
-        try {
-          const ref = cloudConferenceRef(); if (!ref || cloudSessionUnsub) return;
-          cloudSessionUnsub = ref.onSnapshot(() => cloudSetStatus("ok", "☁️ Nuvem sincronizada"), (err) => { console.warn("Monitor da conferência falhou:", err); cloudSetStatus("error", "☁️ Nuvem sem atualização"); });
-        } catch (e) { console.warn("Não foi possível monitorar a conferência:", e); }
+        // Desativado: sem onSnapshot em tempo real para evitar consumo de leituras.
       }
       function cloudUpdateSummaryDebounced() {
-  if (!cloudIsConfigured() || !S.cloudSessionId) return;
-  // Apenas marca como dirty — será gravado no próximo flush do buffer
-  cloudHeaderDirty = true;
-}
-     async function cloudSyncDatabase() {
-  // Só sincroniza uma vez por sessão
-  if (cloudDatabaseSynced) return;
-  try {
-    cloudSetStatus("sync", "☁️ Sincronizando base...");
-    await cloudEnsureSession();
-    const ref = cloudConferenceRef(); if (!ref) return;
-    const codes = [...new Set((S.db || []).map((code) => String(code)))];
-    const CHUNK = 400;
-    for (let i = 0; i < codes.length; i += CHUNK) {
-      const batch = cloudDb.batch();
-      codes.slice(i, i + CHUNK).forEach((code) => {
-        const meta = S.meta && S.meta[code] ? S.meta[code] : {};
-        batch.set(ref.collection("bobinas").doc(String(code)), {
-          codigo: String(code), op: meta.op || "-", peso: meta.peso || "-",
-          etapa: meta.etapa || "", material: meta.material || "",
-          atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-      });
-      await batch.commit();
-    }
-    await cloudSaveConferenceHeader(true); // força gravação do header
-    cloudDatabaseSynced = true; // ← não sincroniza de novo nesta sessão
-    cloudSetStatus("ok", "☁️ Base sincronizada");
-  } catch (e) {
-    cloudSetStatus("error", "☁️ Erro ao sincronizar base");
-    console.warn("Falha ao sincronizar banco na nuvem:", e);
-  }
-}
-      // Agora apenas enfileira no buffer — não grava imediatamente
-function cloudSyncReading(scan) {
-  if (!cloudIsConfigured() || !S.cloudSessionId || !scan || !scan.code) return;
-  cloudWriteBuffer.push({ ...scan, _bufferedAt: Date.now() });
-  cloudHeaderDirty = true;
-  // Flush automático se atingiu o limite de 25 leituras
-  if (cloudWriteBuffer.length >= CLOUD_BUFFER_MAX_SIZE) {
-    cloudFlushBuffer();
-  }
-}
-
-// Nova função: grava o buffer inteiro em um único batch
-async function cloudFlushBuffer(force = false) {
-  if (!cloudWriteBuffer.length && !cloudHeaderDirty) return;
-  if (!cloudReady || !S.cloudSessionId) return;
-  const ref = cloudConferenceRef(); if (!ref) return;
-
-  const toFlush = [...cloudWriteBuffer];
-  cloudWriteBuffer = []; // limpa atomicamente
-
-  try {
-    cloudSetStatus("sync", "☁️ Sincronizando...");
-    const batch = cloudDb.batch();
-
-    for (const scan of toFlush) {
-      if (!scan || !scan.code) continue;
-      const meta = S.meta && S.meta[scan.code] ? S.meta[scan.code] : {};
-      // Gravação da leitura
-      batch.set(ref.collection("leituras").doc(String(scan.code)), {
-        codigo: String(scan.code), status: scan.status || "found",
-        op: meta.op || "-", peso: meta.peso || "-",
-        manual: !!scan.manual, location: scan.location || "",
-        observation: scan.observation || "", hasPhoto: !!scan.hasPhoto,
-        horaLocal: scan.time || "",
-        criadoEm: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
-      // Não prevista
-      if (scan.status === "not-found") {
-        batch.set(ref.collection("nao_previstas").doc(String(scan.code)), {
-          codigo: String(scan.code), location: scan.location || "",
-          observation: scan.observation || "", hasPhoto: !!scan.hasPhoto,
-          horaLocal: scan.time || "",
-          atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
+        cloudHeaderDirty = true;
       }
-    }
-
-    // Header: uma gravação para o lote todo
-    if (toFlush.length > 0 || cloudHeaderDirty) {
-      batch.set(ref, {
-        resumo: cloudSummary(),
-        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
-      cloudLastHeaderWrite = Date.now();
-      cloudHeaderDirty = false;
-    }
-
-    await batch.commit();
-    cloudSetStatus("ok", `☁️ ${toFlush.length} leituras salvas`);
-  } catch (e) {
-    console.warn("Falha no flush. Devolvendo ao buffer:", e);
-    cloudSetStatus("error", "☁️ Erro ao sincronizar lote");
-    // Devolve ao buffer para tentar novamente
-    cloudWriteBuffer = [...toFlush, ...cloudWriteBuffer];
-  }
-}
-
-// Timer de flush periódico
-function cloudStartBufferFlushTimer() {
-  if (cloudBufferTimer) return;
-  cloudBufferTimer = setInterval(() => cloudFlushBuffer(), CLOUD_BUFFER_FLUSH_INTERVAL);
-}
-
-function cloudStopBufferFlushTimer() {
-  if (cloudBufferTimer) { clearInterval(cloudBufferTimer); cloudBufferTimer = null; }
-}
-
+      async function cloudSyncDatabase() {
+        // Desativado: a base completa vai dentro do JSON final no Supabase, não em subcoleções do Firestore.
+        cloudDatabaseSynced = true;
+        cloudSetStatus("ok", "☁️ Modo econômico: base será salva ao finalizar");
+      }
+      function cloudSyncReading(scan) {
+        // Desativado: leituras ficam locais até finalizar.
+        cloudHeaderDirty = true;
+      }
+      async function cloudFlushBuffer(force = false) {
+        // Desativado: não há buffer remoto no modo econômico.
+        cloudWriteBuffer = [];
+        cloudHeaderDirty = false;
+      }
+      function cloudStartBufferFlushTimer() {
+        // Desativado: sem flush periódico.
+      }
+      function cloudStopBufferFlushTimer() {
+        if (cloudBufferTimer) { clearInterval(cloudBufferTimer); cloudBufferTimer = null; }
+      }
 
       function cloudDataUrlToBlob(dataUrl) {
         const parts = String(dataUrl || "").split(",");
@@ -1168,7 +1061,11 @@ function cloudStopBufferFlushTimer() {
       async function cloudUploadPhoto(code, dataUrl) {
         try {
           if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !dataUrl) return null;
-          await cloudEnsureSession();
+          if (!S.cloudSessionId) {
+            // Gera ID local sem gravar nada no Firestore.
+            if (S.checkerName) S.cloudSessionId = cloudMakeSessionId();
+            save();
+          }
           if (!S.cloudSessionId) return null;
           const safeCode = String(code).replace(/[^a-zA-Z0-9_-]/g, "_");
           const path = `${cloudOperatorKey()}/${cloudDateKey()}/${S.cloudSessionId}/${safeCode}_etiqueta_bobina.jpg`;
@@ -1179,17 +1076,39 @@ function cloudStopBufferFlushTimer() {
             const txt = await res.text().catch(() => "");
             throw new Error(`Supabase upload ${res.status}: ${txt}`);
           }
-          const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`;
-          const ref = cloudConferenceRef();
-          if (ref) {
-            const data = { codigo: String(code), provider: "supabase", bucket: SUPABASE_BUCKET, path, url: publicUrl, size: blob.size, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() };
-            await ref.collection("fotos").doc(String(code)).set(data, { merge: true });
-            await ref.collection("leituras").doc(String(code)).set({ hasPhoto: true, fotoProvider: "supabase", fotoPath: path, fotoUrl: publicUrl }, { merge: true });
-            await ref.collection("nao_previstas").doc(String(code)).set({ hasPhoto: true, fotoProvider: "supabase", fotoPath: path, fotoUrl: publicUrl }, { merge: true });
-          }
-          cloudSetStatus("ok", "☁️ Foto enviada");
-          return publicUrl;
-        } catch (e) { console.warn("Falha ao enviar foto ao Supabase:", e); cloudSetStatus("error", "☁️ Foto local, nuvem falhou"); return null; }
+          return {
+            url: `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`,
+            path,
+            size: blob.size,
+          };
+        } catch (e) {
+          console.warn("Falha ao enviar foto ao Supabase:", e);
+          return null;
+        }
+      }
+      async function cloudUploadJsonObject(path, data) {
+        if (!SUPABASE_URL || !SUPABASE_ANON_KEY) throw new Error("Supabase não configurado");
+        const content = JSON.stringify(data, null, 2);
+        const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`;
+        const res = await fetch(uploadUrl, {
+          method: "POST",
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            "Content-Type": "application/json; charset=utf-8",
+            "x-upsert": "true",
+          },
+          body: content,
+        });
+        if (!res.ok) {
+          const txt = await res.text().catch(() => "");
+          throw new Error(`Upload relatório ${res.status}: ${txt}`);
+        }
+        return {
+          url: `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`,
+          path,
+          size: new Blob([content]).size,
+        };
       }
       function cloudSetStatus(type, text) { const el = document.getElementById("cloudStatus"); if (!el) return; el.className = "cloud-status" + (type ? " " + type : ""); el.textContent = text; }
       function cloudMimeTypeFromFileName(name = "") {
@@ -1523,30 +1442,130 @@ function cloudStopBufferFlushTimer() {
           notify("Erro ao excluir arquivo-base: " + (e.message || e), "error");
         }
       }
+      function cloudBuildLocalFinalReportData(photoUploads = {}) {
+        const date = new Date();
+        const resumo = cloudSummary();
+        const rows = getReportItems().map((i) => {
+          const up = photoUploads[i.code] || null;
+          const status = i.status === "checked" ? (i.manual ? "Conferido Manual" : "Conferido") : i.status === "pending" ? "Pendente" : "Não Prevista";
+          return {
+            code: String(i.code),
+            op: i.op || "-",
+            peso: i.peso || "-",
+            status,
+            manual: !!i.manual,
+            time: i.time === "-" ? "" : (i.time || ""),
+            location: i.location === "-" ? "" : (i.location || ""),
+            observation: i.observation || "",
+            hasPhoto: !!i.hasPhoto,
+            fotoUrl: up?.url || "",
+            fotoPath: up?.path || "",
+          };
+        });
+        return {
+          schemaVersion: 2,
+          storageMode: "economico_supabase_json",
+          id: S.cloudSessionId || cloudMakeSessionId(),
+          title: "RELATÓRIO DE CONFERÊNCIA - NUVEM",
+          operador: S.checkerName || "-",
+          operadorKey: cloudOperatorKey(),
+          tipo: S.confType || "-",
+          data: cloudDateKey(date),
+          status: "finalizada",
+          criadoEmLocal: date.toISOString(),
+          finalizadoEmLocal: date.toISOString(),
+          resumo,
+          opSummary: getOpSummaryItems(),
+          rows,
+          confIds: [S.cloudSessionId || ""],
+        };
+      }
+      async function cloudUploadLocalPhotosForFinalReport() {
+        const progress = document.getElementById("exportProgress");
+        const uploads = {};
+        const items = getReportItems().filter((i) => i.hasPhoto && getPhoto(i.code));
+        if (!items.length) return uploads;
+        if (progress) { progress.classList.add("show"); progress.textContent = `☁️ Enviando fotos 0/${items.length}...`; }
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          if (progress) progress.textContent = `☁️ Enviando fotos ${i + 1}/${items.length}...`;
+          const up = await cloudUploadPhoto(item.code, getPhoto(item.code));
+          if (up && up.url) uploads[item.code] = up;
+        }
+        return uploads;
+      }
       async function cloudMarkFinished() {
-  try {
-    // Garante que todas as leituras pendentes sejam gravadas antes de finalizar
-    await cloudFlushBuffer();
-    await cloudEnsureSession();
-    const ref = cloudConferenceRef(); if (!ref) return false;
-    await ref.set({
-      status: "finalizada", resumo: cloudSummary(),
-      finalizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-    cloudStopBufferFlushTimer();
-    cloudSetStatus("ok", "☁️ Conferência finalizada na nuvem");
-    return true;
-  } catch (e) {
-    console.warn("Falha ao finalizar na nuvem:", e);
-    cloudSetStatus("error", "☁️ Erro ao finalizar");
-    return false;
-  }
-}
+        const progress = document.getElementById("exportProgress");
+        if (progress && progress.parentElement !== document.body) {
+          document.body.appendChild(progress);
+          progress.style.position = "fixed";
+          progress.style.left = "12px";
+          progress.style.right = "12px";
+          progress.style.bottom = "12px";
+          progress.style.zIndex = "7000";
+          progress.style.background = "#fff";
+          progress.style.border = "1px solid var(--border)";
+          progress.style.borderRadius = "12px";
+          progress.style.boxShadow = "var(--shadow)";
+        }
+        try {
+          if (!S.db.length) { notify("Importe uma base antes de finalizar.", "warning"); return false; }
+          if (!(await cloudEnsureSession())) throw new Error("Nuvem indisponível ou conferente não informado");
+          cloudSetStatus("sync", "☁️ Finalizando em modo econômico...");
+          if (progress) { progress.classList.add("show"); progress.textContent = "☁️ Preparando relatório final..."; }
+
+          const photoUploads = await cloudUploadLocalPhotosForFinalReport();
+          const reportData = cloudBuildLocalFinalReportData(photoUploads);
+          reportData.id = S.cloudSessionId;
+          reportData.confIds = [S.cloudSessionId];
+          reportData.photoUploadSummary = { totalLocal: Object.keys(photoUploads).length };
+
+          if (progress) progress.textContent = "☁️ Enviando relatório final...";
+          const reportPath = `conferencias/${cloudDateKey()}/${S.cloudSessionId}_relatorio.json`;
+          const reportUpload = await cloudUploadJsonObject(reportPath, reportData);
+
+          if (progress) progress.textContent = "☁️ Gravando resumo no Firestore...";
+          const d = new Date();
+          await cloudDb.collection("conferencias").doc(S.cloudSessionId).set({
+            id: S.cloudSessionId,
+            operador: S.checkerName || "",
+            operadorKey: cloudOperatorKey(),
+            data: cloudDateKey(d),
+            tipo: S.confType || "",
+            status: "finalizada",
+            resumo: reportData.resumo,
+            storageMode: "economico_supabase_json",
+            reportProvider: "supabase",
+            reportPath: reportUpload.path,
+            reportUrl: reportUpload.url,
+            reportSize: reportUpload.size,
+            fotosEnviadas: Object.keys(photoUploads).length,
+            storagePrefix: `${cloudOperatorKey()}/${cloudDateKey()}/${S.cloudSessionId}/`,
+            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            finalizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            criadoEmLocal: d.toISOString(),
+          }, { merge: true });
+
+          cloudStopBufferFlushTimer();
+          cloudWriteBuffer = [];
+          cloudHeaderDirty = false;
+          cloudSetStatus("ok", "☁️ Conferência finalizada");
+          if (progress) progress.classList.remove("show");
+          if (cloudLeaderUnlocked) renderCloudConsult(document.getElementById("cloudSearch")?.value || "");
+          return true;
+        } catch (e) {
+          console.warn("Falha ao finalizar na nuvem:", e);
+          cloudSetStatus("error", "☁️ Erro ao finalizar");
+          if (progress) progress.classList.remove("show");
+          notify("Erro ao finalizar: " + (e.message || e), "error");
+          return false;
+        }
+      }
       async function finishConference() {
+        if (!S.checkerName) { showCheckerModal(() => finishConference()); return; }
+        if (!confirm("Finalizar e salvar esta conferência na nuvem? Depois disso, as leituras serão enviadas em um único relatório econômico.")) return;
         const ok = await cloudMarkFinished();
-        notify(ok ? "Conferência finalizada na nuvem." : "Não foi possível finalizar na nuvem.", ok ? "success" : "warning");
-        if ([...new Set(S.extras)].length > 0) exportZip(); else exportRpt("csv");
+        notify(ok ? "Conferência finalizada e salva na nuvem." : "Não foi possível finalizar na nuvem.", ok ? "success" : "warning");
       }
       function cloudSetListFilter(filter) {
         cloudListStatusFilter = filter || "all";
@@ -1559,23 +1578,19 @@ function cloudStopBufferFlushTimer() {
       async function renderCloudConsult(search = "") {
         const box = document.getElementById("cloudConsultBox"); if (!box) return;
         if (!cloudLeaderUnlocked) { box.innerHTML = '<div class="empty">Área restrita ao líder. Segure o botão ☁️ por 2 segundos.</div>'; return; }
-        if (!cloudConsultUnsub) {
-          box.innerHTML = '<div class="empty">☁️ Conectando consulta em tempo real...</div>';
-          try {
-            if (!(await cloudInit())) { box.innerHTML = '<div class="empty">Firebase não configurado ou sem conexão.</div>'; cloudSetStatus("error", "☁️ Nuvem indisponível"); return; }
-            if (cloudDeletedUnsub) cloudDeletedUnsub();
-            cloudDeletedUnsub = cloudDb.collection("conferencias_excluidas").limit(300).onSnapshot((snap) => {
-              cloudDeletedIds = new Set(snap.docs.map((d) => d.id));
-              cloudRenderConsultList(document.getElementById("cloudSearch")?.value || "");
-            }, () => {});
-            cloudConsultUnsub = cloudDb.collection("conferencias").orderBy("atualizadoEm", "desc").limit(80).onSnapshot(
-              (snap) => { cloudConsultDocs = snap.docs.map((d) => ({ id: d.id, ...d.data() })); cloudRenderConsultList(document.getElementById("cloudSearch")?.value || ""); if (cloudDetailConfId && cloudDetailConfId !== "__merged__" && document.getElementById("cloudDetailBox")?.classList.contains("show")) cloudOpenConference(cloudDetailConfId, { silent: true }); cloudSetStatus("ok", "☁️ Consulta em tempo real"); },
-              (e) => { console.error(e); box.innerHTML = '<div class="empty">Erro ao consultar nuvem. Veja o console.</div>'; cloudSetStatus("error", "☁️ Erro na consulta"); },
-            );
-          } catch (e) { console.error(e); box.innerHTML = '<div class="empty">Erro ao iniciar consulta. Veja o console.</div>'; cloudSetStatus("error", "☁️ Erro na consulta"); }
-          return;
+        box.innerHTML = '<div class="empty">☁️ Consultando conferências...</div>';
+        try {
+          if (!(await cloudInit())) { box.innerHTML = '<div class="empty">Firebase não configurado ou sem conexão.</div>'; cloudSetStatus("error", "☁️ Nuvem indisponível"); return; }
+          // MODO ECONÔMICO: consulta pontual. Sem onSnapshot para não gastar reads em tempo real.
+          const snap = await cloudDb.collection("conferencias").orderBy("atualizadoEm", "desc").limit(80).get();
+          cloudConsultDocs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          cloudSetStatus("ok", `☁️ ${cloudConsultDocs.length} conferências carregadas`);
+          cloudRenderConsultList(search);
+        } catch (e) {
+          console.error(e);
+          box.innerHTML = '<div class="empty">Erro ao consultar nuvem. Veja o console.</div>';
+          cloudSetStatus("error", "☁️ Erro na consulta");
         }
-        cloudRenderConsultList(search);
       }
       function cloudRenderConsultList(search = "") {
         const box = document.getElementById("cloudConsultBox"); if (!box) return;
@@ -1634,6 +1649,33 @@ function cloudStopBufferFlushTimer() {
         const confRef = cloudDb.collection("conferencias").doc(confId);
         const confSnap = await confRef.get(); if (!confSnap.exists) throw new Error("Conferência não encontrada");
         const conf = { id: confSnap.id, ...confSnap.data() };
+        // Novo formato econômico: Firestore guarda só o resumo e o link do JSON completo no Supabase.
+        if (conf.reportUrl) {
+          const resp = await fetch(conf.reportUrl, { cache: "no-store" });
+          if (!resp.ok) throw new Error("Falha ao baixar relatório Supabase: HTTP " + resp.status);
+          const report = await resp.json();
+          const rows = Array.isArray(report.rows) ? report.rows : [];
+          const resumo = report.resumo || conf.resumo || {};
+          return {
+            id: conf.id,
+            title: report.title || "RELATÓRIO DE CONFERÊNCIA - NUVEM",
+            operador: report.operador || conf.operador || "-",
+            tipo: report.tipo || conf.tipo || "-",
+            status: conf.status || report.status || "finalizada",
+            resumo: {
+              total: resumo.total ?? rows.filter((r) => !String(r.status || "").includes("Não Prevista")).length,
+              conferidos: resumo.conferidos ?? rows.filter((r) => String(r.status || "").includes("Conferid") || String(r.status || "").includes("Manual")).length,
+              pendentes: resumo.pendentes ?? rows.filter((r) => String(r.status || "").includes("Pendente")).length,
+              naoPrevistas: resumo.naoPrevistas ?? rows.filter((r) => String(r.status || "").includes("Não Prevista")).length,
+              percentual: resumo.percentual ?? 0,
+            },
+            opSummary: Array.isArray(report.opSummary) ? report.opSummary : [],
+            rows,
+            confIds: report.confIds || [conf.id],
+            storageMode: conf.storageMode || report.storageMode || "economico_supabase_json",
+          };
+        }
+        // Compatibilidade: conferências antigas salvas em subcoleções.
         const [bobinas, leituras, naoPrevistas, fotos] = await Promise.all([cloudGetCollectionDocs(confRef, "bobinas"), cloudGetCollectionDocs(confRef, "leituras"), cloudGetCollectionDocs(confRef, "nao_previstas"), cloudGetCollectionDocs(confRef, "fotos")]);
         const bobinasSource = bobinas.length
           ? bobinas
@@ -1801,22 +1843,9 @@ function cloudStopBufferFlushTimer() {
         clearTimeout(cloudDetailRefreshTimer);
       }
       function cloudWatchOpenedConference(confId) {
+        // Modo econômico: detalhes não ficam em tempo real.
+        // Use o botão Atualizar na consulta para buscar novamente.
         cloudClearDetailLiveListeners();
-        if (!cloudDb || !confId || confId === "__merged__") return;
-        const ref = cloudDb.collection("conferencias").doc(confId);
-        const scheduleRefresh = () => {
-          clearTimeout(cloudDetailRefreshTimer);
-          cloudDetailRefreshTimer = setTimeout(() => {
-            if (cloudDetailConfId === confId && document.getElementById("cloudDetailBox")?.classList.contains("show")) cloudOpenConference(confId, { silent: true });
-          }, 250);
-        };
-        cloudDetailLiveUnsubs = [
-          ref.onSnapshot(scheduleRefresh, () => {}),
-          ref.collection("bobinas").onSnapshot(scheduleRefresh, () => {}),
-          ref.collection("leituras").onSnapshot(scheduleRefresh, () => {}),
-          ref.collection("nao_previstas").onSnapshot(scheduleRefresh, () => {}),
-          ref.collection("fotos").onSnapshot(scheduleRefresh, () => {}),
-        ];
       }
       async function cloudOpenConference(confId, options = {}) {
         if (!cloudLeaderUnlocked) return;
@@ -2006,20 +2035,30 @@ function cloudStopBufferFlushTimer() {
         const ids = Array.from(cloudMergeSelectedIds); if (ids.length < 2) { notify("Selecione pelo menos 2 conferências para juntar.", "warning"); return; }
         const box = document.getElementById("cloudDetailBox"); if (box) { box.className = "cloud-detail show"; box.innerHTML = '<div class="empty">☁️ Juntando conferências...</div>'; }
         try {
-          if (!(await cloudInit())) throw new Error("Firebase indisponível");
-          const bobinaMap = new Map(), checkedMap = new Map(), extraMap = new Map(), confs = [];
+          const allRows = [], confs = [];
           for (const confId of ids) {
-            const confRef = cloudDb.collection("conferencias").doc(confId); const confSnap = await confRef.get(); if (confSnap.exists) confs.push({ id: confSnap.id, ...confSnap.data() });
-            const [bobinas, leituras, naoPrevistas] = await Promise.all([cloudGetCollectionDocs(confRef, "bobinas"), cloudGetCollectionDocs(confRef, "leituras"), cloudGetCollectionDocs(confRef, "nao_previstas")]);
-            bobinas.forEach((b) => { const code = String(b.codigo || b.id || ""); if (code && !bobinaMap.has(code)) bobinaMap.set(code, b); });
-            leituras.forEach((l) => { const code = String(l.codigo || l.id || ""); if (!code) return; if (l.status === "not-found") { if (!extraMap.has(code)) extraMap.set(code, l); } else if (!checkedMap.has(code)) checkedMap.set(code, l); });
-            naoPrevistas.forEach((n) => { const code = String(n.codigo || n.id || ""); if (code && !extraMap.has(code)) extraMap.set(code, n); });
+            const data = await cloudBuildExportData(confId);
+            confs.push(data);
+            (data.rows || []).forEach((r) => allRows.push({ ...r, _confId: confId, _operador: data.operador, _tipo: data.tipo }));
           }
+          const bobinaMap = new Map(), checkedMap = new Map(), extraMap = new Map();
+          allRows.forEach((r) => {
+            const code = String(r.code || ""); if (!code) return;
+            const st = String(r.status || "");
+            if (st.includes("Não Prevista")) {
+              if (!extraMap.has(code)) extraMap.set(code, r);
+            } else {
+              if (!bobinaMap.has(code)) bobinaMap.set(code, { codigo: code, op: r.op || "-", peso: r.peso || "-" });
+              if (st.includes("Conferid") || st.includes("Manual")) {
+                if (!checkedMap.has(code)) checkedMap.set(code, { codigo: code, manual: st.includes("Manual"), horaLocal: r.time || "", location: r.location || "", observation: r.observation || "", hasPhoto: !!r.hasPhoto, fotoUrl: r.fotoUrl || "" });
+              }
+            }
+          });
           const opSummary = cloudBuildOpSummaryFromMaps(bobinaMap, checkedMap); const rows = [];
-          Array.from(extraMap.keys()).sort().forEach((code) => { const x = extraMap.get(code) || {}; rows.push({ code, op: "-", peso: "-", status: "⚠️ Não prevista", time: x.horaLocal || "", location: x.location || "", observation: x.observation || "", hasPhoto: !!x.hasPhoto }); });
-          Array.from(bobinaMap.keys()).sort((a, b) => String(a).localeCompare(String(b), "pt-BR", { numeric: true })).forEach((code) => { const b = bobinaMap.get(code) || {}; const l = checkedMap.get(code); rows.push({ code, op: b.op || "-", peso: b.peso || "-", status: l ? (l.manual ? "📸 Manual" : "✅ Conferida") : "⏳ Pendente", time: l?.horaLocal || "", location: l?.location || "", observation: l?.observation || "", hasPhoto: !!l?.hasPhoto }); });
+          Array.from(extraMap.keys()).sort().forEach((code) => { const x = extraMap.get(code) || {}; rows.push({ code, op: "-", peso: "-", status: "⚠️ Não prevista", time: x.time || x.horaLocal || "", location: x.location || "", observation: x.observation || "", hasPhoto: !!x.hasPhoto, fotoUrl: x.fotoUrl || "" }); });
+          Array.from(bobinaMap.keys()).sort((a, b) => String(a).localeCompare(String(b), "pt-BR", { numeric: true })).forEach((code) => { const b = bobinaMap.get(code) || {}; const l = checkedMap.get(code); rows.push({ code, op: b.op || "-", peso: b.peso || "-", status: l ? (l.manual ? "📸 Manual" : "✅ Conferida") : "⏳ Pendente", time: l?.horaLocal || "", location: l?.location || "", observation: l?.observation || "", hasPhoto: !!l?.hasPhoto, fotoUrl: l?.fotoUrl || "" }); });
           const total = bobinaMap.size, conferidos = checkedMap.size, naoPrev = extraMap.size, pendentes = Math.max(0, total - conferidos), pct = total > 0 ? ((conferidos / total) * 100).toFixed(1) : "0.0";
-          cloudMergedReport = { id: `consolidado_${new Date().toISOString().slice(0, 10)}_${ids.length}_conferencias`, title: `Consolidado de ${ids.length} conferências`, subtitle: confs.map((c) => `${c.operador || "-"} • ${c.data || "-"}`).join(" | "), ids, rows, opSummary, resumo: { total, conferidos, pendentes, naoPrevistas: naoPrev, percentual: pct } };
+          cloudMergedReport = { id: `consolidado_${new Date().toISOString().slice(0, 10)}_${ids.length}_conferencias`, title: `Consolidado de ${ids.length} conferências`, subtitle: confs.map((c) => `${c.operador || "-"} • ${c.tipo || "-"}`).join(" | "), ids, rows, opSummary, resumo: { total, conferidos, pendentes, naoPrevistas: naoPrev, percentual: pct } };
           cloudRenderMergedReport(); cloudSetStatus("ok", "☁️ Conferências juntadas"); notify("Conferências juntadas para visualização/exportação.");
         } catch (e) { console.error(e); if (box) box.innerHTML = '<div class="empty">Erro ao juntar conferências. Veja o console.</div>'; cloudSetStatus("error", "☁️ Erro ao juntar"); notify("Erro ao juntar: " + (e.message || e), "error"); }
       }
@@ -2047,15 +2086,26 @@ function cloudStopBufferFlushTimer() {
       async function cloudDeleteSupabasePhotos(confRef) {
         try {
           if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return;
-          const snap = await confRef.collection("fotos").get();
-          const paths = snap.docs.map((doc) => doc.data() && doc.data().path).filter(Boolean);
-          if (!paths.length) return;
-          for (let i = 0; i < paths.length; i += 100) {
-            const prefixes = paths.slice(i, i + 100);
+          const paths = [];
+          try {
+            const confSnap = await confRef.get();
+            const conf = confSnap.exists ? (confSnap.data() || {}) : {};
+            if (conf.reportPath) paths.push(conf.reportPath);
+            if (conf.storagePrefix) paths.push(conf.storagePrefix);
+          } catch (e) {}
+          // Compatibilidade com conferências antigas que tinham subcoleção fotos.
+          try {
+            const snap = await confRef.collection("fotos").get();
+            snap.docs.map((doc) => doc.data() && doc.data().path).filter(Boolean).forEach((p) => paths.push(p));
+          } catch (e) {}
+          const unique = [...new Set(paths.filter(Boolean))];
+          if (!unique.length) return;
+          for (let i = 0; i < unique.length; i += 100) {
+            const prefixes = unique.slice(i, i + 100);
             const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}`, { method: "DELETE", headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ prefixes }) });
-            if (!res.ok) { const txt = await res.text().catch(() => ""); console.warn("Falha ao excluir fotos no Supabase:", res.status, txt); }
+            if (!res.ok) { const txt = await res.text().catch(() => ""); console.warn("Falha ao excluir arquivos no Supabase:", res.status, txt); }
           }
-        } catch (e) { console.warn("Falha ao excluir fotos no Supabase:", e); }
+        } catch (e) { console.warn("Falha ao excluir arquivos no Supabase:", e); }
       }
       async function cloudDeleteSubcollection(confRef, name) {
         const snap = await confRef.collection(name).limit(450).get(); if (snap.empty) return 0;
@@ -2099,7 +2149,7 @@ function cloudStopBufferFlushTimer() {
         const sectionEl = document.getElementById("section" + t.charAt(0).toUpperCase() + t.slice(1)); if (sectionEl) sectionEl.classList.add("active");
         if (t === "scan") { updateStats(); updateCollectorModeUI(); ensureCheckerName(); if (S.collectorMode && S.collectorActive) setTimeout(focusCollectorInput, 120); }
         if (t === "report") updateReport();
-        if (t === "import") cloudRefreshBaseFiles();
+        if (t === "import" && !cloudBaseFilesDocs.length) cloudRefreshBaseFiles();
         if (t === "cloud") renderCloudConsult(document.getElementById("cloudSearch")?.value || "");
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
@@ -2112,9 +2162,6 @@ function cloudStopBufferFlushTimer() {
         if (!name) { document.getElementById("checkerError").style.display = "block"; document.getElementById("checkerInput").focus(); return false; }
         S.checkerName = name;
         save();
-        cloudEnsureSession().then((ok) => {
-          if (ok && S.db.length) cloudSyncDatabase();
-        });
         document.getElementById("checkerModal").classList.remove("show");
         if (document.getElementById("rCheckerName")) document.getElementById("rCheckerName").textContent = name;
         const cb = checkerStartCallback; checkerStartCallback = null; notify("Conferente: " + name); if (cb) cb(); return true;
@@ -2339,14 +2386,8 @@ function cloudStopBufferFlushTimer() {
         importByConferenceTypes([cfg], { replaceExisting: confTypeModalMode === "change" });
       }
       function syncCurrentConferenceToCloud() {
-        const run = () => cloudEnsureSession().then((ok) => {
-          if (ok && S.db.length) {
-            cloudSyncDatabase();
-            if (cloudLeaderUnlocked) renderCloudConsult(document.getElementById("cloudSearch")?.value || "");
-          }
-        });
-        if (S.checkerName) run();
-        else showCheckerModal(() => run());
+        if (S.checkerName) finishConference();
+        else showCheckerModal(() => finishConference());
       }
       function importByConferenceTypes(cfgList, { replaceExisting = false } = {}) {
         if (!S.fileData || !S.fileLayout) { notify("Arquivo não encontrado para importar.", "error"); return; }
@@ -2651,16 +2692,7 @@ if (S.collectorMode) {
         if (!ensureCheckerName(() => startConference())) return;
         if (S.collectorMode) startCollectorConference();
         else openCamera(true);
-        (async () => {
-          try {
-            cloudSetStatus("sync", "☁️ Iniciando conferência...");
-            const ok = await cloudEnsureSession();
-            if (ok && S.db.length) await cloudSyncDatabase();
-            if (cloudLeaderUnlocked) renderCloudConsult(document.getElementById("cloudSearch")?.value || "");
-          } catch (e) {
-            console.warn("Falha ao iniciar conferência na nuvem:", e);
-          }
-        })();
+        cloudSetStatus("ok", "☁️ Modo econômico: salva ao finalizar");
       }
       function processCollectorCode(rawCode) {
   // BUG 2 CORRIGIDO: trava anti duplo disparo
@@ -2996,7 +3028,7 @@ if (S.collectorMode) {
       }
       async function savePhotosExtra(code, photoEtiqueta, photoBobina) {
         try {
-          const combined = await combinePhotosHalf(code, photoEtiqueta, photoBobina); localStorage.setItem("photo_" + code, combined); const saved = localStorage.getItem("photo_" + code); if (!saved) throw new Error("Falha ao salvar foto combinada"); cloudUploadPhoto(code, combined); return true;
+          const combined = await combinePhotosHalf(code, photoEtiqueta, photoBobina); localStorage.setItem("photo_" + code, combined); const saved = localStorage.getItem("photo_" + code); if (!saved) throw new Error("Falha ao salvar foto combinada"); return true;
         } catch (e) {
           console.error("Erro ao salvar foto:", e);
           try { localStorage.setItem("photo_" + code, photoEtiqueta); return !!localStorage.getItem("photo_" + code); }
@@ -3291,10 +3323,7 @@ if (S.collectorMode) {
   if (S.collectorMode) {
     setCollectorLastRead("Modo coletor ativado. Toque em iniciar para conferir.");
   }
-  cloudEnsureSession().then((ok) => {
-    if (ok && S.db.length) cloudSyncDatabase();
-    else if (!ok && cloudIsConfigured()) cloudSetStatus("error", "☁️ Aguardando nuvem");
-  });
+  cloudSetStatus(cloudIsConfigured() ? "ok" : "", cloudIsConfigured() ? "☁️ Modo econômico" : "☁️ Nuvem: local");
 }
 
 // Flush ao trocar de aba ou fechar (mobile e desktop)
@@ -3307,5 +3336,5 @@ window.addEventListener("beforeunload", () => {
 
 init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17f2e682eb1f90f',t:'MTc4MzUxNDY3Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
