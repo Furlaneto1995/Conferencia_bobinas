@@ -204,14 +204,28 @@
       .collector-overlay-history { overflow-y: auto; padding: 4px 0 0; -webkit-overflow-scrolling: touch; }
       .collector-overlay-empty { text-align: center; padding: 10px; color: #94a3b8; }
       @media (max-width: 640px) { .collector-overlay-grid { grid-template-columns: 1fr; } }
-      .collector-input-hidden { position: absolute; left: -9999px; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+      /* Campo usado pelo coletor tipo teclado (DataWedge / HID).
+         Ele precisa estar em um elemento VISÍVEL/focável; input dentro de display:none não recebe leitura. */
+      .collector-input-hidden {
+        position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 86px);
+        transform: translateX(-50%); width: min(92vw, 620px); height: 44px; z-index: 5065;
+        opacity: 0.02; color: transparent; caret-color: transparent; background: transparent;
+        border: 0; outline: none; pointer-events: none; -webkit-user-select: text; user-select: text;
+      }
+      .collector-input-hidden:focus { opacity: 0.04; outline: 2px solid rgba(16,185,129,.35); outline-offset: 2px; }
+      .collector-focus-btn {
+        margin: 0 auto 4px; width: min(92vw, 520px); border: 1px solid rgba(16,185,129,.35);
+        background: #ecfdf5; color: #047857; border-radius: 999px; padding: 8px 12px;
+        font-weight: 900; font-size: .82em; cursor: pointer; touch-action: manipulation;
+      }
+      .collector-focus-btn:active { transform: scale(.99); }
       .collector-last-read { margin-top: 8px; color: var(--text-muted); font-size: 0.78em; min-height: 1.2em; }
       .collector-last-read.ok { color: var(--accent-green); }
       .collector-last-read.warn { color: var(--accent-yellow); }
       .collector-last-read.err { color: var(--accent-red); }
       .collector-big-status {
         position: fixed; left: 50%; top: 44%; transform: translate(-50%, -50%) scale(.96);
-        z-index: 4200; min-width: min(86vw, 420px); max-width: 92vw; padding: 18px 20px;
+        z-index: 6060; min-width: min(86vw, 420px); max-width: 92vw; padding: 18px 20px;
         border-radius: 18px; color: #fff; text-align: center; font-weight: 900;
         pointer-events: none; box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
         backdrop-filter: blur(10px); opacity: 0; transition: opacity .12s ease, transform .12s ease;
@@ -740,7 +754,7 @@
             <div class="collector-overlay-history" id="collectorOverlayHistory"><div class="collector-overlay-empty" id="collectorOverlayEmpty">Aguardando leitura...</div></div>
           </div>
         </div>
-        <div class="collector-overlay-footer"><div class="collector-overlay-result" id="collectorOverlayResult">Pronto para receber leitura.</div><div class="collector-overlay-stats">✅ <span class="sv" id="collectorCntFound">0</span> conferidos &nbsp;│&nbsp; ⚠️ <span class="se" id="collectorCntExtra">0</span> não previstas</div></div>
+        <div class="collector-overlay-footer"><div class="collector-overlay-result" id="collectorOverlayResult">Pronto para receber leitura.</div><button type="button" class="collector-focus-btn" id="collectorFocusBtn" onclick="forceCollectorFocus()">🎯 Captura ligada — toque aqui se o coletor não ler</button><div class="collector-overlay-stats">✅ <span class="sv" id="collectorCntFound">0</span> conferidos &nbsp;│&nbsp; ⚠️ <span class="se" id="collectorCntExtra">0</span> não previstas</div></div>
       </div>
     </div>
 
@@ -843,7 +857,8 @@ let checkerStartCallback = null;
 let collectorReadTimer = null;
 let collectorKeyBuffer = "";
 let collectorKeyTimer = null;
-let collectorProcessing = false; 
+let collectorProcessing = false;
+let collectorFocusKeepAliveTimer = null; 
 let confTypeModalMode = "import";
 const CLOUD_BUFFER_FLUSH_INTERVAL = 30000; // flush a cada 30s
 const CLOUD_BUFFER_MAX_SIZE = 25;          // flush ao atingir 25 leituras
@@ -2389,15 +2404,51 @@ function cloudStopBufferFlushTimer() {
         });
       }
       function exportDB() { download(S.db.join("\n"), "bobinas_banco.csv", "text/csv"); notify("Lista exportada!"); }
+      function mountCollectorInputForFocus() {
+        const input = document.getElementById("collectorInput");
+        const overlay = document.getElementById("collectorOverlay");
+        if (!input || !overlay) return input;
+        // O input ficava dentro do painel oculto (.collector-panel display:none),
+        // então alguns coletores liam a etiqueta mas o navegador não recebia nada.
+        // Mantemos o MESMO input e seus listeners, apenas montado dentro do overlay visível.
+        if (!overlay.contains(input)) overlay.appendChild(input);
+        input.disabled = false;
+        input.readOnly = false;
+        input.setAttribute("autocomplete", "off");
+        input.setAttribute("inputmode", "none");
+        return input;
+      }
+      function startCollectorFocusWatch() {
+        clearInterval(collectorFocusKeepAliveTimer);
+        collectorFocusKeepAliveTimer = setInterval(() => {
+          if (!collectorCanFocus()) return;
+          const input = mountCollectorInputForFocus();
+          if (input && document.activeElement !== input) focusCollectorInput();
+        }, 800);
+      }
+      function stopCollectorFocusWatch() {
+        clearInterval(collectorFocusKeepAliveTimer);
+        collectorFocusKeepAliveTimer = null;
+      }
+      function forceCollectorFocus() {
+        if (!S.collectorMode || !S.collectorActive) return;
+        mountCollectorInputForFocus();
+        focusCollectorInput(true);
+        setCollectorLastRead("🎯 Captura do coletor focada. Leia a etiqueta.");
+      }
       function showCollectorOverlay() {
         const overlay = document.getElementById("collectorOverlay");
         if (!overlay) return;
         overlay.classList.add("show");
         document.body.style.overflow = "hidden";
+        mountCollectorInputForFocus();
+        startCollectorFocusWatch();
+        setTimeout(() => focusCollectorInput(true), 60);
       }
       function hideCollectorOverlay() {
         const overlay = document.getElementById("collectorOverlay");
         if (!overlay) return;
+        stopCollectorFocusWatch();
         overlay.classList.remove("show");
         document.body.style.overflow = "";
       }
@@ -2525,23 +2576,32 @@ if (S.collectorMode) {
       }
       function collectorCanFocus() {
   if (!S.collectorMode || !S.collectorActive) return false;
-  // BUG 3 CORRIGIDO: verificar todos os modais em loop
-  const modals = ["locModal", "checkerModal", "modal", "confTypeModal", "baseNameModal"];
+  const overlay = document.getElementById("collectorOverlay");
+  if (!overlay || !overlay.classList.contains("show")) return false;
+  // Não roubar foco de campos que precisam de digitação/foto.
+  const modals = ["locModal", "checkerModal", "modal", "confTypeModal", "baseNameModal", "camLocModal", "camManualModal", "camPhotoViewModal"];
   for (const id of modals) {
     const el = document.getElementById(id);
     if (el && el.classList.contains("show")) return false;
   }
   return true;
 }
-      function focusCollectorInput() {
-  if (!collectorCanFocus()) return;
-  const input = document.getElementById("collectorInput");
+      function focusCollectorInput(force = false) {
+  if (!force && !collectorCanFocus()) return;
+  const input = mountCollectorInputForFocus();
   if (!input) return;
-  // BUG 3 CORRIGIDO: usar requestAnimationFrame para garantir
-  // que o DOM terminou de atualizar antes de focar
+  // Limpa sobras de leituras parciais antes de focar novamente.
+  input.value = "";
   requestAnimationFrame(() => {
-    input.focus({ preventScroll: true });
+    try { input.focus({ preventScroll: true }); } catch (e) { try { input.focus(); } catch (err) {} }
     try { input.select(); } catch (e) {}
+    // Alguns coletores Android demoram para entregar o foco ao WebView/Chrome.
+    // Uma segunda tentativa curta deixa a captura estável.
+    setTimeout(() => {
+      if ((force || collectorCanFocus()) && document.activeElement !== input) {
+        try { input.focus({ preventScroll: true }); } catch (e) { try { input.focus(); } catch (err) {} }
+      }
+    }, 90);
   });
 }
       function stopCollectorConference(silent = false) {
@@ -2708,6 +2768,30 @@ if (S.collectorMode) {
     setTimeout(() => {
       if (collectorCanFocus()) focusCollectorInput();
     }, 300); // ← era 80ms, agora 300ms
+  });
+
+  // Alguns coletores enviam a leitura como colagem/alteração direta do campo,
+  // não como sequência normal de keydown.
+  input.addEventListener("paste", () => {
+    if (!S.collectorMode || !S.collectorActive) return;
+    clearTimeout(collectorReadTimer);
+    collectorReadTimer = setTimeout(() => handleCollectorRead(), 40);
+  });
+  input.addEventListener("change", () => {
+    if (!S.collectorMode || !S.collectorActive) return;
+    if ((input.value || "").trim().length >= 10) handleCollectorRead();
+  });
+
+  // Se o operador tocar/voltar para a tela, recupera o foco automaticamente.
+  document.addEventListener("pointerdown", (event) => {
+    if (!collectorCanFocus()) return;
+    const target = event.target;
+    if (target && target.closest && target.closest(".collector-overlay-close, #collectorFocusBtn, input, textarea, select, button, label, a")) return;
+    setTimeout(() => focusCollectorInput(), 80);
+  }, true);
+  window.addEventListener("focus", () => setTimeout(() => { if (collectorCanFocus()) focusCollectorInput(); }, 120));
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") setTimeout(() => { if (collectorCanFocus()) focusCollectorInput(); }, 180);
   });
 
   document.addEventListener("keydown", (event) => {
