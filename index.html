@@ -196,6 +196,9 @@
       .collector-overlay-card .val { font-size: 1.08rem; font-weight: 900; color: #0f172a; }
       .collector-overlay-guide { margin-top: 14px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; border-radius: 12px; padding: 12px 14px; font-size: .88rem; line-height: 1.45; }
       .collector-overlay-guide strong { color: #1e3a8a; }
+      .collector-manual-actions { margin-top: 10px; display: flex; justify-content: center; }
+      .collector-manual-btn { border: none; border-radius: 999px; background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; padding: 10px 16px; font-weight: 900; cursor: pointer; box-shadow: 0 8px 18px rgba(245, 158, 11, .25); }
+      .collector-manual-btn:active { transform: scale(.98); }
       .collector-overlay-footer { position: absolute; left: 0; right: 0; bottom: 0; z-index: 50; background: rgba(255,255,255,.96); backdrop-filter: blur(10px); display: flex; flex-direction: column; max-height: 170px; padding-bottom: max(env(safe-area-inset-bottom, 8px), 8px); border-top: 1px solid var(--border); }
       .collector-overlay-result { padding: 10px 12px; text-align: center; font-weight: 700; font-size: .9em; color: #334155; }
       .collector-overlay-stats { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 8px 12px; font-size: .78em; color: #475569; border-bottom: 1px solid var(--border); }
@@ -437,7 +440,7 @@
       .s-big-status.red { background: rgba(239, 68, 68, 0.96); border: 2px solid rgba(254, 202, 202, 0.85); }
       .s-big-status .big-main { display: block; font-size: 1.3em; line-height: 1.15; letter-spacing: 0.02em; }
       .s-big-status .big-code { display: block; margin-top: 8px; font-family: "SF Mono", Consolas, monospace; font-size: 0.9em; word-break: break-all; opacity: 0.96; }
-      .cloud-status { display: inline-flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; padding: 7px 12px; border-radius: 999px; font-size: 0.78em; font-weight: 800; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-secondary); }
+      .cloud-status { display: inline-flex; align-items: center; justify-content: center; gap: 0; margin-top: 0; padding: 5px 8px; border-radius: 999px; font-size: 0.82em; font-weight: 900; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-secondary); min-width: 34px; }
       .cloud-status.ok { background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.28); color: var(--accent-green); }
       .cloud-status.sync { background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.28); color: var(--accent-blue); }
       .cloud-status.error { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.28); color: var(--accent-red); }
@@ -581,7 +584,7 @@
           onpointerleave="cloudCancelSecretPress()"
           onpointercancel="cloudCancelSecretPress()"
           oncontextmenu="return false"
-        >⚙️ Líder</div>
+        >⚙️</div>
         </div>
       </div>
       <div class="section active" id="sectionImport">
@@ -735,6 +738,7 @@
             <h2 id="collectorOverlayTitle">Aguardando leitura...</h2>
             <p id="collectorOverlaySub"></p>
             <div class="collector-overlay-code" id="collectorOverlayCode">—</div>
+            <div class="collector-manual-actions"><button type="button" class="collector-manual-btn" onclick="collectorOpenManualPhoto()">📸 Manual</button></div>
             <div class="collector-overlay-grid">
               <div class="collector-overlay-card"><div class="lbl">Total</div><div class="val" id="collectorOverlayTotal">0</div></div>
               <div class="collector-overlay-card"><div class="lbl">Conferidos</div><div class="val" id="collectorOverlayChecked">0</div></div>
@@ -796,12 +800,13 @@
             <div class="cam-loc-header" style="color: #3b82f6">📸 Conferência Manual</div>
             <div class="cam-loc-label">Busque e selecione a OP pendente:</div>
             <input type="text" class="cam-loc-input" id="camManualSearch" placeholder="Buscar OP..." oninput="camRenderManualOps(this.value)" autocomplete="off" />
+            <button class="cam-loc-btn cam-cancel" style="width: 100%; margin-top: 10px; background: rgba(239,68,68,.14); border-color: rgba(239,68,68,.38); color: #fecaca" onclick="camManualNotExpected()">⚠️ Não prevista</button>
             <div id="camManualOps" style="max-height: 42vh; overflow: auto; margin-top: 10px; display: grid; gap: 6px;"></div>
             <div id="camManualBobinas" style="display: none; margin-top: 10px">
               <button class="cam-loc-btn cam-cancel" style="width: 100%; margin-bottom: 8px" onclick="camBackManualOps()">← Voltar para OPs</button>
               <div id="camManualBobinasList" style="max-height: 42vh; overflow: auto; display: grid; gap: 6px;"></div>
             </div>
-            <div class="cam-loc-buttons"><button class="cam-loc-btn cam-cancel" onclick="camManualNotExpected()">⚠️ Não prevista</button><button class="cam-loc-btn cam-cancel" onclick="camCloseManualModal()">Cancelar</button></div>
+            <div class="cam-loc-buttons"><button class="cam-loc-btn cam-cancel" onclick="camCloseManualModal()">Cancelar</button></div>
           </div>
         </div>
         <div class="cam-photo-view" id="camPhotoViewModal"><img id="camPhotoViewImg" src="" /><button onclick="camClosePhotoView()">✕ Fechar</button></div>
@@ -869,6 +874,8 @@ let cloudLastHeaderWrite = 0;
         cloudDetailLiveUnsubs = [], cloudDetailRefreshTimer = null,
         cloudDeletedUnsub = null, cloudDeletedIds = new Set(),
         cloudBaseDeletedUnsub = null, cloudBaseDeletedIds = new Set();
+      let collectorReturnAfterManualCamera = false;
+      let photoMemoryCache = {};
       let camScanner = null, camVideoTrack = null, camTorchOn = false, camZoomValue = null,
         camZoomMin = 1, camZoomMax = 1, camZoomStepSize = 0.25, camZoomApplyTimer = null,
         camCooldown = false, camPendingExtra = null, camManualMode = "extra",
@@ -1104,7 +1111,7 @@ let cloudLastHeaderWrite = 0;
           size: new Blob([content]).size,
         };
       }
-      function cloudSetStatus(type, text) { const el = document.getElementById("cloudStatus"); if (!el) return; el.className = "cloud-status"; el.textContent = "⚙️ Líder"; }
+      function cloudSetStatus(type, text) { const el = document.getElementById("cloudStatus"); if (!el) return; el.className = "cloud-status"; el.textContent = "⚙️"; }
       function cloudMimeTypeFromFileName(name = "") {
         const lower = String(name).toLowerCase();
         if (lower.endsWith(".csv")) return "text/csv";
@@ -1477,7 +1484,7 @@ let cloudLastHeaderWrite = 0;
             time: i.time === "-" ? "" : (i.time || ""),
             location: i.location === "-" ? "" : (i.location || ""),
             observation: i.observation || "",
-            hasPhoto: !!i.hasPhoto,
+            hasPhoto: !!(i.hasPhoto || up?.url),
             fotoUrl: up?.url || "",
             fotoPath: up?.path || "",
           };
@@ -1503,13 +1510,18 @@ let cloudLastHeaderWrite = 0;
       async function cloudUploadLocalPhotosForFinalReport() {
         const progress = document.getElementById("exportProgress");
         const uploads = {};
-        const items = getReportItems().filter((i) => i.hasPhoto && getPhoto(i.code));
+        const candidates = getReportItems().filter((i) => i.hasPhoto || i.status === "extra");
+        const items = [];
+        for (const item of candidates) {
+          const photo = await getPhotoAsync(item.code);
+          if (photo) items.push({ ...item, _photo: photo });
+        }
         if (!items.length) return uploads;
         if (progress) { progress.classList.add("show"); progress.textContent = `Enviando fotos 0/${items.length}...`; }
         for (let i = 0; i < items.length; i++) {
           const item = items[i];
           if (progress) progress.textContent = `Enviando fotos ${i + 1}/${items.length}...`;
-          const up = await cloudUploadPhoto(item.code, getPhoto(item.code));
+          const up = await cloudUploadPhoto(item.code, item._photo);
           if (up && up.url) uploads[item.code] = up;
         }
         return uploads;
@@ -2235,11 +2247,13 @@ let cloudLastHeaderWrite = 0;
   pendingExtraMainPhotoEtiqueta = null;
   pendingExtraMainPhotoBobina = null;
   Object.keys(localStorage).filter((k) => k.startsWith("photo_")).forEach((k) => localStorage.removeItem(k));
+  photoStoreClear();
   save();
   updateDBUI();
   updateStats();
   updateHistory();
   updateReport();
+  hydratePhotoCache();
   updateCollectorModeUI();
   document.getElementById("btnUndo").disabled = true;
 }
@@ -2502,6 +2516,24 @@ let cloudLastHeaderWrite = 0;
         mountCollectorInputForFocus();
         focusCollectorInput(true);
         setCollectorLastRead("🎯 Captura do coletor focada.");
+      }
+      async function collectorOpenManualPhoto() {
+        if (!S.db.length) { notify("Importe os dados primeiro!", "error"); return; }
+        collectorReturnAfterManualCamera = true;
+        S.collectorActive = false;
+        save();
+        hideCollectorOverlay();
+        updateCollectorModeUI();
+        try {
+          await startIntegratedScanner();
+          setTimeout(() => {
+            try { camOpenManualModal(); } catch (e) { console.warn(e); }
+          }, 650);
+        } catch (e) {
+          console.error(e);
+          notify("Erro ao abrir foto manual: " + (e.message || e), "error");
+          collectorReturnAfterManualCamera = false;
+        }
       }
       function showCollectorOverlay() {
         const overlay = document.getElementById("collectorOverlay");
@@ -2944,12 +2976,12 @@ if (S.collectorMode) {
   }
 }
       function undoLast() {
-        if (!S.scanned.length) return; const last = S.scanned.shift(); if (last.status === "found") S.checked.delete(last.code); else if (last.status === "not-found") { const i = S.extras.indexOf(last.code); if (i > -1) S.extras.splice(i, 1); try { localStorage.removeItem("photo_" + last.code); } catch (e) {} }
+        if (!S.scanned.length) return; const last = S.scanned.shift(); if (last.status === "found") S.checked.delete(last.code); else if (last.status === "not-found") { const i = S.extras.indexOf(last.code); if (i > -1) S.extras.splice(i, 1); removeSavedPhoto(last.code) }
         document.getElementById("btnUndo").disabled = !S.scanned.length; save(); updateStats(); updateHistory(); updateDBUI(); notify(`↩️ Desfeito: ${last.code}`);
       }
       function clearScans() {
         showModal("🔄 Reiniciar", "Limpar leituras mas manter banco de dados?", () => {
-          S.extras.forEach((code) => { try { localStorage.removeItem("photo_" + code); } catch (e) {} });
+          S.scanned.forEach((scan) => { if (scan && scan.hasPhoto) removeSavedPhoto(scan.code); });
           S.scanned = []; S.checked = new Set(); S.extras = []; save(); updateStats(); updateHistory(); updateDBUI(); document.getElementById("btnUndo").disabled = true; notify("Conferência reiniciada!");
         });
       }
@@ -3030,7 +3062,97 @@ if (S.collectorMode) {
           const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `nao_previstas_${dateStr}.zip`; a.click(); URL.revokeObjectURL(a.href); progress.classList.remove("show"); notify(`✅ Não previstas exportadas: ${extrasUniq.length} itens, ${countFotos} fotos`);
         } catch (err) { console.error(err); progress.classList.remove("show"); notify("Erro ao gerar ZIP: " + (err.message || err), "error"); }
       }
-      function getPhoto(code) { try { return localStorage.getItem("photo_" + code); } catch (e) { return null; } }
+      function photoDbOpen() {
+        return new Promise((resolve, reject) => {
+          if (!window.indexedDB) { reject(new Error("IndexedDB indisponível")); return; }
+          const req = indexedDB.open("bobinas_photo_store", 1);
+          req.onupgradeneeded = () => {
+            const db = req.result;
+            if (!db.objectStoreNames.contains("photos")) db.createObjectStore("photos");
+          };
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error || new Error("Erro IndexedDB"));
+        });
+      }
+      async function photoStoreSet(code, dataUrl) {
+        if (!code || !dataUrl) return false;
+        try {
+          const db = await photoDbOpen();
+          return await new Promise((resolve, reject) => {
+            const tx = db.transaction("photos", "readwrite");
+            tx.objectStore("photos").put(dataUrl, String(code));
+            tx.oncomplete = () => { try { db.close(); } catch (e) {} resolve(true); };
+            tx.onerror = () => { try { db.close(); } catch (e) {} reject(tx.error || new Error("Erro ao salvar foto")); };
+          });
+        } catch (e) { console.warn("IndexedDB não salvou foto:", e); return false; }
+      }
+      async function photoStoreGet(code) {
+        if (!code) return null;
+        try {
+          const db = await photoDbOpen();
+          return await new Promise((resolve, reject) => {
+            const tx = db.transaction("photos", "readonly");
+            const req = tx.objectStore("photos").get(String(code));
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => reject(req.error || new Error("Erro ao ler foto"));
+            tx.oncomplete = () => { try { db.close(); } catch (e) {} };
+          });
+        } catch (e) { return null; }
+      }
+      async function photoStoreDelete(code) {
+        if (!code) return;
+        try {
+          const db = await photoDbOpen();
+          await new Promise((resolve) => {
+            const tx = db.transaction("photos", "readwrite");
+            tx.objectStore("photos").delete(String(code));
+            tx.oncomplete = () => { try { db.close(); } catch (e) {} resolve(); };
+            tx.onerror = () => { try { db.close(); } catch (e) {} resolve(); };
+          });
+        } catch (e) {}
+      }
+      async function photoStoreClear() {
+        photoMemoryCache = {};
+        try {
+          const db = await photoDbOpen();
+          await new Promise((resolve) => {
+            const tx = db.transaction("photos", "readwrite");
+            tx.objectStore("photos").clear();
+            tx.oncomplete = () => { try { db.close(); } catch (e) {} resolve(); };
+            tx.onerror = () => { try { db.close(); } catch (e) {} resolve(); };
+          });
+        } catch (e) {}
+      }
+      function removeSavedPhoto(code) {
+        if (!code) return;
+        delete photoMemoryCache[String(code)];
+        try { localStorage.removeItem("photo_" + code); } catch (e) {}
+        photoStoreDelete(code);
+      }
+      async function hydratePhotoCache() {
+        const codes = [...new Set((S.scanned || []).filter((s) => s && s.hasPhoto).map((s) => String(s.code)))];
+        for (const code of codes) {
+          if (photoMemoryCache[code]) continue;
+          let v = null;
+          try { v = localStorage.getItem("photo_" + code); } catch (e) {}
+          if (!v) v = await photoStoreGet(code);
+          if (v) photoMemoryCache[code] = v;
+        }
+        updateHistory(); updateReport();
+      }
+      function getPhoto(code) {
+        const key = String(code || "");
+        if (photoMemoryCache[key]) return photoMemoryCache[key];
+        try { return localStorage.getItem("photo_" + key); } catch (e) { return null; }
+      }
+      async function getPhotoAsync(code) {
+        const key = String(code || "");
+        let v = getPhoto(key);
+        if (v) return v;
+        v = await photoStoreGet(key);
+        if (v) photoMemoryCache[key] = v;
+        return v;
+      }
       function getPhotoBobina(code) { try { return localStorage.getItem("photo_bobina_" + code); } catch (e) { return null; } }
       function camVibrate(type) { if (!navigator.vibrate) return; if (type === "found") navigator.vibrate(200); else if (type === "already") navigator.vibrate([200, 100, 200]); else navigator.vibrate([200, 100, 200, 100, 200]); }
       function camBeep(type) {
@@ -3053,12 +3175,24 @@ if (S.collectorMode) {
         return canvas.toDataURL("image/jpeg", 0.72);
       }
       async function savePhotosExtra(code, photoEtiqueta, photoBobina) {
+        const key = String(code || "");
         try {
-          const combined = await combinePhotosHalf(code, photoEtiqueta, photoBobina); localStorage.setItem("photo_" + code, combined); const saved = localStorage.getItem("photo_" + code); if (!saved) throw new Error("Falha ao salvar foto combinada"); return true;
+          const combined = await combinePhotosHalf(key, photoEtiqueta, photoBobina);
+          photoMemoryCache[key] = combined;
+          const savedIndexed = await photoStoreSet(key, combined);
+          let savedLocal = false;
+          try { localStorage.setItem("photo_" + key, combined); savedLocal = !!localStorage.getItem("photo_" + key); } catch (e) { console.warn("localStorage sem espaço para foto:", e); }
+          if (!savedIndexed && !savedLocal) throw new Error("Falha ao salvar foto combinada");
+          return true;
         } catch (e) {
           console.error("Erro ao salvar foto:", e);
-          try { localStorage.setItem("photo_" + code, photoEtiqueta); return !!localStorage.getItem("photo_" + code); }
-          catch (err) { console.error("Fallback também falhou:", err); return false; }
+          try {
+            photoMemoryCache[key] = photoEtiqueta;
+            const savedIndexed = await photoStoreSet(key, photoEtiqueta);
+            let savedLocal = false;
+            try { localStorage.setItem("photo_" + key, photoEtiqueta); savedLocal = !!localStorage.getItem("photo_" + key); } catch (err) { console.warn("Fallback localStorage sem espaço:", err); }
+            return !!(savedIndexed || savedLocal || photoMemoryCache[key]);
+          } catch (err) { console.error("Fallback também falhou:", err); return false; }
         }
       }
       async function startIntegratedScanner() {
@@ -3102,10 +3236,21 @@ if (S.collectorMode) {
       function camEnableVolumeZoom() { window.addEventListener("keydown", camVolumeKeyHandler, { capture: true }); }
       function camDisableVolumeZoom() { window.removeEventListener("keydown", camVolumeKeyHandler, { capture: true }); }
       async function closeIntegratedScanner() {
+        const returnToCollector = collectorReturnAfterManualCamera;
+        collectorReturnAfterManualCamera = false;
         camDisableVolumeZoom();
         try { if (camScanner) { try { await camScanner.stop(); } catch (e) {} try { camScanner.clear(); } catch (e) {} } } catch (e) {}
         camScanner = null; camVideoTrack = null; camTorchOn = false; camZoomValue = null; camCooldown = false; camPendingExtra = null; camCurrentPhotoEtiqueta = null; camCurrentPhotoBobina = null;
         document.getElementById("scannerOverlay").classList.remove("show"); document.body.style.overflow = ""; updateStats(); updateHistory(); updateDBUI(); updateReport();
+        if (returnToCollector && S.collectorMode) {
+          S.collectorActive = true;
+          save();
+          updateCollectorModeUI();
+          showCollectorOverlay();
+          setCollectorLastRead("Pronto para receber leitura.");
+          updateCollectorOverlayCenter("Aguardando leitura...", "", "—");
+          setTimeout(focusCollectorInput, 120);
+        }
       }
       function camSetupCameraControls() {
         const video = document.querySelector("#camReader video"); const stream = video && video.srcObject; if (!stream) { setTimeout(camSetupCameraControls, 500); return; }
@@ -3177,7 +3322,14 @@ if (S.collectorMode) {
       function camBackManualOps() { document.getElementById("camManualBobinas").style.display = "none"; document.getElementById("camManualOps").style.display = "grid"; }
       function camSelectManualBobina(code) { camCloseManualModal(); camManualSelectedCode = null; camPendingExtra = null; camMarkManualFound(code); }
       function camMarkManualFound(code) {
-        const time = new Date().toLocaleTimeString("pt-BR"); S.checked.add(code); S.scanned.unshift({ code, time, status: "found", manual: true }); camShowResult("green", `📸 MANUAL — "${code}" — encontrada`); save(); cloudSyncReading(S.scanned[0]); camUpdateCounters(); camUpdateHistory(); updateStats(); updateHistory(); updateDBUI(); setTimeout(() => (camCooldown = false), 300);
+        const time = new Date().toLocaleTimeString("pt-BR");
+        S.checked.add(code);
+        S.scanned.unshift({ code, time, status: "found", manual: true });
+        camShowResult("green", `📸 MANUAL — "${code}" — encontrada`);
+        save(); cloudSyncReading(S.scanned[0]);
+        camUpdateCounters(); camUpdateHistory(); updateStats(); updateHistory(); updateDBUI(); updateReport();
+        if (collectorReturnAfterManualCamera) setTimeout(() => closeIntegratedScanner(), 350);
+        else setTimeout(() => (camCooldown = false), 300);
       }
       function camManualNotExpected() {
         camCloseManualModal(); const code = "MANUAL-NP-" + new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14); camPendingExtra = { code, time: new Date().toLocaleTimeString("pt-BR") }; camManualSelectedCode = null; camShowLocationModal(code, "extra"); camCooldown = true;
@@ -3203,9 +3355,11 @@ if (S.collectorMode) {
           if (!savedPhoto) notify("Foto não foi salva. Não vai sair no exportador.", "warning");
           camShowResult("red", `⚠️ "${camPendingExtra.code}" — 📌 ${loc} 🏷️`); save(); cloudSyncReading(S.scanned[0]); camUpdateCounters(); camUpdateHistory(); updateStats(); updateHistory(); updateDBUI(); camPendingExtra = null;
         }
-        camCurrentPhotoEtiqueta = null; camCurrentPhotoBobina = null; camManualMode = "extra"; document.getElementById("camLocModal").classList.remove("show"); setTimeout(() => (camCooldown = false), 1000);
+        camCurrentPhotoEtiqueta = null; camCurrentPhotoBobina = null; camManualMode = "extra"; document.getElementById("camLocModal").classList.remove("show");
+        if (collectorReturnAfterManualCamera) setTimeout(() => closeIntegratedScanner(), 700);
+        else setTimeout(() => (camCooldown = false), 1000);
       }
-      function camCancelLocation() { camPendingExtra = null; camManualSelectedCode = null; camManualMode = "extra"; camCurrentPhotoEtiqueta = null; camCurrentPhotoBobina = null; document.getElementById("camLocModal").classList.remove("show"); setTimeout(() => (camCooldown = false), 500); }
+      function camCancelLocation() { camPendingExtra = null; camManualSelectedCode = null; camManualMode = "extra"; camCurrentPhotoEtiqueta = null; camCurrentPhotoBobina = null; document.getElementById("camLocModal").classList.remove("show"); if (collectorReturnAfterManualCamera) setTimeout(() => closeIntegratedScanner(), 300); else setTimeout(() => (camCooldown = false), 500); }
       function camHandlePhoto(e, tipo) {
         const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = function (ev) {
           const data = ev.target.result; const isBobina = tipo === "bobina"; if (isBobina) camCurrentPhotoBobina = data; else camCurrentPhotoEtiqueta = data;
@@ -3362,5 +3516,5 @@ window.addEventListener("beforeunload", () => {
 
 init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17f55f77ade1f69',t:'MTc4MzUxNjI5Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17fee9e8bfbafcb',t:'MTc4MzUyMjU0OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
