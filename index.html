@@ -710,6 +710,10 @@
             <button class="btn btn-primary" onclick="cloudPickLeaderBaseFile()">📁 Importar arquivo do dispositivo</button>
           </div>
         </div>
+        <div class="card" id="leaderActiveBaseCard">
+          <div class="card-title">📁 Base ativa <span class="card-actions-inline"><button class="btn btn-outline btn-sm" onclick="cloudRefreshBaseFiles()">🔄 Atualizar</button></span></div>
+          <div class="empty">Clique em atualizar para consultar.</div>
+        </div>
         <div class="card">
           <div class="card-title">📋 Conferências salvas <span class="card-actions-inline"><button class="btn btn-outline btn-sm" onclick="renderCloudConsult(document.getElementById('cloudSearch')?.value || '')">🔄 Atualizar</button></span></div>
           
@@ -981,6 +985,62 @@ let cloudLastHeaderWrite = 0;
         return String(name || "sem-operador").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "sem-operador";
       }
       function cloudDateKey(d = new Date()) { return d.toISOString().slice(0, 10); }
+      function cloudValueToDate(value) {
+        if (!value) return null;
+        try {
+          if (value instanceof Date) return value;
+          if (value && typeof value.toDate === "function") return value.toDate();
+          if (typeof value === "number") return new Date(value);
+          if (typeof value === "string") {
+            const m = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+            const d = new Date(value);
+            if (!Number.isNaN(d.getTime())) return d;
+          }
+        } catch (e) {}
+        return null;
+      }
+      function cloudFormatDateBR(value) {
+        const d = cloudValueToDate(value);
+        return d ? d.toLocaleDateString("pt-BR") : (value ? String(value) : "-");
+      }
+      function cloudFormatDateTimeBR(value) {
+        const d = cloudValueToDate(value);
+        return d ? `${d.toLocaleDateString("pt-BR")} ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : (value ? String(value) : "-");
+      }
+      function cloudParseSessionId(id = "") {
+        const m = String(id || "").match(/^(\d{4}-\d{2}-\d{2})_(.+)_(\d{6})$/);
+        if (!m) return null;
+        return { date: m[1], operatorKey: m[2], time: `${m[3].slice(0,2)}:${m[3].slice(2,4)}:${m[3].slice(4,6)}` };
+      }
+      function cloudFormatSessionMeta(id = "", fallbackDate = "") {
+        const parsed = cloudParseSessionId(id);
+        if (parsed) return `${cloudFormatDateBR(parsed.date)} às ${parsed.time}`;
+        if (fallbackDate) return cloudFormatDateBR(fallbackDate);
+        return "";
+      }
+      function cloudFormatBaseVersion(d = {}) {
+        const raw = String(d.version || d.baseId || "");
+        const m = raw.match(/base_(\d{10,})/);
+        if (m) return cloudFormatDateTimeBR(Number(m[1]));
+        if (d.atualizadoEm) return cloudFormatDateTimeBR(d.atualizadoEm);
+        if (d.criadoEm) return cloudFormatDateTimeBR(d.criadoEm);
+        return raw || "-";
+      }
+      function cloudDisplayFileName(d = {}) {
+        const name = d.nome || d.fileName || "arquivo-base";
+        return String(name).replace(/^.*[\\/]/, "");
+      }
+      function cloudConferenceTitle(d = {}) {
+        return `${d.operador || "-"} • ${cloudFormatDateBR(d.data || cloudParseSessionId(d.id)?.date || "")}`;
+      }
+      function cloudConferenceMeta(d = {}) {
+        const parts = [];
+        if (d.tipo) parts.push(`Tipo: ${d.tipo}`);
+        const when = cloudFormatSessionMeta(d.id, d.data);
+        if (when) parts.push(`Iniciada: ${when}`);
+        return parts.join(" • ");
+      }
       function cloudMakeSessionId() {
         const d = new Date(); const hhmmss = d.toTimeString().slice(0, 8).replace(/:/g, "");
         return `${cloudDateKey(d)}_${cloudOperatorKey()}_${hhmmss}`;
@@ -1325,31 +1385,41 @@ let cloudLastHeaderWrite = 0;
           notify("Erro ao salvar arquivo-base: " + (e.message || e), "error");
         }
       }
-      function cloudRenderBaseFiles() {
-        const box = document.getElementById("cloudBaseFilesBox");
-        if (!box) return;
-        const docs = (cloudBaseFilesDocs || []).filter((d) => d && !d.deleted && !d.hidden && d.status !== "deleted");
-        if (!docs.length) {
-          box.innerHTML = '<div class="empty"><div class="e-icon">📁</div><h3>Nenhuma base ativa</h3></div>';
-          return;
-        }
-        const d = docs[0];
-        box.innerHTML = `
-          <div class="cloud-item current">
+      function cloudActiveBaseMarkup(d = {}, { leader = false } = {}) {
+        const fileName = cloudDisplayFileName(d);
+        const dateLabel = cloudFormatDateBR(d.data || d.criadoEm || "");
+        const versionLabel = cloudFormatBaseVersion(d);
+        return `
+          <div class="cloud-item current" style="cursor: default;">
             <div class="cloud-item-head">
-              <div class="cloud-item-title">⭐ Base ativa: ${esc(d.nome || "arquivo-base")}</div>
+              <div class="cloud-item-title">${esc(fileName)}</div>
               <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end">
-                <button class="cloud-report-btn" onclick="cloudLoadBaseFile('${CLOUD_ACTIVE_BASE_DOC_ID}')">📥 Carregar base ativa</button>
-                ${cloudLeaderUnlocked ? `<button class="cloud-delete-btn" onclick="cloudDeleteBaseFile('${CLOUD_ACTIVE_BASE_DOC_ID}')">🗑️ Remover ativa</button>` : ""}
+                <button class="cloud-report-btn" onclick="cloudLoadBaseFile('${CLOUD_ACTIVE_BASE_DOC_ID}')">📥 Carregar</button>
+                ${leader ? `<button class="cloud-delete-btn" onclick="cloudDeleteBaseFile('${CLOUD_ACTIVE_BASE_DOC_ID}')">🗑️ Apagar</button>` : ""}
               </div>
             </div>
             <div class="cloud-item-info">
-              <span>📅 <strong>${esc(d.data || "-")}</strong></span>
+              <span>📅 <strong>${esc(dateLabel)}</strong></span>
               <span>📦 Códigos: <strong>${d.totalCodigos ?? 0}</strong></span>
               <span>📋 Tipo: <strong>${esc(d.tipoConferencia || "Arquivo completo")}</strong></span>
-              <span>🔖 Versão: <strong>${esc(d.version || d.baseId || "-")}</strong></span>
+              <span>🕒 Atualizada: <strong>${esc(versionLabel)}</strong></span>
             </div>
           </div>`;
+      }
+      function cloudRenderBaseFiles() {
+        const box = document.getElementById("cloudBaseFilesBox");
+        const docs = (cloudBaseFilesDocs || []).filter((d) => d && !d.deleted && !d.hidden && d.status !== "deleted");
+        if (box) {
+          box.innerHTML = docs.length ? cloudActiveBaseMarkup(docs[0], { leader: false }) : '<div class="empty"><div class="e-icon">📁</div><h3>Nenhuma base ativa</h3></div>';
+        }
+        cloudRenderLeaderActiveBase();
+      }
+      function cloudRenderLeaderActiveBase() {
+        const card = document.getElementById("leaderActiveBaseCard");
+        if (!card) return;
+        const docs = (cloudBaseFilesDocs || []).filter((d) => d && !d.deleted && !d.hidden && d.status !== "deleted");
+        card.innerHTML = `<div class="card-title">📁 Base ativa <span class="card-actions-inline"><button class="btn btn-outline btn-sm" onclick="cloudRefreshBaseFiles()">🔄 Atualizar</button></span></div>` +
+          (docs.length ? cloudActiveBaseMarkup(docs[0], { leader: true }) : '<div class="empty"><div class="e-icon">📁</div><h3>Nenhuma base ativa</h3></div>');
       }
       async function cloudRefreshBaseFiles() {
         const box = document.getElementById("cloudBaseFilesBox");
@@ -1633,11 +1703,11 @@ let cloudLastHeaderWrite = 0;
         if (!docs.length) { box.innerHTML = '<div class="empty">Nenhuma conferência encontrada.</div>'; return; }
         box.innerHTML = docs.map((d) => {
           const r = d.resumo || {}; const status = d.status || "em_andamento"; const isCurrent = d.id === S.cloudSessionId;
-          return `<div class="cloud-item ${isCurrent ? "current" : ""}" onclick="if(!event.target.closest('button,input,a')) cloudOpenConference('${esc(d.id).replace(/'/g, "&#39;")}')">
+          return `<div class="cloud-item ${isCurrent ? "current" : ""}" onclick="if(!event.target.closest('button,input,a')) cloudOpenConference('${esc(d.id).replace(/'/g, "&#39;")}', { anchor: this })">
               <div class="cloud-item-head">
                 <div class="cloud-item-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                   <input class="cloud-select-check" type="checkbox" ${cloudMergeSelectedIds.has(d.id) ? "checked" : ""} onclick="event.stopPropagation()" onchange="cloudToggleMergeSelection('${esc(d.id).replace(/'/g, "&#39;")}', this.checked)" />
-                  <span>${esc(d.operador || "-")} • ${esc(d.data || "-")}${isCurrent ? '<span class="cloud-current-badge">Atual</span>' : ""}</span>
+                  <span>${esc(cloudConferenceTitle(d))}${isCurrent ? '<span class="cloud-current-badge">Atual</span>' : ""}</span>
                 </div>
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end">
                   <div class="cloud-item-status ${status === "finalizada" ? "finalizada" : ""}">${esc(status)}</div>
@@ -1654,7 +1724,7 @@ let cloudLastHeaderWrite = 0;
                 <span>⚠️ Não previstas: <strong>${r.naoPrevistas ?? 0}</strong></span>
                 <span>📊 <strong>${r.percentual ?? 0}%</strong></span>
               </div>
-              <div class="small" style="margin-top:6px;color:var(--text-muted)">${esc(d.id || "")}</div>
+              <div class="small" style="margin-top:6px;color:var(--text-muted)">🕒 ${esc(cloudFormatSessionMeta(d.id, d.data))}</div>
             </div>`;
         }).join("");
         cloudUpdateMergeButton();
@@ -1703,6 +1773,7 @@ let cloudLastHeaderWrite = 0;
             },
             opSummary: Array.isArray(report.opSummary) ? report.opSummary : [],
             rows,
+            data: report.data || conf.data || cloudParseSessionId(conf.id)?.date || "",
             confIds: report.confIds || [conf.id],
             storageMode: conf.storageMode || report.storageMode || "economico_supabase_json",
           };
@@ -1733,7 +1804,7 @@ let cloudLastHeaderWrite = 0;
           const code = String(b.codigo || b.id); const l = leiturasMap.get(code); const checked = !!(l && l.status !== "not-found");
           rows.push({ code, op: b.op || "-", peso: b.peso || "-", status: checked ? (l.manual ? "Conferido Manual" : "Conferido") : "Pendente", time: checked ? (l.horaLocal || "") : "", location: l?.location || "", observation: l?.observation || "", hasPhoto: !!(l?.hasPhoto || fotoMap.get(code)), fotoUrl: l?.fotoUrl || fotoMap.get(code)?.url || "" });
         });
-        return { id: conf.id, title: "RELATÓRIO DE CONFERÊNCIA - NUVEM", operador: conf.operador || "-", tipo: conf.tipo || "-", status: conf.status || "-", resumo: { total, conferidos: chk, pendentes: total - chk, naoPrevistas: extras, percentual: pct }, opSummary, rows, confIds: [conf.id], missingBobinas: !bobinasSource.length && total > 0 };
+        return { id: conf.id, title: "RELATÓRIO DE CONFERÊNCIA - NUVEM", operador: conf.operador || "-", tipo: conf.tipo || "-", data: conf.data || cloudParseSessionId(conf.id)?.date || "", status: conf.status || "-", resumo: { total, conferidos: chk, pendentes: total - chk, naoPrevistas: extras, percentual: pct }, opSummary, rows, confIds: [conf.id], missingBobinas: !bobinasSource.length && total > 0 };
       }
       function cloudFilterRowsForExport(rows, opt) {
         return (rows || []).filter((i) => {
@@ -1882,12 +1953,19 @@ let cloudLastHeaderWrite = 0;
       async function cloudOpenConference(confId, options = {}) {
         if (!cloudLeaderUnlocked) return;
         const silent = !!options.silent;
+        const anchor = options && options.anchor ? options.anchor : null;
         const prevFilter = silent ? cloudDetailFilter : "all";
         const prevSearch = silent ? cloudDetailSearch : "";
         if (!silent) cloudCloseConferenceDetail();
         if (!silent || cloudDetailConfId !== confId) cloudWatchOpenedConference(confId);
-        const box = document.getElementById("cloudDetailBox");
-        if (!box) return;
+        let box = document.getElementById("cloudDetailBox");
+        if (!box) {
+          box = document.createElement("div");
+          box.id = "cloudDetailBox";
+          box.className = "cloud-detail";
+          (document.getElementById("cloudConsultBox") || document.getElementById("sectionCloud") || document.body).appendChild(box);
+        }
+        if (anchor && anchor.parentElement) anchor.insertAdjacentElement("afterend", box);
         box.className = "cloud-detail show";
         if (!silent) box.innerHTML = '<div class="empty">Abrindo conferência...</div>';
         try {
@@ -1896,7 +1974,7 @@ let cloudLastHeaderWrite = 0;
           cloudDetailFilter = prevFilter;
           cloudDetailSearch = prevSearch;
           cloudDetailConfId = data.id;
-          box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(data.operador || "-")} • ${esc((cloudConsultDocs.find((d) => d.id === confId)?.data) || "-")}</div><div class="cloud-detail-sub">${esc(data.tipo || "-")}<br>${esc(data.id || "")}</div></div><button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">✕ Fechar</button></div>
+          box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(data.operador || "-")} • ${esc(cloudFormatSessionMeta(data.id, data.data || ""))}</div><div class="cloud-detail-sub">${esc(data.tipo || "-")}</div></div><button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">✕ Fechar</button></div>
           <div class="cloud-detail-stats">
             <div class="cloud-detail-stat clickable active" id="cloudDetailStatAll" onclick="cloudSetDetailFilter('all')">Total<strong>${data.resumo.total}</strong></div>
             <div class="cloud-detail-stat clickable" id="cloudDetailStatChecked" onclick="cloudSetDetailFilter('checked')">Conferidas<strong>${data.resumo.conferidos}</strong></div>
@@ -2182,7 +2260,7 @@ let cloudLastHeaderWrite = 0;
         if (t === "scan") { updateStats(); updateCollectorModeUI(); ensureCheckerName(); if (S.collectorMode && S.collectorActive) setTimeout(focusCollectorInput, 120); }
         if (t === "report") updateReport();
         if (t === "import" && !cloudBaseFilesDocs.length) cloudRefreshBaseFiles();
-        if (t === "cloud") renderCloudConsult(document.getElementById("cloudSearch")?.value || "");
+        if (t === "cloud") { cloudRefreshBaseFiles(); renderCloudConsult(document.getElementById("cloudSearch")?.value || ""); }
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
       function showModal(title, msg, fn) { document.getElementById("mTitle").textContent = title; document.getElementById("mMsg").textContent = msg; document.getElementById("modal").classList.add("show"); document.getElementById("mConfirm").onclick = () => { closeModal(); fn(); }; }
@@ -3514,5 +3592,5 @@ window.addEventListener("beforeunload", () => {
 
 init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a180e007b82c9872',t:'MTc4MzUzMjQzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
