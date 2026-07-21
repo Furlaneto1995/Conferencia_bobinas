@@ -454,6 +454,21 @@
       .cloud-item-info strong { color: var(--text-primary); }
       .cloud-delete-btn { background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.28); color: var(--accent-red); border-radius: 8px; padding: 6px 9px; font-size: 0.78em; font-weight: 900; cursor: pointer; }
       .cloud-delete-btn:active { transform: scale(0.96); }
+      .cloud-edit-btn { background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.28); color: #d97706; border-radius: 8px; padding: 6px 9px; font-size: 0.78em; font-weight: 900; cursor: pointer; }
+      .cloud-edit-btn:active { transform: scale(0.96); }
+      .cloud-role-badge { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; padding: 2px 8px; border-radius: 999px; font-size: 0.72em; font-weight: 900; vertical-align: middle; }
+      .cloud-role-badge.admin { background: rgba(168, 85, 247, 0.12); color: #7c3aed; border: 1px solid rgba(168, 85, 247, 0.28); }
+      .cloud-role-badge.simple { background: rgba(100, 116, 139, 0.12); color: var(--text-secondary); border: 1px solid rgba(100, 116, 139, 0.25); }
+      .cloud-role-badge { cursor: pointer; }
+      .cloud-admin-only[hidden], [data-admin-only][hidden] { display: none !important; }
+      .admin-pin-display {
+        width: 100%; text-align: center; letter-spacing: 0.35em; font-size: 1.45em; font-weight: 900;
+        font-variant-numeric: tabular-nums; padding: 14px 12px; border-radius: 12px;
+        border: 1px solid var(--border); background: var(--bg-input); color: var(--text-primary);
+        margin: 8px 0 12px; outline: none;
+      }
+      .admin-pin-display:focus { border-color: rgba(59, 130, 246, 0.55); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12); }
+      .admin-pin-error { color: var(--accent-red); font-size: 0.82em; font-weight: 700; display: none; margin-bottom: 8px; text-align: center; }
       @media (pointer: coarse) {
         body, button, .card, .tab, .scanner-overlay { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
         input, textarea, select, [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
@@ -578,11 +593,11 @@
           <div
           id="cloudStatus"
           class="cloud-status"
-          title="Menu do líder: segure por 2 segundos"
+          title="Toque: menu • Segure 2s: admin (senha numérica)"
           onpointerdown="cloudStartSecretPress(event)"
-          onpointerup="cloudCancelSecretPress()"
-          onpointerleave="cloudCancelSecretPress()"
-          onpointercancel="cloudCancelSecretPress()"
+          onpointerup="cloudEndSecretPress(event)"
+          onpointerleave="cloudEndSecretPress(event)"
+          onpointercancel="cloudEndSecretPress(event)"
           oncontextmenu="return false"
         >⚙️</div>
         </div>
@@ -703,7 +718,7 @@
       </div>
       <div class="section" id="sectionCloud">
         <div class="card">
-          <div class="card-title">📤 Arquivo-base do líder</div>
+          <div class="card-title">📤 Arquivo-base</div>
           <div class="card-sub">Importe a planilha completa, dê um nome e defina como a única base ativa para os outros dispositivos baixarem.</div>
           <input type="file" id="leaderBaseFileInput" accept=".csv,.txt,.tsv,.text" style="display:none" onchange="cloudHandleLeaderBaseFile(event)" />
           <div class="btn-group" style="margin-top:0">
@@ -715,7 +730,7 @@
           <div class="empty">Clique em atualizar para consultar.</div>
         </div>
         <div class="card">
-          <div class="card-title">📋 Conferências salvas <span class="card-actions-inline"><button class="btn btn-outline btn-sm" onclick="renderCloudConsult(document.getElementById('cloudSearch')?.value || '')">🔄 Atualizar</button></span></div>
+          <div class="card-title">📋 Conferências salvas <span id="cloudRoleBadge" class="cloud-role-badge" style="display:none" title="Toque para entrar como admin"></span> <span class="card-actions-inline"><button class="btn btn-outline btn-sm" onclick="renderCloudConsult(document.getElementById('cloudSearch')?.value || '')">🔄 Atualizar</button></span></div>
           
           <div class="search-wrap"><span class="si">🔍</span><input class="search-input" id="cloudSearch" placeholder="Buscar por operador, data ou tipo..." oninput="cloudRenderConsultList(this.value)" /></div>
           <div class="cloud-filters">
@@ -835,6 +850,28 @@
       <button class="btn btn-outline" style="width: 100%; justify-content: center; padding: 12px 14px" onclick="closeConferenceTypeModal()">Cancelar</button>
     </div></div></div>
     <div class="modal-bg" id="baseNameModal"><div class="modal"><h2>📁 Nome do arquivo-base</h2><p>Digite o nome da base ativa que os outros dispositivos irão baixar.</p><input type="text" id="baseNameInput" class="loc-input-main" placeholder="Ex: Base Agosto turno A" onkeydown="if (event.key === 'Enter') confirmBaseNameUpload();" autocomplete="off" /><div id="baseNameError" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Nome obrigatório!</div><div class="btn-group"><button class="btn btn-primary" id="baseNameSaveBtn" onclick="confirmBaseNameUpload()">✅ Salvar como base ativa</button><button class="btn btn-outline" onclick="closeBaseNameModal()">Cancelar</button></div></div></div>
+    <div class="modal-bg" id="adminPinModal"><div class="modal" style="max-width: 360px">
+      <h2 id="adminPinTitle">🛡️ Admin</h2>
+      <p id="adminPinMsg">Digite a senha numérica de administrador:</p>
+      <input
+        id="adminPinInput"
+        class="admin-pin-display"
+        type="password"
+        inputmode="numeric"
+        pattern="[0-9]*"
+        autocomplete="one-time-code"
+        enterkeyhint="done"
+        maxlength="16"
+        placeholder="••••••••"
+        oninput="adminPinOnInput(this)"
+        onkeydown="if (event.key === 'Enter') { event.preventDefault(); confirmAdminPin(); }"
+      />
+      <div id="adminPinError" class="admin-pin-error">⚠️ Senha incorreta!</div>
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="confirmAdminPin()">✅ Confirmar</button>
+        <button class="btn btn-outline" onclick="closeAdminPinModal(false)">Cancelar</button>
+      </div>
+    </div></div>
 
     <div class="modal-bg" id="locModal"><div class="modal" style="border-color: var(--accent-red)"><h2 style="color: var(--accent-red)">⚠️ Bobina Não Prevista</h2><div class="loc-code-display" id="locCodeMain"></div><p id="locModalDesc">Informe a localização desta bobina:</p><input type="text" id="locInputMain" class="loc-input-main" placeholder="Ex: Galpão A, Corredor 3..." onkeydown="if (event.key === 'Enter') confirmLocMain();" autocomplete="off" /><textarea id="locObsMain" class="loc-input-main" placeholder="Observação (opcional)" style="min-height: 76px; resize: vertical; font-family: inherit;"></textarea><div class="loc-photo-section" id="locPhotoSection"><div class="loc-photo-grid"><div><div class="loc-photo-label">🏷️ Foto da etiqueta <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnEtiqueta" onclick="document.getElementById('locPhotoInputEtiqueta').click()">📷 Tirar foto da etiqueta<input type="file" id="locPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'etiqueta')" /></div><div class="loc-photo-preview" id="locPhotoPreviewEtiqueta"><img id="locPhotoImgEtiqueta" src="" /><button class="loc-photo-remove" onclick="locRemovePhoto('etiqueta')">✕</button></div><div class="loc-photo-error" id="locPhotoErrorEtiqueta">⚠️ Foto da etiqueta obrigatória!</div></div><div><div class="loc-photo-label">📦 Foto da bobina <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnBobina" onclick="document.getElementById('locPhotoInputBobina').click()">📷 Tirar foto da bobina<input type="file" id="locPhotoInputBobina" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'bobina')" /></div><div class="loc-photo-preview" id="locPhotoPreviewBobina"><img id="locPhotoImgBobina" src="" /><button class="loc-photo-remove" onclick="locRemovePhoto('bobina')">✕</button></div><div class="loc-photo-error" id="locPhotoErrorBobina">⚠️ Foto da bobina obrigatória!</div></div></div></div><div id="locErrorMain" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Localização obrigatória!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmLocMain()">✅ Confirmar</button><button class="btn btn-outline" onclick="cancelLocMain()">Cancelar</button></div></div></div>
     <div class="photo-modal" id="photoModal"><div style="text-align: center; color: #fff; font-weight: 700; max-width: 100%; max-height: 82vh; overflow: auto;">🏷️ Etiqueta + 📦 Bobina<br /><img id="photoModalImg" src="" /></div><button class="photo-modal-close" onclick="closePhotoModal()">✕ Fechar</button></div>
@@ -843,7 +880,7 @@
       let S = {
         db: [], scanned: [], checked: new Set(), extras: [], sep: "newline", fileData: null,
         fileLayout: null, meta: {}, confType: "", filter: "all", rptSearch: "",
-        checkerName: "", cloudSessionId: "", collectorMode: false, collectorActive: false,
+        checkerName: "", cloudSessionId: "", cloudSessionStartSaved: false, collectorMode: false, collectorActive: false,
       };
       let currentImportedFile = {
         name: "",
@@ -873,7 +910,7 @@ let cloudLastHeaderWrite = 0;
         cloudConsultUnsub = null, cloudConsultDocs = [], cloudListStatusFilter = "all",
         cloudDetailRows = [], cloudDetailFilter = "all", cloudDetailSearch = "",
         cloudDetailConfId = "", cloudMergeSelectedIds = new Set(), cloudMergedReport = null,
-        cloudSessionUnsub = null, cloudLeaderUnlocked = false, cloudSecretTimer = null,
+        cloudSessionUnsub = null, cloudLeaderUnlocked = false, cloudLeaderRole = null, cloudSecretTimer = null, cloudSecretLongPress = false, cloudSessionStartSaved = false,
         cloudBaseFilesUnsub = null, cloudBaseFilesDocs = [], cloudBaseFilesSearch = "",
         cloudDetailLiveUnsubs = [], cloudDetailRefreshTimer = null,
         cloudDeletedUnsub = null, cloudDeletedIds = new Set(),
@@ -886,7 +923,7 @@ let cloudLastHeaderWrite = 0;
         camManualSelectedCode = null, camCurrentPhotoEtiqueta = null,
         camCurrentPhotoBobina = null, camActx = null;
       const CAM_SCAN_DELAY_MS = 1800;
-      const LEADER_PASSWORD = "1234";
+      const ADMIN_PASSWORD = "35210712";
       const FIREBASE_CONFIG = {
         apiKey: "AIzaSyCJTpQfv3pTOXHvV4TpQl2h2tF0TdtWiNw",
         authDomain: "conferencia-bobinas.firebaseapp.com",
@@ -913,6 +950,7 @@ let cloudLastHeaderWrite = 0;
       S.confType = s.confType || "";
       S.checkerName = s.checkerName || "";
       S.cloudSessionId = s.cloudSessionId || "";
+      S.cloudSessionStartSaved = !!s.cloudSessionStartSaved && !!S.cloudSessionId;
       S.collectorMode = !!s.collectorMode;
       // BUG 1 CORRIGIDO: nunca restaurar collectorActive = true
       // O operador deve iniciar manualmente após recarregar
@@ -925,7 +963,7 @@ let cloudLastHeaderWrite = 0;
     localStorage.setItem("bob3", JSON.stringify({
       db: S.db, scanned: S.scanned, checked: Array.from(S.checked), extras: S.extras,
       meta: S.meta, confType: S.confType, checkerName: S.checkerName,
-      cloudSessionId: S.cloudSessionId, collectorMode: S.collectorMode,
+      cloudSessionId: S.cloudSessionId, cloudSessionStartSaved: !!S.cloudSessionStartSaved, collectorMode: S.collectorMode,
       // BUG 1 CORRIGIDO: sempre grava false para não reabrir ativo
       collectorActive: false,
     }));
@@ -970,17 +1008,158 @@ let cloudLastHeaderWrite = 0;
       function cloudIsConfigured() { return !!(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId && FIREBASE_CONFIG.appId); }
       function cloudStartSecretPress(ev) {
         if (ev) ev.preventDefault();
+        cloudSecretLongPress = false;
         cloudCancelSecretPress();
-        cloudSecretTimer = setTimeout(() => { cloudSecretTimer = null; cloudRequestLeaderAccess(); }, 2000);
+        cloudSecretTimer = setTimeout(() => {
+          cloudSecretTimer = null;
+          cloudSecretLongPress = true;
+          cloudRequestAdminAccess({ fromLongPress: true });
+        }, 2000);
       }
       function cloudCancelSecretPress() { if (cloudSecretTimer) { clearTimeout(cloudSecretTimer); cloudSecretTimer = null; } }
-      function cloudUpdateMergeButton() { const btn = document.getElementById("cloudMergeBtn"); if (btn) btn.style.display = cloudMergeSelectedIds.size > 1 ? "inline-flex" : "none"; }
-      function cloudRequestLeaderAccess() {
-        if (cloudLeaderUnlocked) { switchTab("cloud"); return; }
-        const pass = prompt("Menu do líder. Digite a senha:");
-        if (pass === LEADER_PASSWORD) { cloudLeaderUnlocked = true; notify("Acesso do líder liberado."); switchTab("cloud"); }
-        else if (pass !== null) notify("Senha incorreta.", "error");
+      function cloudEndSecretPress(ev) {
+        const hadTimer = !!cloudSecretTimer;
+        cloudCancelSecretPress();
+        // Clique curto: abre o menu completo sem senha
+        if (hadTimer && !cloudSecretLongPress) cloudOpenSimpleMenu();
       }
+      function cloudUpdateMergeButton() {
+        const btn = document.getElementById("cloudMergeBtn");
+        if (btn) btn.style.display = cloudMergeSelectedIds.size > 1 ? "inline-flex" : "none";
+      }
+      function cloudIsAdmin() { return cloudLeaderRole === "admin"; }
+      function cloudRoleLabel() { return cloudIsAdmin() ? "Admin" : "Operador"; }
+      function cloudUpdateRoleUI() {
+        const badge = document.getElementById("cloudRoleBadge");
+        if (!badge) return;
+        badge.style.display = "inline-flex";
+        badge.onclick = () => cloudRequestAdminAccess({ fromBadge: true });
+        if (cloudIsAdmin()) {
+          badge.className = "cloud-role-badge admin";
+          badge.textContent = "🛡️ Admin";
+          badge.title = "Modo administrador ativo (pode excluir)";
+        } else {
+          badge.className = "cloud-role-badge simple";
+          badge.textContent = "👷 Operador";
+          badge.title = "Toque e digite a senha admin para excluir conferências";
+        }
+      }
+      function cloudApplyCloudAccessUI() {
+        // Itens exclusivos do admin (ex.: botão excluir) dependem de cloudIsAdmin()
+        document.querySelectorAll("[data-admin-only]").forEach((el) => {
+          if (cloudIsAdmin()) el.removeAttribute("hidden");
+          else el.setAttribute("hidden", "");
+        });
+        cloudUpdateRoleUI();
+        cloudUpdateMergeButton();
+        cloudRenderConsultList(document.getElementById("cloudSearch")?.value || "");
+        try { cloudRenderLeaderActiveBase(); } catch (e) {}
+      }
+      function cloudOpenSimpleMenu() {
+        // Não derruba o admin se já estiver autenticado nesta sessão
+        if (!cloudIsAdmin()) {
+          cloudLeaderRole = null;
+          cloudLeaderUnlocked = false;
+        }
+        cloudApplyCloudAccessUI();
+        switchTab("cloud");
+      }
+      let adminPinCallback = null;
+      let adminPinCancelCallback = null;
+      function adminPinOnInput(el) {
+        if (!el) return;
+        // Mantém apenas dígitos e força teclado numérico
+        const digits = String(el.value || "").replace(/\D/g, "");
+        if (el.value !== digits) el.value = digits;
+        const err = document.getElementById("adminPinError");
+        if (err) err.style.display = "none";
+      }
+      function showAdminPinModal({ title = "🛡️ Admin", message = "Digite a senha numérica de administrador:", onSuccess = null, onCancel = null } = {}) {
+        adminPinCallback = typeof onSuccess === "function" ? onSuccess : null;
+        adminPinCancelCallback = typeof onCancel === "function" ? onCancel : null;
+        const titleEl = document.getElementById("adminPinTitle");
+        const msgEl = document.getElementById("adminPinMsg");
+        const input = document.getElementById("adminPinInput");
+        const err = document.getElementById("adminPinError");
+        if (titleEl) titleEl.textContent = title;
+        if (msgEl) msgEl.textContent = message;
+        if (err) err.style.display = "none";
+        if (input) {
+          input.value = "";
+          // Garante teclado numérico em mobile
+          input.setAttribute("inputmode", "numeric");
+          input.setAttribute("pattern", "[0-9]*");
+          input.setAttribute("type", "password");
+        }
+        document.getElementById("adminPinModal")?.classList.add("show");
+        setTimeout(() => {
+          try {
+            input?.focus({ preventScroll: true });
+            // Alguns androids só abrem numérico com click programático
+            input?.click();
+          } catch (e) {
+            try { input?.focus(); } catch (e2) {}
+          }
+        }, 80);
+      }
+      function closeAdminPinModal(success = false) {
+        document.getElementById("adminPinModal")?.classList.remove("show");
+        const input = document.getElementById("adminPinInput");
+        if (input) input.value = "";
+        const err = document.getElementById("adminPinError");
+        if (err) err.style.display = "none";
+        const okCb = adminPinCallback;
+        const cancelCb = adminPinCancelCallback;
+        adminPinCallback = null;
+        adminPinCancelCallback = null;
+        if (success) {
+          if (okCb) okCb();
+        } else if (cancelCb) {
+          cancelCb();
+        }
+      }
+      function confirmAdminPin() {
+        const input = document.getElementById("adminPinInput");
+        const err = document.getElementById("adminPinError");
+        const pass = String(input?.value || "").replace(/\D/g, "");
+        if (pass === ADMIN_PASSWORD) {
+          closeAdminPinModal(true);
+          return;
+        }
+        if (err) err.style.display = "block";
+        if (input) {
+          input.value = "";
+          input.focus();
+        }
+        notify("Senha incorreta.", "error");
+      }
+      function cloudRequestAdminAccess(opts = {}) {
+        if (cloudIsAdmin()) {
+          cloudLeaderUnlocked = true;
+          cloudApplyCloudAccessUI();
+          switchTab("cloud");
+          return;
+        }
+        showAdminPinModal({
+          title: "🛡️ Admin",
+          message: opts.fromBadge
+            ? "Senha numérica para excluir conferências:"
+            : "Digite a senha numérica de administrador:",
+          onSuccess: () => {
+            cloudLeaderUnlocked = true;
+            cloudLeaderRole = "admin";
+            notify("Acesso admin liberado.");
+            cloudApplyCloudAccessUI();
+            switchTab("cloud");
+          },
+          onCancel: () => {
+            if (opts.fromLongPress) cloudOpenSimpleMenu();
+          },
+        });
+      }
+      // Compat: chamadas antigas
+      function cloudRequestLeaderAccess() { cloudRequestAdminAccess(); }
+      function cloudHasElevatedAccess() { return true; }
       function cloudOperatorKey(name = S.checkerName) {
         return String(name || "sem-operador").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "sem-operador";
       }
@@ -1066,13 +1245,51 @@ let cloudLastHeaderWrite = 0;
           return false;
         }
       }
-      async function cloudEnsureSession() {
-        // MODO ECONÔMICO: apenas prepara a conexão e o ID local.
-        // Não grava cabeçalho, base, leituras nem abre listeners durante a conferência.
+      async function cloudRegisterSessionStart(force = false) {
         if (!(await cloudInit())) return null;
         if (!S.checkerName) return null;
-        if (!S.cloudSessionId) { S.cloudSessionId = cloudMakeSessionId(); save(); }
-        cloudSetStatus("ok", "☁️ Nuvem pronta — salvar ao finalizar");
+        if (!S.cloudSessionId) { S.cloudSessionId = cloudMakeSessionId(); S.cloudSessionStartSaved = false; save(); }
+        if (S.cloudSessionStartSaved && !force) {
+          cloudSetStatus("ok", "☁️ Conferência em andamento");
+          return S.cloudSessionId;
+        }
+        try {
+          cloudSetStatus("sync", "☁️ Registrando início...");
+          const d = new Date();
+          const resumo = cloudSummary();
+          const payload = {
+            id: S.cloudSessionId,
+            operador: S.checkerName || "",
+            operadorKey: cloudOperatorKey(),
+            data: cloudDateKey(d),
+            tipo: S.confType || "",
+            status: "em_andamento",
+            resumo,
+            storageMode: "economico_supabase_json",
+            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            iniciadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            criadoEmLocal: d.toISOString(),
+            iniciadoEmLocal: d.toISOString(),
+          };
+          // merge: se já existir (ex.: reload), não apaga campos de finalização
+          await cloudDb.collection("conferencias").doc(S.cloudSessionId).set(payload, { merge: true });
+          S.cloudSessionStartSaved = true;
+          save();
+          cloudSetStatus("ok", "☁️ Conferência iniciada na nuvem");
+          return S.cloudSessionId;
+        } catch (e) {
+          console.warn("Falha ao registrar início da conferência:", e);
+          cloudSetStatus("error", "☁️ Falha ao registrar início");
+          return S.cloudSessionId; // segue local mesmo se nuvem falhar
+        }
+      }
+      async function cloudEnsureSession() {
+        // Garante ID local e registra o início (1 doc leve) na nuvem.
+        if (!(await cloudInit())) return null;
+        if (!S.checkerName) return null;
+        if (!S.cloudSessionId) { S.cloudSessionId = cloudMakeSessionId(); S.cloudSessionStartSaved = false; save(); }
+        await cloudRegisterSessionStart(false);
         return S.cloudSessionId;
       }
       function cloudConferenceRef() { if (!cloudReady || !S.cloudSessionId) return null; return cloudDb.collection("conferencias").doc(S.cloudSessionId); }
@@ -1259,7 +1476,6 @@ let cloudLastHeaderWrite = 0;
         return activeData;
       }
       function cloudPickLeaderBaseFile() {
-        if (!cloudLeaderUnlocked) { cloudRequestLeaderAccess(); return; }
         document.getElementById("leaderBaseFileInput")?.click();
       }
       function showBaseNameModal(defaultName = "") {
@@ -1303,7 +1519,6 @@ let cloudLastHeaderWrite = 0;
         return rows.slice(1).filter((r) => String(r[codeIdx] || "").trim()).length;
       }
       function cloudHandleLeaderBaseFile(e) {
-        if (!cloudLeaderUnlocked) { cloudRequestLeaderAccess(); return; }
         const f = e.target.files[0];
         if (!f) return;
         const reader = new FileReader();
@@ -1395,7 +1610,7 @@ let cloudLastHeaderWrite = 0;
               <div class="cloud-item-title">${esc(fileName)}</div>
               <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end">
                 <button class="cloud-report-btn" onclick="cloudLoadBaseFile('${CLOUD_ACTIVE_BASE_DOC_ID}')">📥 Carregar</button>
-                ${leader ? `<button class="cloud-delete-btn" onclick="cloudDeleteBaseFile('${CLOUD_ACTIVE_BASE_DOC_ID}')">🗑️ Apagar</button>` : ""}
+                ${leader && cloudIsAdmin() ? `<button class="cloud-delete-btn" onclick="cloudDeleteBaseFile('${CLOUD_ACTIVE_BASE_DOC_ID}')">🗑️ Apagar</button>` : ""}
               </div>
             </div>
             <div class="cloud-item-info">
@@ -1518,11 +1733,12 @@ let cloudLastHeaderWrite = 0;
         }
       }
       async function cloudDeleteBaseFile(baseId = CLOUD_ACTIVE_BASE_DOC_ID) {
-        if (!cloudLeaderUnlocked) {
-          cloudRequestLeaderAccess();
+        if (!cloudIsAdmin()) {
+          notify("Apenas o administrador pode apagar a base ativa.", "error");
+          cloudRequestAdminAccess({ fromBadge: true });
           return;
         }
-        if (!confirm("Remover a base ativa? Os aparelhos não conseguirão carregar até o líder salvar outra base.")) return;
+        if (!confirm("Remover a base ativa? Os aparelhos não conseguirão carregar até alguém salvar outra base.")) return;
         try {
           if (!(await cloudInit())) throw new Error("Firebase indisponível");
           const ref = cloudDb.collection("arquivos_base").doc(CLOUD_ACTIVE_BASE_DOC_ID);
@@ -1645,15 +1861,18 @@ let cloudLastHeaderWrite = 0;
             storagePrefix: `${cloudOperatorKey()}/${cloudDateKey()}/${S.cloudSessionId}/`,
             atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
             finalizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-            criadoEmLocal: d.toISOString(),
+            finalizadoEmLocal: d.toISOString(),
           }, { merge: true });
+          S.cloudSessionStartSaved = true;
+          save();
 
           cloudStopBufferFlushTimer();
           cloudWriteBuffer = [];
           cloudHeaderDirty = false;
           cloudSetStatus("ok", "☁️ Conferência finalizada");
           if (progress) progress.classList.remove("show");
-          if (cloudLeaderUnlocked) renderCloudConsult(document.getElementById("cloudSearch")?.value || "");
+          // Atualiza lista se o menu da nuvem estiver aberto
+          if (document.getElementById("sectionCloud")?.classList.contains("active")) renderCloudConsult(document.getElementById("cloudSearch")?.value || "");
           return true;
         } catch (e) {
           console.warn("Falha ao finalizar:", e);
@@ -1679,7 +1898,6 @@ let cloudLastHeaderWrite = 0;
       function cloudInlineDetailId(confId) { return "cloudDetailInline_" + String(confId || "").replace(/[^a-zA-Z0-9_-]/g, "_"); }
       async function renderCloudConsult(search = "") {
         const box = document.getElementById("cloudConsultBox"); if (!box) return;
-        if (!cloudLeaderUnlocked) { box.innerHTML = '<div class="empty">Área restrita ao líder. Segure o botão ☁️ por 2 segundos.</div>'; return; }
         box.innerHTML = '<div class="empty">Consultando conferências...</div>';
         try {
           if (!(await cloudInit())) { box.innerHTML = '<div class="empty">Firebase não configurado ou sem conexão.</div>'; cloudSetStatus("error", "☁️ Nuvem indisponível"); return; }
@@ -1698,7 +1916,7 @@ let cloudLastHeaderWrite = 0;
         const box = document.getElementById("cloudConsultBox"); if (!box) return;
         const q = String(search || "").trim().toLowerCase();
         let docs = (cloudConsultDocs || []).filter((d) => !d.deleted && !d.hidden && d.status !== "deleted" && !cloudDeletedIds.has(d.id));
-        if (q) docs = docs.filter((d) => [d.operador, d.operadorKey, d.data, d.tipo, d.status, d.id].join(" ").toLowerCase().includes(q));
+        if (q) docs = docs.filter((d) => [d.nome, d.nomeConferencia, d.operador, d.operadorKey, d.data, d.tipo, d.status, d.id].join(" ").toLowerCase().includes(q));
         if (cloudListStatusFilter !== "all") docs = docs.filter((d) => (d.status || "em_andamento") === cloudListStatusFilter);
         if (!docs.length) { box.innerHTML = '<div class="empty">Nenhuma conferência encontrada.</div>'; return; }
         box.innerHTML = docs.map((d) => {
@@ -1711,9 +1929,10 @@ let cloudLastHeaderWrite = 0;
                 </div>
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end">
                   <div class="cloud-item-status ${status === "finalizada" ? "finalizada" : ""}">${esc(status)}</div>
+                  <button class="cloud-edit-btn" onclick="event.stopPropagation(); cloudRenameConference('${esc(d.id).replace(/'/g, "&#39;")}')">✏️ Operador</button>
                   <button class="cloud-report-btn" onclick="cloudShowExportModal('${esc(d.id).replace(/'/g, "&#39;")}')">Exportar</button>
                   ${status !== "finalizada" ? `<button class="cloud-report-btn" onclick="cloudFinishConferenceById('${esc(d.id).replace(/'/g, "&#39;")}')">Finalizar</button>` : ""}
-                  <button class="cloud-delete-btn" onclick="cloudDeleteConference('${esc(d.id).replace(/'/g, "&#39;")}')">🗑️ Excluir</button>
+                  ${cloudIsAdmin() ? `<button class="cloud-delete-btn" onclick="event.stopPropagation(); cloudDeleteConference('${esc(d.id).replace(/'/g, "&#39;")}')">🗑️ Excluir</button>` : ""}
                 </div>
               </div>
               <div class="cloud-item-info">
@@ -1839,7 +2058,6 @@ let cloudLastHeaderWrite = 0;
         return { csv: !!document.getElementById("exFmtCsv")?.checked, txt: !!document.getElementById("exFmtTxt")?.checked, zip: !!document.getElementById("exFmtZip")?.checked, summary: !!document.getElementById("exSummary")?.checked, ops: !!document.getElementById("exOps")?.checked, checked: !!document.getElementById("exChecked")?.checked, pending: !!document.getElementById("exPending")?.checked, extra: !!document.getElementById("exExtra")?.checked, obs: !!document.getElementById("exObs")?.checked, photoLinks: !!document.getElementById("exPhotoLinks")?.checked, photosZip: !!document.getElementById("exPhotosZip")?.checked };
       }
       function cloudShowExportModal(confId) {
-        if (!cloudLeaderUnlocked) return;
         let modal = document.getElementById("cloudExportModal");
         if (!modal) {
           modal = document.createElement("div"); modal.id = "cloudExportModal"; modal.className = "modal-bg";
@@ -1909,7 +2127,6 @@ let cloudLastHeaderWrite = 0;
         } catch (e) { console.error(e); cloudSetStatus("error", "☁️ Erro na exportação"); notify("Erro ao exportar: " + (e.message || e), "error"); }
       }
       async function cloudExportConference(confId, fmt, scope = "all") {
-        if (!cloudLeaderUnlocked) return;
         if (confId === "__merged__") { cloudExportMergedReport(fmt, scope); return; }
         try {
           cloudSetStatus("sync", "Gerando relatório...");
@@ -1951,7 +2168,6 @@ let cloudLastHeaderWrite = 0;
         cloudClearDetailLiveListeners();
       }
       async function cloudOpenConference(confId, options = {}) {
-        if (!cloudLeaderUnlocked) return;
         const silent = !!options.silent;
         const anchor = options && options.anchor ? options.anchor : null;
         const prevFilter = silent ? cloudDetailFilter : "all";
@@ -2103,8 +2319,7 @@ let cloudLastHeaderWrite = 0;
         const box = document.getElementById("cloudDetailBox"); if (box) { box.className = "cloud-detail"; box.innerHTML = ""; }
       }
       async function cloudFinishConferenceById(confId) {
-        if (!cloudLeaderUnlocked) return; if (!confirm(`Finalizar a conferência ${confId}?`)) return;
-        const pass = prompt("Confirme a senha do líder para excluir:"); if (pass !== LEADER_PASSWORD) { notify("Senha incorreta. Exclusão cancelada.", "error"); return; }
+        if (!confirm(`Finalizar a conferência ${confId}?`)) return;
         try {
           cloudSetStatus("sync", "☁️ Finalizando conferência..."); if (!(await cloudInit())) throw new Error("Firebase indisponível");
           const ref = cloudDb.collection("conferencias").doc(confId); const snap = await ref.get(); if (!snap.exists) throw new Error("Conferência não encontrada");
@@ -2141,7 +2356,6 @@ let cloudLastHeaderWrite = 0;
         notify("Relatório consolidado exportado!");
       }
       async function cloudMergeSelectedConferences() {
-        if (!cloudLeaderUnlocked) return;
         const ids = Array.from(cloudMergeSelectedIds); if (ids.length < 2) { notify("Selecione pelo menos 2 conferências para juntar.", "warning"); return; }
         const box = document.getElementById("cloudDetailBox"); if (box) { box.className = "cloud-detail show"; box.innerHTML = '<div class="empty">Juntando conferências...</div>'; }
         try {
@@ -2221,9 +2435,52 @@ let cloudLastHeaderWrite = 0;
         const snap = await confRef.collection(name).limit(450).get(); if (snap.empty) return 0;
         const batch = cloudDb.batch(); snap.docs.forEach((doc) => batch.delete(doc.ref)); await batch.commit(); return snap.size;
       }
+      async function cloudRenameConference(confId) {
+        const doc = (cloudConsultDocs || []).find((d) => d.id === confId) || { id: confId };
+        const current = String(doc.operador || "").trim();
+        const name = prompt("Editar nome do operador (a data não será alterada):", current);
+        if (name === null) return;
+        const operador = String(name).trim();
+        if (!operador) { notify("Nome do operador obrigatório.", "error"); return; }
+        try {
+          cloudSetStatus("sync", "☁️ Atualizando operador...");
+          if (!(await cloudInit())) throw new Error("Firebase indisponível");
+          const operadorKey = cloudOperatorKey(operador);
+          await cloudDb.collection("conferencias").doc(confId).set({
+            operador,
+            operadorKey,
+            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+          }, { merge: true });
+          const idx = (cloudConsultDocs || []).findIndex((d) => d.id === confId);
+          if (idx >= 0) cloudConsultDocs[idx] = { ...cloudConsultDocs[idx], operador, operadorKey };
+          cloudRenderConsultList(document.getElementById("cloudSearch")?.value || "");
+          const detailTitle = document.querySelector("#cloudDetailBox .cloud-detail-title, .cloud-inline-detail .cloud-detail-title");
+          if (detailTitle && cloudDetailConfId === confId) {
+            const updated = (cloudConsultDocs || []).find((d) => d.id === confId) || { ...doc, operador };
+            detailTitle.textContent = cloudConferenceTitle(updated);
+          }
+          cloudSetStatus("ok", "☁️ Operador atualizado");
+          notify("Nome do operador atualizado.");
+        } catch (e) {
+          console.error(e);
+          notify("Erro ao editar operador: " + (e.message || e), "error");
+          cloudSetStatus("error", "☁️ Erro ao editar operador");
+        }
+      }
       async function cloudDeleteConference(confId) {
-        if (!cloudLeaderUnlocked) return;
+        if (!cloudIsAdmin()) {
+          notify("Apenas o administrador pode excluir conferências.", "error");
+          cloudRequestAdminAccess({ fromBadge: true });
+          return;
+        }
         if (!confirm(`Excluir definitivamente a conferência ${confId}?`)) return;
+        showAdminPinModal({
+          title: "🗑️ Confirmar exclusão",
+          message: "Digite a senha numérica para excluir:",
+          onSuccess: () => cloudDeleteConferenceConfirmed(confId),
+        });
+      }
+      async function cloudDeleteConferenceConfirmed(confId) {
         try {
           cloudSetStatus("sync", "☁️ Excluindo conferência...");
           if (!(await cloudInit())) throw new Error("Firebase indisponível");
@@ -2252,7 +2509,6 @@ let cloudLastHeaderWrite = 0;
       }
 
       function switchTab(t) {
-        if (t === "cloud" && !cloudLeaderUnlocked) { cloudRequestLeaderAccess(); return; }
         document.querySelectorAll(".tab").forEach((b) => b.classList.remove("active"));
         document.querySelectorAll(".section").forEach((s) => s.classList.remove("active"));
         const tabEl = document.getElementById("tab" + t.charAt(0).toUpperCase() + t.slice(1)); if (tabEl) tabEl.classList.add("active");
@@ -2260,7 +2516,11 @@ let cloudLastHeaderWrite = 0;
         if (t === "scan") { updateStats(); updateCollectorModeUI(); ensureCheckerName(); if (S.collectorMode && S.collectorActive) setTimeout(focusCollectorInput, 120); }
         if (t === "report") updateReport();
         if (t === "import" && !cloudBaseFilesDocs.length) cloudRefreshBaseFiles();
-        if (t === "cloud") { cloudRefreshBaseFiles(); renderCloudConsult(document.getElementById("cloudSearch")?.value || ""); }
+        if (t === "cloud") {
+          cloudApplyCloudAccessUI();
+          cloudRefreshBaseFiles();
+          renderCloudConsult(document.getElementById("cloudSearch")?.value || "");
+        }
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
       function showModal(title, msg, fn) { document.getElementById("mTitle").textContent = title; document.getElementById("mMsg").textContent = msg; document.getElementById("modal").classList.add("show"); document.getElementById("mConfirm").onclick = () => { closeModal(); fn(); }; }
@@ -2316,6 +2576,7 @@ let cloudLastHeaderWrite = 0;
   S.meta = {};
   S.confType = "";
   S.cloudSessionId = "";
+  S.cloudSessionStartSaved = false;
   S.db = [];
   S.scanned = [];
   S.checked = new Set();
@@ -2374,6 +2635,7 @@ let cloudLastHeaderWrite = 0;
           S.checked = new Set();
           S.extras = [];
           S.cloudSessionId = "";
+          S.cloudSessionStartSaved = false;
         }
         const maxC = Math.max(...rows.map((r) => r.length));
         const special = detectSpecialLayout(rows);
@@ -2826,9 +3088,11 @@ if (S.collectorMode) {
       async function startConference() {
         if (S.db.length === 0) { notify("Importe os dados primeiro!", "error"); return; }
         if (!ensureCheckerName(() => startConference())) return;
+        // Registra o início na nuvem (doc em_andamento) sem bloquear o fluxo se falhar
+        try { await cloudEnsureSession(); } catch (e) { console.warn(e); }
         if (S.collectorMode) startCollectorConference();
         else openCamera(true);
-        cloudSetStatus("ok", "☁️ Modo econômico: salva ao finalizar");
+        cloudSetStatus("ok", S.cloudSessionStartSaved ? "☁️ Conferência registrada" : "☁️ Nuvem: salva ao finalizar");
       }
       function processCollectorCode(rawCode) {
   // BUG 2 CORRIGIDO: trava anti duplo disparo
@@ -3592,5 +3856,5 @@ window.addEventListener("beforeunload", () => {
 
 init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a180e007b82c9872',t:'MTc4MzUzMjQzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a180e007b82c9872',t:'MTc4MzUzMjQzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1eb93059c3d016e',t:'MTc4NDY1MTI1OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
