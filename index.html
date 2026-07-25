@@ -442,12 +442,71 @@
       #camLocModal .cam-loc-code { position: sticky; top: 38px; z-index: 9; }
       .op-summary-list { display: grid; gap: 8px; }
       .op-summary-item { background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; }
-      .op-summary-op { font-weight: 800; font-size: 0.92em; color: var(--text-primary); margin-bottom: 3px; }
+      .op-summary-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+      .op-summary-op { font-weight: 800; font-size: 0.92em; color: var(--text-primary); margin-bottom: 3px; word-break: break-word; }
+      .op-summary-pct { color: var(--accent-green); font-size: 0.85em; font-weight: 900; white-space: nowrap; }
       .op-summary-info { display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.8em; color: var(--text-secondary); }
       .op-summary-info strong { color: var(--text-primary); }
+      .op-summary-progress { height: 7px; background: #e2e8f0; border-radius: 999px; overflow: hidden; margin-top: 8px; }
+      .op-summary-progress > span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent-blue), var(--accent-green)); }
       .op-summary-scroll { max-height: 520px; overflow-y: auto; padding-right: 4px; -webkit-overflow-scrolling: touch; }
       .op-summary-scroll::-webkit-scrollbar { width: 4px; }
       .op-summary-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+      body.report-panel-open { overflow: hidden; }
+      .report-actions-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+      .report-action-card { width: 100%; border: 1px solid var(--border); border-radius: 16px; background: #fff; padding: 14px; display: flex; align-items: center; gap: 12px; text-align: left; cursor: pointer; box-shadow: var(--shadow); transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; -webkit-tap-highlight-color: transparent; }
+      .report-action-card:hover { border-color: rgba(59, 130, 246, 0.35); box-shadow: 0 12px 28px rgba(59, 130, 246, 0.12); transform: translateY(-1px); }
+      .report-action-card:active { transform: scale(0.985); }
+      .report-action-icon { width: 46px; height: 46px; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.45em; flex: 0 0 auto; }
+      .report-action-icon.blue { background: rgba(59, 130, 246, 0.12); }
+      .report-action-icon.green { background: rgba(16, 185, 129, 0.12); }
+      .report-action-main { min-width: 0; flex: 1; display: grid; gap: 4px; }
+      .report-action-title { color: var(--text-primary); font-size: 0.98em; font-weight: 900; }
+      .report-action-desc { color: var(--text-secondary); font-size: 0.79em; line-height: 1.3; }
+      .report-action-metrics { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+      .report-action-metrics span { border: 1px solid var(--border); background: var(--bg-input); color: var(--text-secondary); border-radius: 999px; padding: 4px 8px; font-size: 0.7em; font-weight: 800; white-space: nowrap; }
+      .report-action-metrics strong { color: var(--text-primary); }
+      .report-open-pill { align-self: stretch; display: flex; align-items: center; justify-content: center; color: #fff; background: var(--accent-blue); border-radius: 12px; padding: 0 10px; font-weight: 900; font-size: 0.76em; flex: 0 0 auto; }
+      .report-final-actions { justify-content: center; margin-top: 14px; }
+      .report-fullscreen { position: fixed; inset: 0; z-index: 1800; background: var(--bg-primary); display: none; flex-direction: column; opacity: 0; transform: translateY(10px); transition: opacity 0.18s ease, transform 0.18s ease; }
+      .report-fullscreen.show { display: flex; opacity: 1; transform: translateY(0); }
+      .report-fullscreen-head { background: rgba(255, 255, 255, 0.98); border-bottom: 1px solid var(--border); box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08); padding: max(env(safe-area-inset-top, 8px), 8px) 12px 10px; flex: 0 0 auto; }
+      .report-panel-row { display: flex; align-items: flex-start; gap: 10px; }
+      .report-back-btn { border: 1px solid rgba(100, 116, 139, 0.25); background: rgba(100, 116, 139, 0.1); color: var(--text-primary); border-radius: 12px; padding: 9px 11px; font-weight: 900; cursor: pointer; flex: 0 0 auto; -webkit-tap-highlight-color: transparent; }
+      .report-back-btn:active { transform: scale(0.97); }
+      .report-panel-title-wrap { min-width: 0; flex: 1; }
+      .report-panel-title { font-size: 1.03em; font-weight: 900; color: var(--text-primary); line-height: 1.2; }
+      .report-panel-sub { color: var(--text-secondary); font-size: 0.78em; margin-top: 3px; line-height: 1.25; }
+      .report-mode-switch { display: flex; gap: 6px; margin-top: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 4px; }
+      .report-mode-switch button { flex: 1; border: none; border-radius: 9px; background: transparent; color: var(--text-secondary); padding: 9px 6px; font-size: 0.78em; font-weight: 900; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+      .report-mode-switch button.active { background: var(--accent-blue); color: #fff; box-shadow: 0 2px 10px rgba(59, 130, 246, 0.25); }
+      .report-panel-search { margin: 10px 0 0; }
+      .report-detail-filters { margin: 10px 0 0; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
+      .report-panel-content { flex: 1 1 auto; overflow: auto; padding: 12px 12px calc(14px + env(safe-area-inset-bottom, 0px)); -webkit-overflow-scrolling: touch; }
+      .report-panel-view { display: none; }
+      .report-panel-view.active { display: block; }
+      .report-panel-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+      .report-mini-stat { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 9px 8px; text-align: center; box-shadow: var(--shadow); }
+      .report-mini-stat strong { display: block; color: var(--text-primary); font-size: 1.05em; }
+      .report-mini-stat span { display: block; color: var(--text-secondary); font-size: 0.68em; font-weight: 800; margin-top: 2px; }
+      .report-op-summary-scroll { max-height: none; overflow: visible; padding-right: 0; }
+      .report-fullscreen .op-summary-list { gap: 9px; }
+      .report-fullscreen .op-summary-item { background: #fff; border-radius: 14px; padding: 12px; box-shadow: var(--shadow); }
+      .report-result-count { color: var(--text-secondary); font-size: 0.78em; font-weight: 800; margin-bottom: 8px; }
+      .report-table-wrap { max-height: none; border: 1px solid var(--border); background: #fff; }
+      .report-detail-table { min-width: 760px; }
+      .report-fullscreen .dtbl tbody td { vertical-align: top; }
+      @media (min-width: 720px) {
+        .report-actions-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .report-panel-content { padding-left: 18px; padding-right: 18px; }
+        .report-fullscreen .op-summary-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+      @media (max-width: 520px) {
+        .report-open-pill { display: none; }
+        .report-action-card { align-items: flex-start; }
+        .report-action-icon { width: 42px; height: 42px; font-size: 1.25em; }
+        .report-panel-metrics { grid-template-columns: repeat(2, 1fr); }
+      }
       #camLocModal .cam-photo-section { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: start; margin-top: 8px; padding-top: 8px; }
       #camLocModal .cam-photo-section > .cam-photo-label:nth-child(1) { grid-column: 1; grid-row: 1; }
       #camLocModal #camPhotoBtnEtiqueta { grid-column: 1; grid-row: 2; }
@@ -726,27 +785,85 @@
           <div class="prog-wrap" style="margin-top: 10px"><div class="prog-head"><span>Conferência Geral</span><span class="pct" id="rPct">0%</span></div><div class="prog-bar"><div class="prog-fill" id="rFill" style="width: 0%"></div></div></div>
         </div>
         <div class="card">
-          <div class="card-title">📦 Resumo por OP</div>
-          <div class="card-sub">Bobinas encontradas em relação ao total de cada OP</div>
-          <div class="search-wrap" style="margin-top: 10px"><span class="si">🔍</span><input class="search-input" id="opSummarySearch" placeholder="Buscar OP..." oninput="renderOpSummary(this.value)" /></div>
-          <div class="op-summary-scroll"><div id="opSummaryBody"></div></div>
+          <div class="card-title">🔎 Detalhes do relatório</div>
+          <div class="card-sub">Toque em uma opção para abrir em tela cheia com busca, filtros e rolagem própria.</div>
+          <div class="report-actions-grid">
+            <button type="button" class="report-action-card" onclick="openReportPanel('ops')">
+              <span class="report-action-icon blue">📦</span>
+              <span class="report-action-main">
+                <span class="report-action-title">Resumo por OP's</span>
+                <span class="report-action-desc">Visualizar o progresso de cada OP, com encontradas, pendentes e percentual.</span>
+                <span class="report-action-metrics">
+                  <span><strong id="rOpCount">0</strong> OP's</span>
+                  <span><strong id="rOpFound">0</strong>/<strong id="rOpTotal">0</strong> encontradas</span>
+                  <span><strong id="rOpPctCard">0%</strong> geral</span>
+                </span>
+              </span>
+              <span class="report-open-pill">Abrir</span>
+            </button>
+            <button type="button" class="report-action-card" onclick="openReportPanel('detail')">
+              <span class="report-action-icon green">📋</span>
+              <span class="report-action-main">
+                <span class="report-action-title">Lista detalhada</span>
+                <span class="report-action-desc">Ver bobina a bobina com código, OP, peso, status, horário, local, observação e foto.</span>
+                <span class="report-action-metrics">
+                  <span><strong id="rDetailCount">0</strong> itens</span>
+                  <span><strong id="rDetailCheckedCard">0</strong> conferidas</span>
+                  <span><strong id="rDetailPendingCard">0</strong> pendentes</span>
+                  <span><strong id="rDetailExtraCard">0</strong> extras</span>
+                </span>
+              </span>
+              <span class="report-open-pill">Abrir</span>
+            </button>
+          </div>
+          <div class="btn-group report-final-actions">
+            <button class="btn btn-primary" onclick="finishConference()">✅ Finalizar</button>
+            <button class="btn btn-outline" onclick="exportRpt('csv')">📄 CSV local</button>
+            <button class="btn btn-outline" onclick="exportRpt('txt')">📝 TXT local</button>
+          </div>
         </div>
-        <div class="card">
-          <div class="card-title">📋 Lista Detalhada</div>
-          <div class="filters">
-            <button class="fbtn active" onclick="filterRpt('all', this)">📋 Todos</button>
-            <button class="fbtn" onclick="filterRpt('checked', this)">✅ Conferidos</button>
-            <button class="fbtn" onclick="filterRpt('pending', this)">⏳ Pendentes</button>
-            <button class="fbtn" onclick="filterRpt('extra', this)">⚠️ Extras</button>
+
+        <div class="report-fullscreen" id="reportFullscreen" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="reportPanelTitle">
+          <div class="report-fullscreen-head">
+            <div class="report-panel-row">
+              <button type="button" class="report-back-btn" onclick="closeReportPanel()">← Voltar</button>
+              <div class="report-panel-title-wrap">
+                <div class="report-panel-title" id="reportPanelTitle">📦 Resumo por OP's</div>
+                <div class="report-panel-sub" id="reportPanelSub">Progresso por OP em tela cheia.</div>
+              </div>
+            </div>
+            <div class="report-mode-switch" aria-label="Alternar visualização do relatório">
+              <button type="button" id="reportModeOps" onclick="setReportPanelMode('ops')">📦 OP's</button>
+              <button type="button" id="reportModeDetail" onclick="setReportPanelMode('detail')">📋 Lista</button>
+            </div>
+            <div class="search-wrap report-panel-search"><span class="si">🔍</span><input class="search-input" id="reportFullscreenSearch" placeholder="Buscar OP..." oninput="reportPanelSearch(this.value)" /></div>
+            <div class="filters report-detail-filters" id="reportDetailFilters">
+              <button class="fbtn active" data-filter="all" onclick="filterRpt('all', this)">📋 Todos</button>
+              <button class="fbtn" data-filter="checked" onclick="filterRpt('checked', this)">✅ Conferidos</button>
+              <button class="fbtn" data-filter="pending" onclick="filterRpt('pending', this)">⏳ Pendentes</button>
+              <button class="fbtn" data-filter="extra" onclick="filterRpt('extra', this)">⚠️ Extras</button>
+            </div>
           </div>
-          <div class="search-wrap"><span class="si">🔍</span><input class="search-input" placeholder="Buscar..." oninput="rptSearch(this.value)" /></div>
-          <div class="tbl-wrap">
-            <table class="dtbl">
-              <thead><tr><th>#</th><th>Código</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Observação</th><th>📸</th></tr></thead>
-              <tbody id="rptBody"></tbody>
-            </table>
+          <div class="report-panel-content">
+            <div class="report-panel-view" id="reportOpsView">
+              <div class="report-panel-metrics">
+                <div class="report-mini-stat"><strong id="reportPanelOpsCount">0</strong><span>OP's</span></div>
+                <div class="report-mini-stat"><strong id="reportPanelOpsFound">0</strong><span>Encontradas</span></div>
+                <div class="report-mini-stat"><strong id="reportPanelOpsPending">0</strong><span>Pendentes</span></div>
+                <div class="report-mini-stat"><strong id="reportPanelOpsPct">0%</strong><span>Geral</span></div>
+              </div>
+              <div class="op-summary-scroll report-op-summary-scroll"><div id="opSummaryBody"></div></div>
+            </div>
+            <div class="report-panel-view" id="reportDetailView">
+              <div class="report-result-count" id="reportDetailResultCount">0 itens</div>
+              <div class="tbl-wrap report-table-wrap">
+                <table class="dtbl report-detail-table">
+                  <thead><tr><th>#</th><th>Código</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Observação</th><th>📸</th></tr></thead>
+                  <tbody id="rptBody"></tbody>
+                </table>
+              </div>
+            </div>
           </div>
-          <div class="btn-group" style="justify-content: center; margin-top: 10px"><button class="btn btn-primary" onclick="finishConference()">✅ Finalizar</button><button class="btn btn-outline" onclick="exportRpt('csv')">📄 CSV local</button><button class="btn btn-outline" onclick="exportRpt('txt')">📝 TXT local</button></div>
         </div>
       </div>
       <div class="section" id="sectionCloud">
@@ -915,6 +1032,8 @@
         fileLayout: null, meta: {}, confType: "", filter: "all", rptSearch: "",
         checkerName: "", cloudSessionId: "", cloudSessionStartSaved: false, collectorMode: false, collectorActive: false,
       };
+      let reportPanelMode = "ops";
+      let reportOpSummarySearch = "";
       let currentImportedFile = {
         name: "",
         content: "",
@@ -3372,26 +3491,106 @@ if (S.collectorMode) {
         S.db.forEach((code) => { const chk = S.checked.has(code), scan = S.scanned.find((s) => s.code === code && s.status === "found"); items.push({ code, op: getOP(code), peso: getPeso(code), status: chk ? "checked" : "pending", manual: !!scan?.manual, time: scan ? scan.time : "-", location: scan?.location || "", observation: scan?.observation || "", hasPhoto: !!scan?.hasPhoto }); });
         return items;
       }
+      function setText(id, value) { const el = document.getElementById(id); if (el) el.textContent = value; }
+      function reportPct(total, checked) { return total > 0 ? ((checked / total) * 100).toFixed(1) : "0.0"; }
+      function reportStatusText(it) {
+        if (it.status === "checked") return it.manual ? "Conferido Manual" : "Conferido";
+        if (it.status === "pending") return "Pendente";
+        return "Não Prevista";
+      }
+      function reportStatusBadge(it) {
+        const cls = it.status === "checked" ? "checked" : it.status === "pending" ? "pending" : "extra";
+        const icon = it.status === "checked" ? (it.manual ? "📸" : "✅") : it.status === "pending" ? "⏳" : "⚠️";
+        return `<span class="badge ${cls}">${icon} ${esc(reportStatusText(it))}</span>`;
+      }
+      function updateReportPanelMetrics() {
+        const total = S.db.length;
+        const checked = S.checked.size;
+        const pending = Math.max(total - checked, 0);
+        const extras = [...new Set(S.extras)].length;
+        const ops = getOpSummaryItems();
+        const pct = reportPct(total, checked) + "%";
+        const detailTotal = getReportItems().length;
+        setText("rOpCount", ops.length);
+        setText("rOpFound", checked);
+        setText("rOpTotal", total);
+        setText("rOpPctCard", pct);
+        setText("rDetailCount", detailTotal);
+        setText("rDetailCheckedCard", checked);
+        setText("rDetailPendingCard", pending);
+        setText("rDetailExtraCard", extras);
+        setText("reportPanelOpsCount", ops.length);
+        setText("reportPanelOpsFound", checked);
+        setText("reportPanelOpsPending", pending);
+        setText("reportPanelOpsPct", pct);
+      }
       function renderOpSummary(search = "") {
-        const box = document.getElementById("opSummaryBody"); if (!box) return; let ops = getOpSummaryItems(); const q = String(search || "").trim().toLowerCase(); if (q) ops = ops.filter((op) => String(op.op || "").toLowerCase().includes(q));
+        const box = document.getElementById("opSummaryBody"); if (!box) return;
+        let ops = getOpSummaryItems(); const q = String(search || "").trim().toLowerCase();
+        if (q) ops = ops.filter((op) => String(op.op || "").toLowerCase().includes(q));
         if (!ops.length) { box.innerHTML = '<div class="empty">Nenhuma OP encontrada</div>'; return; }
-        box.innerHTML = '<div class="op-summary-list">' + ops.map((op) => `<div class="op-summary-item"><div class="op-summary-op">OP ${esc(op.op || "-")}</div><div class="op-summary-info"><span>✅ Encontradas: <strong>${op.checked}/${op.total}</strong></span></div></div>`).join("") + "</div>";
+        box.innerHTML = '<div class="op-summary-list">' + ops.map((op) => {
+          const pct = Math.max(0, Math.min(100, Number(op.pct) || 0));
+          return `<div class="op-summary-item"><div class="op-summary-head"><div class="op-summary-op">OP ${esc(op.op || "-")}</div><div class="op-summary-pct">${esc(op.pct)}%</div></div><div class="op-summary-info"><span>✅ Encontradas: <strong>${op.checked}/${op.total}</strong></span><span>⏳ Pendentes: <strong>${op.pending}</strong></span></div><div class="op-summary-progress"><span style="width:${pct}%"></span></div></div>`;
+        }).join("") + "</div>";
       }
       function updateReport() {
         const total = S.db.length, chk = S.checked.size, pend = total - chk, ext = [...new Set(S.extras)].length, pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0;
         document.getElementById("rTotal").textContent = total; document.getElementById("rChecked").textContent = chk; document.getElementById("rPending").textContent = pend; document.getElementById("rExtra").textContent = ext; document.getElementById("rPct").textContent = pct + "%"; document.getElementById("rFill").style.width = pct + "%"; document.getElementById("rCheckerName").textContent = S.checkerName || "—"; document.getElementById("rConferenceType").textContent = S.confType || "—";
-        renderRpt(); renderOpSummary(document.getElementById("opSummarySearch")?.value || "");
+        updateReportPanelMetrics(); renderRpt(); renderOpSummary(reportOpSummarySearch);
       }
       function renderRpt() {
-        const tbody = document.getElementById("rptBody"); let items = getReportItems(); if (S.filter !== "all") items = items.filter((i) => i.status === S.filter);
-        if (S.rptSearch) items = items.filter((i) => i.code.toLowerCase().includes(S.rptSearch.toLowerCase()) || String(i.op || "").toLowerCase().includes(S.rptSearch.toLowerCase()));
+        const tbody = document.getElementById("rptBody"); if (!tbody) return;
+        let items = getReportItems(); if (S.filter !== "all") items = items.filter((i) => i.status === S.filter);
+        if (S.rptSearch) {
+          const q = S.rptSearch.toLowerCase();
+          items = items.filter((i) => [i.code, i.op, i.peso, reportStatusText(i), i.time, i.location, i.observation].some((v) => String(v || "").toLowerCase().includes(q)));
+        }
+        const counter = document.getElementById("reportDetailResultCount"); if (counter) counter.textContent = `${items.length} ${items.length === 1 ? "item" : "itens"}`;
         const d = items.slice(0, 500);
-        tbody.innerHTML = d.map((it, i) => { let bt = it.status === "checked" ? (it.manual ? "📸 Manual" : "✅") : it.status === "pending" ? "⏳" : "⚠️"; return `<tr><td>${i + 1}</td><td>${esc(it.code)}</td><td>${esc(it.op || "-")}</td><td>${esc(it.peso || "-")}</td><td>${bt}</td><td>${esc(it.time)}</td><td>${it.status === "extra" ? "📌 " + esc(it.location) : "—"}</td><td>${it.observation ? esc(it.observation) : "—"}</td><td>${it.hasPhoto ? `<button class="icon-btn" onclick="showPhotoModal('${esc(it.code).replace(/'/g, "&#39;")}')">📸</button>` : "—"}</td></tr>`; }).join("");
+        tbody.innerHTML = d.map((it, i) => {
+          const loc = it.status === "extra" ? ("📌 " + esc(it.location || "-")) : (it.location ? esc(it.location) : "—");
+          const photoCode = esc(it.code).replace(/'/g, "&#39;");
+          return `<tr><td>${i + 1}</td><td class="cc">${esc(it.code)}</td><td>${esc(it.op || "-")}</td><td>${esc(it.peso || "-")}</td><td>${reportStatusBadge(it)}</td><td>${esc(it.time)}</td><td>${loc}</td><td>${it.observation ? esc(it.observation) : "—"}</td><td>${it.hasPhoto ? `<button class="icon-btn" onclick="showPhotoModal('${photoCode}')">📸</button>` : "—"}</td></tr>`;
+        }).join("");
         if (items.length > 500) tbody.innerHTML += `<tr><td colspan="9">... +${items.length - 500}</td></tr>`;
         if (!items.length) tbody.innerHTML = '<tr><td colspan="9">Nenhum item</td></tr>';
       }
-      function filterRpt(f, btn) { S.filter = f; document.querySelectorAll(".fbtn").forEach((b) => b.classList.remove("active")); if (btn) btn.classList.add("active"); renderRpt(); }
+      function filterRpt(f, btn) {
+        S.filter = f;
+        document.querySelectorAll("#reportDetailFilters .fbtn").forEach((b) => b.classList.remove("active"));
+        const active = btn || document.querySelector(`#reportDetailFilters .fbtn[data-filter="${f}"]`);
+        if (active) active.classList.add("active");
+        renderRpt();
+      }
       function rptSearch(v) { S.rptSearch = v; renderRpt(); }
+      function openReportPanel(mode) {
+        const panel = document.getElementById("reportFullscreen"); if (!panel) return;
+        panel.classList.add("show"); panel.setAttribute("aria-hidden", "false"); document.body.classList.add("report-panel-open");
+        setReportPanelMode(mode || reportPanelMode);
+      }
+      function closeReportPanel() {
+        const panel = document.getElementById("reportFullscreen"); if (!panel) return;
+        panel.classList.remove("show"); panel.setAttribute("aria-hidden", "true"); document.body.classList.remove("report-panel-open");
+      }
+      function setReportPanelMode(mode) {
+        reportPanelMode = mode === "detail" ? "detail" : "ops";
+        const isOps = reportPanelMode === "ops";
+        document.getElementById("reportOpsView")?.classList.toggle("active", isOps);
+        document.getElementById("reportDetailView")?.classList.toggle("active", !isOps);
+        document.getElementById("reportModeOps")?.classList.toggle("active", isOps);
+        document.getElementById("reportModeDetail")?.classList.toggle("active", !isOps);
+        const filters = document.getElementById("reportDetailFilters"); if (filters) filters.style.display = isOps ? "none" : "flex";
+        const title = document.getElementById("reportPanelTitle"); if (title) title.textContent = isOps ? "📦 Resumo por OP's" : "📋 Lista detalhada";
+        const sub = document.getElementById("reportPanelSub"); if (sub) sub.textContent = isOps ? "Progresso por OP em tela cheia, com busca e rolagem própria." : "Bobina a bobina em tela cheia, com filtros, busca, local, observação e fotos.";
+        const search = document.getElementById("reportFullscreenSearch");
+        if (search) { search.placeholder = isOps ? "Buscar OP..." : "Buscar código, OP, status, local..."; search.value = isOps ? reportOpSummarySearch : S.rptSearch; }
+        updateReportPanelMetrics(); renderOpSummary(reportOpSummarySearch); renderRpt();
+      }
+      function reportPanelSearch(v) {
+        if (reportPanelMode === "ops") { reportOpSummarySearch = v; renderOpSummary(v); }
+        else rptSearch(v);
+      }
       function exportRpt(fmt) {
         const items = getReportItems().map((i) => ({ code: i.code, op: i.op || "-", peso: i.peso || "-", status: i.status === "checked" ? (i.manual ? "Conferido Manual" : "Conferido") : i.status === "pending" ? "Pendente" : "Não Prevista", time: i.time === "-" ? "" : i.time, location: i.location === "-" ? "" : i.location, observation: i.observation || "", hasPhoto: i.hasPhoto }));
         const total = S.db.length, chk = S.checked.size, pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0, date = new Date(), tipo = S.confType || "-", conferente = S.checkerName || "-", extras = [...new Set(S.extras)].length, opSummary = getOpSummaryItems();
@@ -3885,6 +4084,9 @@ document.addEventListener("visibilitychange", () => {
 });
 window.addEventListener("beforeunload", () => {
   try { cloudFlushBuffer(); } catch (e) {}
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && document.getElementById("reportFullscreen")?.classList.contains("show")) closeReportPanel();
 });
 
 init();
