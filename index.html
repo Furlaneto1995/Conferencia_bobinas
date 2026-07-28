@@ -502,8 +502,14 @@
         .report-fullscreen .op-summary-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       }
       @media (max-width: 520px) {
-        .report-open-pill { display: none; }
-        .report-action-card { align-items: flex-start; }
+        .report-open-pill {
+          display: inline-flex !important;
+          align-self: center;
+          min-height: 36px;
+          padding: 8px 12px;
+          margin-top: 4px;
+        }
+        .report-action-card { align-items: flex-start; flex-wrap: wrap; }
         .report-action-icon { width: 42px; height: 42px; font-size: 1.25em; }
         .report-panel-metrics { grid-template-columns: repeat(2, 1fr); }
       }
@@ -674,7 +680,7 @@
         </button>
       </div>
       <div class="header">
-        <h1>📦 Conferência de Bobinas</h1>
+        <h1>📦 Conferência de Bobinas <span id="appVersionBadge" style="font-size:0.45em;vertical-align:middle;margin-left:8px;padding:4px 8px;border-radius:999px;background:rgba(59,130,246,.12);color:#2563eb;border:1px solid rgba(59,130,246,.28);font-weight:900">v11</span></h1>
         <p>Sistema de conferência por código de barras</p>
         <div class="collector-topbar">
           <div class="collector-toggle-wrap">
@@ -895,6 +901,49 @@
           <div id="cloudDetailBox" class="cloud-detail"></div>
           <div id="cloudConsultBox" class="cloud-list" style="margin-top: 12px"><div class="empty">Clique em atualizar para consultar.</div></div>
         </div>
+
+        <div class="report-fullscreen" id="cloudReportFullscreen" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="cloudReportPanelTitle">
+          <div class="report-fullscreen-head">
+            <div class="report-panel-row">
+              <button type="button" class="report-back-btn" onclick="closeCloudReportPanel()">← Voltar</button>
+              <div class="report-panel-title-wrap">
+                <div class="report-panel-title" id="cloudReportPanelTitle">📦 Resumo por OP's</div>
+                <div class="report-panel-sub" id="cloudReportPanelSub">Progresso por OP em tela cheia.</div>
+              </div>
+            </div>
+            <div class="report-mode-switch" aria-label="Alternar visualização da conferência">
+              <button type="button" id="cloudReportModeOps" class="active" onclick="setCloudReportPanelMode('ops')">📦 OP's</button>
+              <button type="button" id="cloudReportModeDetail" onclick="setCloudReportPanelMode('detail')">📋 Lista</button>
+            </div>
+            <div class="search-wrap report-panel-search"><span class="si">🔍</span><input class="search-input" id="cloudReportFullscreenSearch" placeholder="Buscar OP..." oninput="cloudReportPanelSearch(this.value)" /></div>
+            <div class="filters report-detail-filters" id="cloudReportDetailFilters" style="display:none">
+              <button class="fbtn active" data-filter="all" onclick="cloudSetDetailFilter('all')">📋 Todos</button>
+              <button class="fbtn" data-filter="checked" onclick="cloudSetDetailFilter('checked')">✅ Conferidos</button>
+              <button class="fbtn" data-filter="pending" onclick="cloudSetDetailFilter('pending')">⏳ Pendentes</button>
+              <button class="fbtn" data-filter="extra" onclick="cloudSetDetailFilter('extra')">⚠️ Extras</button>
+            </div>
+          </div>
+          <div class="report-panel-content">
+            <div class="report-panel-view active" id="cloudReportOpsView">
+              <div class="report-panel-metrics">
+                <div class="report-mini-stat"><strong id="cloudReportPanelOpsCount">0</strong><span>OP's</span></div>
+                <div class="report-mini-stat"><strong id="cloudReportPanelOpsFound">0</strong><span>Encontradas</span></div>
+                <div class="report-mini-stat"><strong id="cloudReportPanelOpsPending">0</strong><span>Pendentes</span></div>
+                <div class="report-mini-stat"><strong id="cloudReportPanelOpsPct">0%</strong><span>Geral</span></div>
+              </div>
+              <div class="op-summary-scroll report-op-summary-scroll"><div id="cloudDetailOpSummary"></div></div>
+            </div>
+            <div class="report-panel-view" id="cloudReportDetailView">
+              <div class="report-result-count" id="cloudReportDetailResultCount">0 itens</div>
+              <div class="tbl-wrap report-table-wrap">
+                <table class="dtbl report-detail-table">
+                  <thead><tr><th>#</th><th>Código</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Obs.</th><th>📸</th></tr></thead>
+                  <tbody id="cloudDetailRowsBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1034,6 +1083,8 @@
       };
       let reportPanelMode = "ops";
       let reportOpSummarySearch = "";
+      let cloudReportPanelMode = "ops";
+      let cloudReportOpSummarySearch = "";
       let currentImportedFile = {
         name: "",
         content: "",
@@ -1076,6 +1127,7 @@ let cloudLastHeaderWrite = 0;
         camCurrentPhotoBobina = null, camActx = null;
       const CAM_SCAN_DELAY_MS = 1800;
       const ADMIN_PASSWORD = "35210712";
+      const APP_BUILD_VERSION = "v11-painel-conferencia";
       const FIREBASE_CONFIG = {
         apiKey: "AIzaSyCJTpQfv3pTOXHvV4TpQl2h2tF0TdtWiNw",
         authDomain: "conferencia-bobinas.firebaseapp.com",
@@ -2347,30 +2399,65 @@ let cloudLastHeaderWrite = 0;
         if (!silent) box.innerHTML = '<div class="empty">Abrindo conferência...</div>';
         try {
           const data = await cloudBuildExportData(confId);
-          cloudDetailRows = data.rows;
-          cloudDetailFilter = prevFilter;
-          cloudDetailSearch = prevSearch;
+          cloudDetailRows = data.rows || [];
+          cloudDetailFilter = prevFilter || "all";
+          cloudDetailSearch = prevSearch || "";
+          cloudReportOpSummarySearch = silent ? cloudReportOpSummarySearch : "";
           cloudDetailConfId = data.id;
-          box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(data.operador || "-")} • ${esc(cloudFormatSessionMeta(data.id, data.data || ""))}</div><div class="cloud-detail-sub">${esc(data.tipo || "-")}</div></div><button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">✕ Fechar</button></div>
+          const r = data.resumo || {};
+          const opCount = Array.isArray(data.opSummary) ? data.opSummary.length : 0;
+          const pctNum = Number(r.percentual != null ? r.percentual : 0);
+          const pct = (Number.isFinite(pctNum) ? pctNum : 0).toFixed(1) + "%";
+          // UI compacta: NÃO mostra lista/resumo abertos — só cards "Abrir"
+          box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(data.operador || "-")} • ${esc(cloudFormatSessionMeta(data.id, data.data || ""))}</div><div class="cloud-detail-sub">${esc(data.tipo || "-")}</div></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+              <button class="cloud-report-btn" onclick="cloudShowExportModal(cloudDetailConfId)">Exportar</button>
+              <button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">✕ Fechar</button>
+            </div>
+          </div>
           <div class="cloud-detail-stats">
-            <div class="cloud-detail-stat clickable active" id="cloudDetailStatAll" onclick="cloudSetDetailFilter('all')">Total<strong>${data.resumo.total}</strong></div>
-            <div class="cloud-detail-stat clickable" id="cloudDetailStatChecked" onclick="cloudSetDetailFilter('checked')">Conferidas<strong>${data.resumo.conferidos}</strong></div>
-            <div class="cloud-detail-stat clickable" id="cloudDetailStatPending" onclick="cloudSetDetailFilter('pending')">Pendentes<strong>${data.resumo.pendentes}</strong></div>
-            <div class="cloud-detail-stat clickable" id="cloudDetailStatExtra" onclick="cloudSetDetailFilter('extra')">Não previstas<strong>${data.resumo.naoPrevistas}</strong></div>
+            <div class="cloud-detail-stat">Total<strong>${r.total ?? 0}</strong></div>
+            <div class="cloud-detail-stat">Conferidas<strong>${r.conferidos ?? 0}</strong></div>
+            <div class="cloud-detail-stat">Pendentes<strong>${r.pendentes ?? 0}</strong></div>
+            <div class="cloud-detail-stat">Não previstas<strong>${r.naoPrevistas ?? 0}</strong></div>
           </div>
-          <div class="cloud-detail-section-title">📦 Resumo por OP</div>
-          <div class="op-summary-list" id="cloudDetailOpSummary" style="max-height:220px;overflow:auto;padding-right:4px"></div>
-          <div class="cloud-detail-toolbar">
-            <div class="cloud-detail-section-title" style="margin:0">📋 Bobinas e leituras</div>
-            <button class="cloud-report-btn" onclick="cloudShowExportModal(cloudDetailConfId)">Exportar</button>
-          </div>
-          <div class="search-wrap" style="margin-bottom: 8px"><span class="si">🔍</span><input class="search-input" id="cloudDetailSearch" placeholder="Buscar código, OP, status ou observação..." oninput="cloudDetailSearch=this.value; cloudRenderDetailRows(); cloudRenderDetailOpSummary()" /></div>
-          ${data.missingBobinas ? `<div style="margin:8px 0 0; padding:10px 12px; border-radius:10px; border:1px solid rgba(245,158,11,.28); background: rgba(245,158,11,.08); color: var(--accent-yellow); font-size:.82em; font-weight:700;">⚠️ Conferência antiga sem base de bobinas.</div>` : ""}
-          <div class="cloud-detail-scroll" style="margin-top: 8px"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>`;
-          const detailSearchInput = document.getElementById("cloudDetailSearch"); if (detailSearchInput) detailSearchInput.value = cloudDetailSearch || "";
-          cloudApplyDetailFilterUI();
-          cloudRenderDetailOpSummary();
-          cloudRenderDetailRows();
+          <div class="prog-wrap" style="margin:10px 0 12px"><div class="prog-head"><span>Conferência Geral</span><span class="pct">${esc(pct)}</span></div><div class="prog-bar"><div class="prog-fill" style="width:${esc(pct)}"></div></div></div>
+          ${data.missingBobinas ? `<div style="margin:0 0 10px; padding:10px 12px; border-radius:10px; border:1px solid rgba(245,158,11,.28); background: rgba(245,158,11,.08); color: var(--accent-yellow); font-size:.82em; font-weight:700;">⚠️ Conferência antiga sem base de bobinas.</div>` : ""}
+          <div class="card-title" style="margin-top:4px">🔎 Detalhes da conferência</div>
+          <div class="card-sub">Toque em uma opção para abrir em tela cheia. Resumo e lista ficam fechados.</div>
+          <div class="report-actions-grid" style="margin-top:10px">
+            <button type="button" class="report-action-card" onclick="openCloudReportPanel('ops')">
+              <span class="report-action-icon blue">📦</span>
+              <span class="report-action-main">
+                <span class="report-action-title">Resumo por OP's</span>
+                <span class="report-action-desc">Visualizar o progresso de cada OP, com encontradas, pendentes e percentual.</span>
+                <span class="report-action-metrics">
+                  <span><strong id="cloudCardOpCount">${opCount}</strong> OP's</span>
+                  <span><strong id="cloudCardOpFound">${r.conferidos ?? 0}</strong>/<strong id="cloudCardOpTotal">${r.total ?? 0}</strong> encontradas</span>
+                  <span><strong id="cloudCardOpPct">${esc(pct)}</strong> geral</span>
+                </span>
+              </span>
+              <span class="report-open-pill">Abrir</span>
+            </button>
+            <button type="button" class="report-action-card" onclick="openCloudReportPanel('detail')">
+              <span class="report-action-icon green">📋</span>
+              <span class="report-action-main">
+                <span class="report-action-title">Lista detalhada</span>
+                <span class="report-action-desc">Ver bobina a bobina com código, OP, peso, status, horário, local, observação e foto.</span>
+                <span class="report-action-metrics">
+                  <span><strong id="cloudCardDetailCount">${(data.rows || []).length}</strong> itens</span>
+                  <span><strong id="cloudCardDetailChecked">${r.conferidos ?? 0}</strong> conferidas</span>
+                  <span><strong id="cloudCardDetailPending">${r.pendentes ?? 0}</strong> pendentes</span>
+                  <span><strong id="cloudCardDetailExtra">${r.naoPrevistas ?? 0}</strong> extras</span>
+                </span>
+              </span>
+              <span class="report-open-pill">Abrir</span>
+            </button>
+          </div>`;
+          updateCloudReportPanelMetrics();
+          if (document.getElementById("cloudReportFullscreen")?.classList.contains("show")) {
+            setCloudReportPanelMode(cloudReportPanelMode);
+          }
           if (!silent) box.scrollIntoView({ behavior: "smooth", block: "start" });
           cloudSetStatus("ok", "☁️ Conferência aberta");
         } catch (e) {
@@ -2429,10 +2516,12 @@ let cloudLastHeaderWrite = 0;
             box.innerHTML = '<div class="empty">Nenhuma OP encontrada.</div>';
             return;
           }
-          box.innerHTML = entries.map((op) => {
+          box.innerHTML = '<div class="op-summary-list">' + entries.map((op) => {
             const pct = op.total > 0 ? ((op.checked / op.total) * 100).toFixed(1) : "0.0";
-            return `<div class="op-summary-item"><div class="op-summary-op">OP ${esc(op.op || "-")}</div><div class="op-summary-info"><span>✅ Encontradas: <strong>${op.checked}/${op.total}</strong></span><span>📊 <strong>${pct}%</strong></span></div></div>`;
-          }).join("");
+            const pctNum = Math.max(0, Math.min(100, Number(pct) || 0));
+            return `<div class="op-summary-item"><div class="op-summary-head"><div class="op-summary-op">OP ${esc(op.op || "-")}</div><div class="op-summary-pct">${esc(pct)}%</div></div><div class="op-summary-info"><span>✅ Encontradas: <strong>${op.checked}/${op.total}</strong></span><span>⏳ Pendentes: <strong>${Math.max(0, op.total - op.checked)}</strong></span></div><div class="op-summary-progress"><span style="width:${pctNum}%"></span></div></div>`;
+          }).join("") + '</div>';
+          if (cloudReportOpSummarySearch) cloudFilterOpSummaryCards(cloudReportOpSummarySearch);
           return;
         }
         entries = Array.from(filteredMap.values()).sort((a, b) => String(a.op).localeCompare(String(b.op), "pt-BR", { numeric: true, sensitivity: "base" }));
@@ -2463,12 +2552,18 @@ let cloudLastHeaderWrite = 0;
       function cloudSetDetailFilter(filter) {
         cloudDetailFilter = filter || "all";
         cloudApplyDetailFilterUI();
+        document.querySelectorAll("#cloudReportDetailFilters .fbtn").forEach((b) => {
+          b.classList.toggle("active", (b.getAttribute("data-filter") || "") === cloudDetailFilter);
+        });
         cloudRenderDetailOpSummary();
         cloudRenderDetailRows();
+        updateCloudReportPanelMetrics();
       }
       function cloudRenderDetailRows() {
         const tbody = document.getElementById("cloudDetailRowsBody"); if (!tbody) return;
         const rows = cloudRowsByDetailFilter(true);
+        const counter = document.getElementById("cloudReportDetailResultCount");
+        if (counter) counter.textContent = `${rows.length} ${rows.length === 1 ? "item" : "itens"}`;
         const limited = rows.slice(0, 700);
         if (!limited.length) { tbody.innerHTML = '<tr><td colspan="9">Nenhum item encontrado</td></tr>'; return; }
         tbody.innerHTML = limited.map((r, i) => `<tr><td>${i + 1}</td><td class="cc">${esc(r.code)}</td><td>${esc(r.op)}</td><td>${esc(r.peso)}</td><td>${esc(r.status)}</td><td>${esc(r.time || "")}</td><td>${esc(r.location || "")}</td><td>${esc(r.observation || "")}</td><td>${r.fotoUrl ? `<a href="${esc(r.fotoUrl)}" target="_blank" rel="noopener">📸</a>` : (r.hasPhoto ? "📸" : "—")}</td></tr>`).join("");
@@ -2476,8 +2571,11 @@ let cloudLastHeaderWrite = 0;
       }
       function cloudCloseConferenceDetail() {
         cloudClearDetailLiveListeners();
+        closeCloudReportPanel();
         document.querySelectorAll(".cloud-inline-detail").forEach((box) => { box.className = "cloud-detail cloud-inline-detail"; box.innerHTML = ""; });
         const box = document.getElementById("cloudDetailBox"); if (box) { box.className = "cloud-detail"; box.innerHTML = ""; }
+        cloudDetailConfId = "";
+        cloudDetailRows = [];
       }
       async function cloudFinishConferenceById(confId) {
         if (!confirm(`Finalizar a conferência ${confId}?`)) return;
@@ -2549,23 +2647,61 @@ let cloudLastHeaderWrite = 0;
       }
       function cloudRenderMergedReport() {
         const box = document.getElementById("cloudDetailBox"); if (!box || !cloudMergedReport) return;
-        const r = cloudMergedReport.resumo || {}; cloudDetailRows = cloudMergedReport.rows || []; cloudDetailFilter = "all"; cloudDetailSearch = ""; cloudDetailConfId = "__merged__";
+        const r = cloudMergedReport.resumo || {};
+        cloudDetailRows = cloudMergedReport.rows || [];
+        cloudDetailFilter = "all";
+        cloudDetailSearch = "";
+        cloudReportOpSummarySearch = "";
+        cloudDetailConfId = "__merged__";
+        const opCount = Array.isArray(cloudMergedReport.opSummary) ? cloudMergedReport.opSummary.length : 0;
+        const pctNum = Number(r.percentual != null ? r.percentual : 0);
+        const pct = (Number.isFinite(pctNum) ? pctNum : 0).toFixed(1) + "%";
         box.className = "cloud-detail show";
-        box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(cloudMergedReport.title)}</div><div class="cloud-detail-sub">${esc(cloudMergedReport.subtitle || "")}</div></div><button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">✕ Fechar</button></div>
-        <div class="cloud-detail-stats">
-          <div class="cloud-detail-stat clickable active" id="cloudDetailStatAll" onclick="cloudSetDetailFilter('all')">Total<strong>${r.total ?? 0}</strong></div>
-          <div class="cloud-detail-stat clickable" id="cloudDetailStatChecked" onclick="cloudSetDetailFilter('checked')">Conferidas<strong>${r.conferidos ?? 0}</strong></div>
-          <div class="cloud-detail-stat clickable" id="cloudDetailStatPending" onclick="cloudSetDetailFilter('pending')">Pendentes<strong>${r.pendentes ?? 0}</strong></div>
-          <div class="cloud-detail-stat clickable" id="cloudDetailStatExtra" onclick="cloudSetDetailFilter('extra')">Não previstas<strong>${r.naoPrevistas ?? 0}</strong></div>
+        box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(cloudMergedReport.title)}</div><div class="cloud-detail-sub">${esc(cloudMergedReport.subtitle || "")}</div></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+            <button class="cloud-report-btn" onclick="cloudShowMergedExportModal()">Exportar consolidado</button>
+            <button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">✕ Fechar</button>
+          </div>
         </div>
-        <div class="cloud-detail-section-title">📦 Resumo por OP</div>
-        <div class="op-summary-list" id="cloudDetailOpSummary" style="max-height:220px;overflow:auto;padding-right:4px"></div>
-        <div class="cloud-detail-toolbar"><div class="cloud-detail-section-title" style="margin:0">📋 Bobinas e leituras</div><button class="cloud-report-btn" onclick="cloudShowMergedExportModal()">Exportar consolidado</button></div>
-        <div class="search-wrap" style="margin-bottom: 8px"><span class="si">🔍</span><input class="search-input" id="cloudDetailSearch" placeholder="Buscar código, OP, status ou observação..." oninput="cloudDetailSearch=this.value; cloudRenderDetailRows(); cloudRenderDetailOpSummary()" /></div>
-        <div class="cloud-detail-scroll" style="margin-top: 8px"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>`;
-        cloudApplyDetailFilterUI();
-        cloudRenderDetailOpSummary();
-        cloudRenderDetailRows();
+        <div class="cloud-detail-stats">
+          <div class="cloud-detail-stat">Total<strong>${r.total ?? 0}</strong></div>
+          <div class="cloud-detail-stat">Conferidas<strong>${r.conferidos ?? 0}</strong></div>
+          <div class="cloud-detail-stat">Pendentes<strong>${r.pendentes ?? 0}</strong></div>
+          <div class="cloud-detail-stat">Não previstas<strong>${r.naoPrevistas ?? 0}</strong></div>
+        </div>
+        <div class="prog-wrap" style="margin:10px 0 12px"><div class="prog-head"><span>Conferência Geral</span><span class="pct">${esc(pct)}</span></div><div class="prog-bar"><div class="prog-fill" style="width:${esc(pct)}"></div></div></div>
+        <div class="card-title" style="margin-top:4px">🔎 Detalhes do consolidado</div>
+        <div class="card-sub">Toque em uma opção para abrir em tela cheia. Resumo e lista ficam fechados.</div>
+        <div class="report-actions-grid" style="margin-top:10px">
+          <button type="button" class="report-action-card" onclick="openCloudReportPanel('ops')">
+            <span class="report-action-icon blue">📦</span>
+            <span class="report-action-main">
+              <span class="report-action-title">Resumo por OP's</span>
+              <span class="report-action-desc">Visualizar o progresso de cada OP do consolidado.</span>
+              <span class="report-action-metrics">
+                <span><strong id="cloudCardOpCount">${opCount}</strong> OP's</span>
+                <span><strong id="cloudCardOpFound">${r.conferidos ?? 0}</strong>/<strong id="cloudCardOpTotal">${r.total ?? 0}</strong> encontradas</span>
+                <span><strong id="cloudCardOpPct">${esc(pct)}</strong> geral</span>
+              </span>
+            </span>
+            <span class="report-open-pill">Abrir</span>
+          </button>
+          <button type="button" class="report-action-card" onclick="openCloudReportPanel('detail')">
+            <span class="report-action-icon green">📋</span>
+            <span class="report-action-main">
+              <span class="report-action-title">Lista detalhada</span>
+              <span class="report-action-desc">Ver bobina a bobina do consolidado.</span>
+              <span class="report-action-metrics">
+                <span><strong id="cloudCardDetailCount">${(cloudMergedReport.rows || []).length}</strong> itens</span>
+                <span><strong id="cloudCardDetailChecked">${r.conferidos ?? 0}</strong> conferidas</span>
+                <span><strong id="cloudCardDetailPending">${r.pendentes ?? 0}</strong> pendentes</span>
+                <span><strong id="cloudCardDetailExtra">${r.naoPrevistas ?? 0}</strong> extras</span>
+              </span>
+            </span>
+            <span class="report-open-pill">Abrir</span>
+          </button>
+        </div>`;
+        updateCloudReportPanelMetrics();
       }
       function cloudShowMergedExportModal() { if (!cloudMergedReport) return; cloudShowExportModal("__merged__"); }
       async function cloudDeleteSupabasePhotos(confRef) {
@@ -3600,6 +3736,111 @@ if (S.collectorMode) {
         if (reportPanelMode === "ops") { reportOpSummarySearch = v; renderOpSummary(v); }
         else rptSearch(v);
       }
+
+      function updateCloudReportPanelMetrics() {
+        const rows = cloudDetailRows || [];
+        const base = rows.filter((r) => !String(r.status || "").includes("Não Prevista"));
+        const total = base.length;
+        const checked = rows.filter((r) => /Conferid|Manual/i.test(String(r.status || ""))).length;
+        const pending = rows.filter((r) => String(r.status || "").includes("Pendente")).length;
+        const extras = rows.filter((r) => String(r.status || "").includes("Não Prevista")).length;
+        const ops = new Set(base.map((r) => r.op || "-"));
+        const pct = total > 0 ? ((checked / total) * 100).toFixed(1) + "%" : "0.0%";
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        set("cloudReportPanelOpsCount", ops.size);
+        set("cloudReportPanelOpsFound", checked);
+        set("cloudReportPanelOpsPending", pending);
+        set("cloudReportPanelOpsPct", pct);
+        set("cloudCardOpCount", ops.size);
+        set("cloudCardOpFound", checked);
+        set("cloudCardOpTotal", total);
+        set("cloudCardOpPct", pct);
+        set("cloudCardDetailCount", rows.length);
+        set("cloudCardDetailChecked", checked);
+        set("cloudCardDetailPending", pending);
+        set("cloudCardDetailExtra", extras);
+        const detailCount = document.getElementById("cloudReportDetailResultCount");
+        if (detailCount && typeof cloudRowsByDetailFilter === "function") {
+          const filtered = cloudRowsByDetailFilter(true);
+          detailCount.textContent = `${filtered.length} ${filtered.length === 1 ? "item" : "itens"}`;
+        }
+      }
+      function openCloudReportPanel(mode) {
+        if (!cloudDetailConfId) { notify("Abra uma conferência primeiro.", "warning"); return; }
+        if (!(cloudDetailRows || []).length) { notify("Esta conferência não tem itens para exibir.", "warning"); return; }
+        try { closeReportPanel(); } catch (e) {}
+        const panel = document.getElementById("cloudReportFullscreen");
+        if (!panel) { notify("Painel de detalhes indisponível.", "error"); return; }
+        panel.classList.add("show");
+        panel.setAttribute("aria-hidden", "false");
+        document.body.classList.add("report-panel-open");
+        setCloudReportPanelMode(mode || cloudReportPanelMode || "ops");
+      }
+      function closeCloudReportPanel() {
+        const panel = document.getElementById("cloudReportFullscreen");
+        if (!panel) return;
+        panel.classList.remove("show");
+        panel.setAttribute("aria-hidden", "true");
+        if (!document.getElementById("reportFullscreen")?.classList.contains("show")) {
+          document.body.classList.remove("report-panel-open");
+        }
+      }
+      function setCloudReportPanelMode(mode) {
+        cloudReportPanelMode = mode === "detail" ? "detail" : "ops";
+        const isOps = cloudReportPanelMode === "ops";
+        document.getElementById("cloudReportOpsView")?.classList.toggle("active", isOps);
+        document.getElementById("cloudReportDetailView")?.classList.toggle("active", !isOps);
+        document.getElementById("cloudReportModeOps")?.classList.toggle("active", isOps);
+        document.getElementById("cloudReportModeDetail")?.classList.toggle("active", !isOps);
+        const filters = document.getElementById("cloudReportDetailFilters");
+        if (filters) filters.style.display = isOps ? "none" : "flex";
+        const title = document.getElementById("cloudReportPanelTitle");
+        if (title) title.textContent = isOps ? "📦 Resumo por OP's" : "📋 Lista detalhada";
+        const sub = document.getElementById("cloudReportPanelSub");
+        if (sub) sub.textContent = isOps
+          ? "Progresso por OP em tela cheia, com busca e rolagem própria."
+          : "Bobina a bobina em tela cheia, com filtros, busca, local, observação e fotos.";
+        const search = document.getElementById("cloudReportFullscreenSearch");
+        if (search) {
+          search.placeholder = isOps ? "Buscar OP..." : "Buscar código, OP, status, local...";
+          search.value = isOps ? (cloudReportOpSummarySearch || "") : (cloudDetailSearch || "");
+        }
+        document.querySelectorAll("#cloudReportDetailFilters .fbtn").forEach((b) => {
+          b.classList.toggle("active", (b.getAttribute("data-filter") || "") === (cloudDetailFilter || "all"));
+        });
+        updateCloudReportPanelMetrics();
+        if (isOps) {
+          const prevSearch = cloudDetailSearch;
+          cloudDetailSearch = "";
+          cloudRenderDetailOpSummary();
+          cloudDetailSearch = prevSearch;
+          if (cloudReportOpSummarySearch) cloudFilterOpSummaryCards(cloudReportOpSummarySearch);
+        } else {
+          cloudRenderDetailRows();
+        }
+      }
+      function cloudFilterOpSummaryCards(q) {
+        const box = document.getElementById("cloudDetailOpSummary");
+        if (!box) return;
+        const query = String(q || "").trim().toLowerCase();
+        box.querySelectorAll(".op-summary-item").forEach((el) => {
+          const txt = (el.textContent || "").toLowerCase();
+          el.style.display = !query || txt.includes(query) ? "" : "none";
+        });
+      }
+      function cloudReportPanelSearch(v) {
+        if (cloudReportPanelMode === "ops") {
+          cloudReportOpSummarySearch = v || "";
+          const prev = cloudDetailSearch;
+          cloudDetailSearch = "";
+          cloudRenderDetailOpSummary();
+          cloudDetailSearch = prev;
+          cloudFilterOpSummaryCards(cloudReportOpSummarySearch);
+        } else {
+          cloudDetailSearch = v || "";
+          cloudRenderDetailRows();
+        }
+      }
       function exportRpt(fmt) {
         const items = getReportItems().map((i) => ({ code: i.code, op: i.op || "-", peso: i.peso || "-", status: i.status === "checked" ? (i.manual ? "Conferido Manual" : "Conferido") : i.status === "pending" ? "Pendente" : "Não Prevista", time: i.time === "-" ? "" : i.time, location: i.location === "-" ? "" : i.location, observation: i.observation || "", hasPhoto: i.hasPhoto }));
         const total = S.db.length, chk = S.checked.size, pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0, date = new Date(), tipo = S.confType || "-", conferente = S.checkerName || "-", extras = [...new Set(S.extras)].length, opSummary = getOpSummaryItems();
@@ -4130,6 +4371,7 @@ if (S.collectorMode) {
   setTimeout(() => { if (collectorCanFocus()) focusCollectorInput(); }, 400);
 }
       function init() {
+  try { console.log("APP_BUILD_VERSION", APP_BUILD_VERSION); const b=document.getElementById("appVersionBadge"); if(b) b.textContent="v11"; } catch(e) {}
   setupMobileCopyProtection();
   load();
   initCollectorMode();
@@ -4154,10 +4396,11 @@ window.addEventListener("beforeunload", () => {
   try { cloudFlushBuffer(); } catch (e) {}
 });
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && document.getElementById("reportFullscreen")?.classList.contains("show")) closeReportPanel();
+  if (e.key === "Escape" && document.getElementById("cloudReportFullscreen")?.classList.contains("show")) closeCloudReportPanel();
+  else if (e.key === "Escape" && document.getElementById("reportFullscreen")?.classList.contains("show")) closeReportPanel();
 });
 
 init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a180e007b82c9872',t:'MTc4MzUzMjQzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1eb9d390d0ee033',t:'MTc4NDY1MTY3Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a223ff41bff94bbe',t:'MTc4NTI0Mjg5NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a180e007b82c9872',t:'MTc4MzUzMjQzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1eb9d390d0ee033',t:'MTc4NDY1MTY3Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a223ff41bff94bbe',t:'MTc4NTI0Mjg5NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2248a2aea68f171',t:'MTc4NTI0ODU4NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
