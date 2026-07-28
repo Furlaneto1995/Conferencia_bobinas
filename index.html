@@ -1488,7 +1488,7 @@ let cloudLastHeaderWrite = 0;
         for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
         return new Blob([arr], { type: mime });
       }
-      async function cloudUploadPhoto(code, dataUrl) {
+      async function cloudUploadPhoto(code, dataUrl, location = "") {
         try {
           if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !dataUrl) return null;
           if (!S.cloudSessionId) {
@@ -1497,8 +1497,15 @@ let cloudLastHeaderWrite = 0;
             save();
           }
           if (!S.cloudSessionId) return null;
-          const safeCode = String(code).replace(/[^a-zA-Z0-9_-]/g, "_");
-          const path = `${cloudOperatorKey()}/${cloudDateKey()}/${S.cloudSessionId}/${safeCode}_etiqueta_bobina.jpg`;
+          let loc = location;
+          if (!loc) {
+            const scan = (S.scanned || []).find((s) => String(s.code) === String(code) && s.location);
+            loc = scan?.location || "";
+          }
+          const fileName = (typeof photoFileName === "function")
+            ? photoFileName(code, loc)
+            : `${String(code).replace(/[^a-zA-Z0-9_-]/g, "_")}_etiqueta_bobina.jpg`;
+          const path = `${cloudOperatorKey()}/${cloudDateKey()}/${S.cloudSessionId}/${fileName}`;
           const blob = cloudDataUrlToBlob(dataUrl);
           const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`;
           const res = await fetch(uploadUrl, { method: "POST", headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "image/jpeg", "x-upsert": "true" }, body: blob });
@@ -2262,7 +2269,9 @@ let cloudLastHeaderWrite = 0;
                 const r = rows[idx];
                 try {
                   const resp = await fetch(r.fotoUrl); if (!resp.ok) throw new Error("HTTP " + resp.status);
-                  const blob = await resp.blob(); fotosFolder.file(`${r.code}_etiqueta_bobina.jpg`, blob);
+                  const blob = await resp.blob();
+                  const fname = (typeof photoFileName === "function") ? photoFileName(r.code, r.location || "") : `${r.code}_etiqueta_bobina.jpg`;
+                  fotosFolder.file(fname, blob);
                   const progress = document.getElementById("exportProgress");
                   if (progress) { progress.classList.add("show"); progress.textContent = `⏳ Baixando fotos ${idx + 1}/${rows.length}...`; }
                 } catch (e) { console.warn("Falha ao baixar foto para ZIP:", r.code, e); }
@@ -3618,7 +3627,12 @@ if (S.collectorMode) {
           for (const code of extrasUniq) {
             const scan = S.scanned.find((s) => s.code === code && s.status === "not-found"); const loc = scan?.location || ""; const time = scan?.time || ""; const obs = scan?.observation || "";
             let fotoName = ""; const photo = getPhoto(code); const base = photo && photo.includes(",") ? photo.split(",")[1] : null;
-            if (base) { fotosFolder.file(`${code}_etiqueta_bobina.jpg`, base, { base64: true }); fotoName = `fotos/${code}_etiqueta_bobina.jpg`; countFotos++; }
+            if (base) {
+              const fname = (typeof photoFileName === "function") ? photoFileName(code, loc) : `${code}_etiqueta_bobina.jpg`;
+              fotosFolder.file(fname, base, { base64: true });
+              fotoName = `fotos/${fname}`;
+              countFotos++;
+            }
             csv += `${code};${time};${loc};${obs};${fotoName}\n`;
           }
           const total = S.db.length, chk = S.checked.size, pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0;
@@ -3738,18 +3752,72 @@ if (S.collectorMode) {
       }
       function loadImgData(src) { return new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = reject; img.src = src; }); }
       function drawContain(ctx, img, x, y, w, h) { const r = Math.min(w / img.width, h / img.height), nw = img.width * r, nh = img.height * r; ctx.drawImage(img, x + (w - nw) / 2, y + (h - nh) / 2, nw, nh); }
-      async function combinePhotosHalf(code, photoEtiqueta, photoBobina) {
-        const [etq, bob] = await Promise.all([loadImgData(photoEtiqueta), loadImgData(photoBobina)]); const maxW = 900; const labelH = 44;
+      function fitCanvasText(ctx, text, maxWidth) {
+        let t = String(text || "");
+        if (!t) return "";
+        if (ctx.measureText(t).width <= maxWidth) return t;
+        while (t.length > 1 && ctx.measureText(t + "...").width > maxWidth) t = t.slice(0, -1);
+        return t + "...";
+      }
+      function safeFilePart(v, fallback = "sem_local") {
+        const s = String(v || "")
+          .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-zA-Z0-9]+/g, "_")
+          .replace(/^_+|_+$/g, "")
+          .slice(0, 40);
+        return s || fallback;
+      }
+      function photoFileName(code, location = "") {
+        const c = safeFilePart(code, "sem_codigo");
+        const loc = safeFilePart(location, "");
+        return loc ? `${c}__${loc}_etiqueta_bobina.jpg` : `${c}_etiqueta_bobina.jpg`;
+      }
+      async function combinePhotosHalf(code, photoEtiqueta, photoBobina, location = "") {
+        const [etq, bob] = await Promise.all([loadImgData(photoEtiqueta), loadImgData(photoBobina)]);
+        const maxW = 900;
+        const labelH = 48;
+        // Endereço SOMENTE embaixo, em área extra (não cobre as fotos)
+        const footerH = location ? 120 : 0;
         const etqRatio = Math.min(maxW / etq.width, 1), bobRatio = Math.min(maxW / bob.width, 1);
         const etqH = Math.round(etq.height * etqRatio), bobH = Math.round(bob.height * bobRatio);
-        const canvas = document.createElement("canvas"); canvas.width = maxW; canvas.height = labelH + etqH + labelH + bobH; const ctx = canvas.getContext("2d");
-        ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height); drawContain(ctx, etq, 0, labelH, maxW, etqH); drawContain(ctx, bob, 0, labelH + etqH + labelH, maxW, bobH); ctx.fillStyle = "rgba(0,0,0,.75)"; ctx.fillRect(0, 0, maxW, labelH); ctx.fillRect(0, labelH + etqH, maxW, labelH); ctx.fillStyle = "#fff"; ctx.font = "bold 22px Arial"; ctx.fillText("ETIQUETA • " + code, 16, 28); ctx.fillText("BOBINA • " + code, 16, labelH + etqH + 28);
-        return canvas.toDataURL("image/jpeg", 0.72);
+        const canvas = document.createElement("canvas");
+        canvas.width = maxW;
+        canvas.height = labelH + etqH + labelH + bobH + footerH;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // fotos intactas
+        drawContain(ctx, etq, 0, labelH, maxW, etqH);
+        drawContain(ctx, bob, 0, labelH + etqH + labelH, maxW, bobH);
+        // faixas de título (só código, sem endereço por cima da foto)
+        ctx.fillStyle = "rgba(0,0,0,.78)";
+        ctx.fillRect(0, 0, maxW, labelH);
+        ctx.fillRect(0, labelH + etqH, maxW, labelH);
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 24px Arial";
+        ctx.fillText(fitCanvasText(ctx, "ETIQUETA • " + code, maxW - 32), 16, 32);
+        ctx.fillText(fitCanvasText(ctx, "BOBINA • " + code, maxW - 32), 16, labelH + etqH + 32);
+        // endereço GRANDE só no rodapé, abaixo das fotos
+        if (location) {
+          const y0 = labelH + etqH + labelH + bobH;
+          ctx.fillStyle = "rgba(185, 28, 28, 0.96)";
+          ctx.fillRect(0, y0, maxW, footerH);
+          ctx.fillStyle = "#fecaca";
+          ctx.font = "bold 22px Arial";
+          ctx.fillText("LOCAL / ENDERECO", 18, y0 + 30);
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "bold 42px Arial";
+          ctx.fillText(fitCanvasText(ctx, String(location), maxW - 36), 18, y0 + 78);
+          ctx.fillStyle = "#fee2e2";
+          ctx.font = "bold 22px Arial";
+          ctx.fillText(fitCanvasText(ctx, "Codigo: " + code, maxW - 36), 18, y0 + 108);
+        }
+        return canvas.toDataURL("image/jpeg", 0.78);
       }
-      async function savePhotosExtra(code, photoEtiqueta, photoBobina) {
+      async function savePhotosExtra(code, photoEtiqueta, photoBobina, location = "") {
         const key = String(code || "");
         try {
-          const combined = await combinePhotosHalf(key, photoEtiqueta, photoBobina);
+          const combined = await combinePhotosHalf(key, photoEtiqueta, photoBobina, location);
           photoMemoryCache[key] = combined;
           const savedIndexed = await photoStoreSet(key, combined);
           let savedLocal = false;
@@ -3917,12 +3985,12 @@ if (S.collectorMode) {
         if (!camCurrentPhotoBobina) { document.getElementById("camPhotoErrorBobina").style.display = "block"; hasError = true; } else document.getElementById("camPhotoErrorBobina").style.display = "none";
         if (hasError) { camVibrate("notfound"); return; }
         if (camManualMode === "manualFound" && camManualSelectedCode) {
-          const code = camManualSelectedCode, time = new Date().toLocaleTimeString("pt-BR"), savedPhoto = await savePhotosExtra(code, camCurrentPhotoEtiqueta, camCurrentPhotoBobina);
+          const code = camManualSelectedCode, time = new Date().toLocaleTimeString("pt-BR"), savedPhoto = await savePhotosExtra(code, camCurrentPhotoEtiqueta, camCurrentPhotoBobina, loc);
           S.checked.add(code); S.scanned.unshift({ code, time, status: "found", manual: true, location: loc, observation: obs, hasPhoto: savedPhoto, hasPhotoEtiqueta: savedPhoto, hasPhotoBobina: savedPhoto });
           if (!savedPhoto) notify("Foto não foi salva. Não vai sair no exportador.", "warning");
           camShowResult("green", `📸 MANUAL — "${code}"`); save(); cloudSyncReading(S.scanned[0]); camUpdateCounters(); camUpdateHistory(); updateStats(); updateHistory(); updateDBUI(); camManualSelectedCode = null;
         } else if (camPendingExtra) {
-          const savedPhoto = await savePhotosExtra(camPendingExtra.code, camCurrentPhotoEtiqueta, camCurrentPhotoBobina);
+          const savedPhoto = await savePhotosExtra(camPendingExtra.code, camCurrentPhotoEtiqueta, camCurrentPhotoBobina, loc);
           S.extras.push(camPendingExtra.code); S.scanned.unshift({ code: camPendingExtra.code, time: camPendingExtra.time, status: "not-found", location: loc, observation: obs, hasPhoto: savedPhoto, hasPhotoEtiqueta: savedPhoto, hasPhotoBobina: savedPhoto });
           if (!savedPhoto) notify("Foto não foi salva. Não vai sair no exportador.", "warning");
           camShowResult("red", `⚠️ "${camPendingExtra.code}" — 📌 ${loc} 🏷️`); save(); cloudSyncReading(S.scanned[0]); camUpdateCounters(); camUpdateHistory(); updateStats(); updateHistory(); updateDBUI(); camPendingExtra = null;
@@ -4037,7 +4105,7 @@ if (S.collectorMode) {
         if (pendingExtraMain) {
           let savedPhoto = false;
           if (requirePhotos) {
-            savedPhoto = await savePhotosExtra(pendingExtraMain.code, pendingExtraMainPhotoEtiqueta, pendingExtraMainPhotoBobina);
+            savedPhoto = await savePhotosExtra(pendingExtraMain.code, pendingExtraMainPhotoEtiqueta, pendingExtraMainPhotoBobina, loc);
             if (!savedPhoto) notify("Foto não foi salva. Não vai sair no exportador.", "warning");
           }
           const scanItem = { code: pendingExtraMain.code, time: pendingExtraMain.time, status: "not-found", location: loc, observation: obs, hasPhoto: savedPhoto, source: pendingExtraMain.source || "manual" };
@@ -4091,5 +4159,5 @@ document.addEventListener("keydown", (e) => {
 
 init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a180e007b82c9872',t:'MTc4MzUzMjQzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1eb9d390d0ee033',t:'MTc4NDY1MTY3Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a180e007b82c9872',t:'MTc4MzUzMjQzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1eb9d390d0ee033',t:'MTc4NDY1MTY3Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a223ff41bff94bbe',t:'MTc4NTI0Mjg5NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
