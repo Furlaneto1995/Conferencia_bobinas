@@ -5,8 +5,8 @@
   "description": "Sistema de conferência por código de barras",
   "start_url": "./index.html",
   "scope": "./",
-  "display": "portrait-primary",
-  "orientation": "portrait",
+  "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#f8fafc",
   "theme_color": "#4169E1",
   "icons": [
