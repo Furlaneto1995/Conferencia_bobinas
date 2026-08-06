@@ -43,7 +43,7 @@
               console.log("SW registrado:", reg);
               // Procura atualização ao abrir e quando a aba volta ao foco
               const check = () => reg.update().catch(() => {});
-              check(); 
+              check();
               document.addEventListener("visibilitychange", () => {
                 if (document.visibilityState === "visible") check();
               });
