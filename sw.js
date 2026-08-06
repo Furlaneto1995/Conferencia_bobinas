@@ -2,7 +2,7 @@
  * v13: inicio/fim + bases/peliculas +  bases/peliculas +  painel conferencia (cards Abrir) + HTML network-first.
  * SEMPRE publique este arquivo junto com index.html
  */
-const CACHE_NAME = "conferencia-bobinas-v13";
+const CACHE_NAME = "conferencia-bobinas-v14";
 
 const PRECACHE_ASSETS = [
   "./",
