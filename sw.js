@@ -1,8 +1,8 @@
 /* Conferência de Bobinas — Service Worker
- * v11: painel conferencia (cards Abrir) + HTML network-first.
+ * v13: inicio/fim + bases/peliculas +  bases/peliculas +  painel conferencia (cards Abrir) + HTML network-first.
  * SEMPRE publique este arquivo junto com index.html
  */
-const CACHE_NAME = "conferencia-bobinas-v11";
+const CACHE_NAME = "conferencia-bobinas-v13";
 
 const PRECACHE_ASSETS = [
   "./",
