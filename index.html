@@ -680,7 +680,7 @@
         </button>
       </div>
       <div class="header">
-        <h1>📦 Conferência de Bobinas <span id="appVersionBadge" style="font-size:0.45em;vertical-align:middle;margin-left:8px;padding:4px 8px;border-radius:999px;background:rgba(59,130,246,.12);color:#2563eb;border:1px solid rgba(59,130,246,.28);font-weight:900">v11</span></h1>
+        <h1>📦 Conferência de Bobinas <span id="appVersionBadge" style="font-size:0.45em;vertical-align:middle;margin-left:8px;padding:4px 8px;border-radius:999px;background:rgba(59,130,246,.12);color:#2563eb;border:1px solid rgba(59,130,246,.28);font-weight:900">v13</span></h1>
         <p>Sistema de conferência por código de barras</p>
         <div class="collector-topbar">
           <div class="collector-toggle-wrap">
@@ -781,6 +781,8 @@
           <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin: 10px 0; font-size: 0.9em; color: var(--text-secondary); display: grid; gap: 4px;">
             <div>👤 Conferente: <strong id="rCheckerName" style="color: var(--text-primary)">—</strong></div>
             <div>📋 Tipo de conferência: <strong id="rConferenceType" style="color: var(--text-primary)">—</strong></div>
+            <div>▶️ Início: <strong id="rStartedAt" style="color: var(--text-primary)">—</strong></div>
+            <div>⏹️ Fim: <strong id="rFinishedAt" style="color: var(--text-primary)">—</strong></div>
           </div>
           <div class="stats" style="margin-top: 10px">
             <div class="stat blue"><div class="s-val" id="rTotal">0</div><div class="s-lbl">Total</div></div>
@@ -1079,7 +1081,7 @@
       let S = {
         db: [], scanned: [], checked: new Set(), extras: [], sep: "newline", fileData: null,
         fileLayout: null, meta: {}, confType: "", filter: "all", rptSearch: "",
-        checkerName: "", cloudSessionId: "", cloudSessionStartSaved: false, collectorMode: false, collectorActive: false,
+        checkerName: "", startedAt: "", finishedAt: "", cloudSessionId: "", cloudSessionStartSaved: false, collectorMode: false, collectorActive: false,
       };
       let reportPanelMode = "ops";
       let reportOpSummarySearch = "";
@@ -1127,7 +1129,7 @@ let cloudLastHeaderWrite = 0;
         camCurrentPhotoBobina = null, camActx = null;
       const CAM_SCAN_DELAY_MS = 1800;
       const ADMIN_PASSWORD = "35210712";
-      const APP_BUILD_VERSION = "v11-painel-conferencia";
+      const APP_BUILD_VERSION = "v13-inicio-fim-todas";
       const FIREBASE_CONFIG = {
         apiKey: "AIzaSyCJTpQfv3pTOXHvV4TpQl2h2tF0TdtWiNw",
         authDomain: "conferencia-bobinas.firebaseapp.com",
@@ -1153,6 +1155,8 @@ let cloudLastHeaderWrite = 0;
       S.meta = s.meta || {};
       S.confType = s.confType || "";
       S.checkerName = s.checkerName || "";
+      S.startedAt = s.startedAt || "";
+      S.finishedAt = s.finishedAt || "";
       S.cloudSessionId = s.cloudSessionId || "";
       S.cloudSessionStartSaved = !!s.cloudSessionStartSaved && !!S.cloudSessionId;
       S.collectorMode = !!s.collectorMode;
@@ -1167,6 +1171,7 @@ let cloudLastHeaderWrite = 0;
     localStorage.setItem("bob3", JSON.stringify({
       db: S.db, scanned: S.scanned, checked: Array.from(S.checked), extras: S.extras,
       meta: S.meta, confType: S.confType, checkerName: S.checkerName,
+      startedAt: S.startedAt || "", finishedAt: S.finishedAt || "",
       cloudSessionId: S.cloudSessionId, cloudSessionStartSaved: !!S.cloudSessionStartSaved, collectorMode: S.collectorMode,
       // BUG 1 CORRIGIDO: sempre grava false para não reabrir ativo
       collectorActive: false,
@@ -1459,7 +1464,9 @@ let cloudLastHeaderWrite = 0;
         }
         try {
           cloudSetStatus("sync", "☁️ Registrando início...");
-          const d = new Date();
+          const d = S.startedAt ? new Date(S.startedAt) : new Date();
+          const startedIso = S.startedAt || d.toISOString();
+          if (!S.startedAt) { S.startedAt = startedIso; save(); }
           const resumo = cloudSummary();
           const payload = {
             id: S.cloudSessionId,
@@ -1471,10 +1478,13 @@ let cloudLastHeaderWrite = 0;
             resumo,
             storageMode: "economico_supabase_json",
             atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            // início = registro do nome do operador (todas as conferências)
             iniciadoEm: firebase.firestore.FieldValue.serverTimestamp(),
             criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-            criadoEmLocal: d.toISOString(),
-            iniciadoEmLocal: d.toISOString(),
+            criadoEmLocal: startedIso,
+            iniciadoEmLocal: startedIso,
+            dataInicio: startedIso,
+            dataInicioBR: cloudFormatDateTimeBR(startedIso),
           };
           // merge: se já existir (ex.: reload), não apaga campos de finalização
           await cloudDb.collection("conferencias").doc(S.cloudSessionId).set(payload, { merge: true });
@@ -1969,6 +1979,7 @@ let cloudLastHeaderWrite = 0;
       function cloudBuildLocalFinalReportData(photoUploads = {}) {
         const date = new Date();
         const resumo = cloudSummary();
+        const split = shouldSplitBasesInReport();
         const rows = getReportItems().map((i) => {
           const up = photoUploads[i.code] || null;
           const status = i.status === "checked" ? (i.manual ? "Conferido Manual" : "Conferido") : i.status === "pending" ? "Pendente" : "Não Prevista";
@@ -1976,33 +1987,53 @@ let cloudLastHeaderWrite = 0;
             code: String(i.code),
             op: i.op || "-",
             peso: i.peso || "-",
+            material: i.material || getMaterial(i.code) || "",
+            grupoKey: i.grupoKey || "",
+            grupo: i.grupo || "",
             status,
             manual: !!i.manual,
             time: i.time === "-" ? "" : (i.time || ""),
             location: i.location === "-" ? "" : (i.location || ""),
             observation: i.observation || "",
-            hasPhoto: !!(i.hasPhoto || up?.url),
+            hasPhoto: !!(i.hasPhoto || up?.url || up?.path),
             fotoUrl: up?.url || "",
-            fotoPath: up?.path || "",
+            fotoPath: up?.path || up?.storagePath || "",
           };
         });
-        return {
-          schemaVersion: 2,
+        const startedIso = S.startedAt || date.toISOString();
+        const finishedIso = S.finishedAt || date.toISOString();
+        const payload = {
+          schemaVersion: split ? 3 : 2,
           storageMode: "economico_supabase_json",
           id: S.cloudSessionId || cloudMakeSessionId(),
           title: "RELATÓRIO DE CONFERÊNCIA - NUVEM",
           operador: S.checkerName || "-",
           operadorKey: cloudOperatorKey(),
           tipo: S.confType || "-",
-          data: cloudDateKey(date),
+          data: cloudDateKey(S.startedAt ? new Date(S.startedAt) : date),
           status: "finalizada",
-          criadoEmLocal: date.toISOString(),
-          finalizadoEmLocal: date.toISOString(),
+          // início = nome do operador | fim = finalizar
+          dataInicio: startedIso,
+          dataFim: finishedIso,
+          dataInicioBR: cloudFormatDateTimeBR(startedIso),
+          dataFimBR: cloudFormatDateTimeBR(finishedIso),
+          criadoEmLocal: startedIso,
+          iniciadoEmLocal: startedIso,
+          finalizadoEmLocal: finishedIso,
           resumo,
           opSummary: getOpSummaryItems(),
           rows,
           confIds: [S.cloudSessionId || ""],
         };
+        if (split) {
+          payload.splitBases = true;
+          payload.baseGroupTotals = getBaseGroupTotals();
+          payload.opSummaryByGroup = {
+            base: getOpSummaryItems("base"),
+            pelicula: getOpSummaryItems("pelicula"),
+          };
+        }
+        return payload;
       }
       async function cloudUploadLocalPhotosForFinalReport() {
         const progress = document.getElementById("exportProgress");
@@ -2055,11 +2086,16 @@ let cloudLastHeaderWrite = 0;
 
           if (progress) progress.textContent = "Gravando resumo...";
           const d = new Date();
+          const finishedIso = d.toISOString();
+          S.finishedAt = finishedIso;
+          if (!S.startedAt) S.startedAt = reportData.dataInicio || finishedIso;
+          save();
+          updateReportDatesUI();
           await cloudDb.collection("conferencias").doc(S.cloudSessionId).set({
             id: S.cloudSessionId,
             operador: S.checkerName || "",
             operadorKey: cloudOperatorKey(),
-            data: cloudDateKey(d),
+            data: cloudDateKey(S.startedAt ? new Date(S.startedAt) : d),
             tipo: S.confType || "",
             status: "finalizada",
             resumo: reportData.resumo,
@@ -2069,10 +2105,16 @@ let cloudLastHeaderWrite = 0;
             reportUrl: reportUpload.url,
             reportSize: reportUpload.size,
             fotosEnviadas: Object.keys(photoUploads).length,
-            storagePrefix: `${cloudOperatorKey()}/${cloudDateKey()}/${S.cloudSessionId}/`,
+            storagePrefix: `${cloudOperatorKey()}/${cloudDateKey(S.startedAt ? new Date(S.startedAt) : d)}/${S.cloudSessionId}/`,
             atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            // fim = clique em Finalizar (todas as conferências)
             finalizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-            finalizadoEmLocal: d.toISOString(),
+            finalizadoEmLocal: finishedIso,
+            dataFim: finishedIso,
+            dataFimBR: cloudFormatDateTimeBR(finishedIso),
+            dataInicio: S.startedAt || reportData.dataInicio || "",
+            dataInicioBR: cloudFormatDateTimeBR(S.startedAt || reportData.dataInicio || ""),
+            iniciadoEmLocal: S.startedAt || reportData.dataInicio || "",
           }, { merge: true });
           S.cloudSessionStartSaved = true;
           save();
@@ -2154,7 +2196,7 @@ let cloudLastHeaderWrite = 0;
                 <span>⚠️ Não previstas: <strong>${r.naoPrevistas ?? 0}</strong></span>
                 <span>📊 <strong>${r.percentual ?? 0}%</strong></span>
               </div>
-              <div class="small" style="margin-top:6px;color:var(--text-muted)">🕒 ${esc(cloudFormatSessionMeta(d.id, d.data))}</div>
+              <div class="small" style="margin-top:6px;color:var(--text-muted)">▶️ Início: ${esc(cloudFormatDateTimeBR(d.dataInicio || d.iniciadoEmLocal || d.criadoEmLocal || d.iniciadoEm || d.criadoEm || cloudParseSessionId(d.id)?.date || d.data) || "—")} · ⏹️ Fim: ${esc(d.dataFim || d.finalizadoEmLocal || d.finalizadoEm ? cloudFormatDateTimeBR(d.dataFim || d.finalizadoEmLocal || d.finalizadoEm) : (status === "finalizada" ? "—" : "em andamento"))}</div>
             </div>`;
         }).join("");
         cloudUpdateMergeButton();
@@ -2247,21 +2289,76 @@ let cloudLastHeaderWrite = 0;
       }
       function cloudBuildCsvReport(data, opt) {
         const date = new Date(); const r = data.resumo || {};
-        let csv = `${data.title}\nData;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente;${data.operador}\nTipo;${data.tipo}\nID;${data.id}\nStatus;${data.status}\n`;
+        const split = !!(data.splitBases || data.opSummaryByGroup);
+        let csv = `${data.title}\nData;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente;${data.operador}\nTipo;${data.tipo}\nID;${data.id}\nStatus;${data.status}\nData Início;${data.dataInicioBR || cloudFormatDateTimeBR(data.dataInicio || data.iniciadoEmLocal || data.criadoEmLocal || "") || "—"}\nData Fim;${data.dataFimBR || cloudFormatDateTimeBR(data.dataFim || data.finalizadoEmLocal || "") || "—"}\n`;
         if (opt.summary) csv += `\nRESUMO\nTotal;${r.total ?? 0}\nConferidos;${r.conferidos ?? 0}\nPendentes;${r.pendentes ?? 0}\nNão Previstas;${r.naoPrevistas ?? 0}\nPercentual;${r.percentual ?? 0}%\n`;
-        if (opt.ops) { csv += `\nRESUMO POR OP\nOP;Encontradas;Percentual\n`; csv += (data.opSummary || []).map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`).join("\n") + "\n"; }
-        const cols = ["Código", "OP", "Peso", "Status", "Hora", "Localização"]; if (opt.obs) cols.push("Observação"); if (opt.photoLinks) cols.push("Foto");
+        if (split && data.baseGroupTotals) {
+          const b = data.baseGroupTotals.base || {};
+          const p = data.baseGroupTotals.pelicula || {};
+          csv += `\nSEPARAÇÃO BASES (Todas)\nGrupo;Total;Conferidos;Pendentes;Percentual\n`;
+          csv += `Bases - Demais (sem película);${b.total ?? 0};${b.checked ?? 0};${b.pending ?? 0};${b.pct ?? "0.0"}%\n`;
+          csv += `Bases - Películas (BOPP/PP/PET);${p.total ?? 0};${p.checked ?? 0};${p.pending ?? 0};${p.pct ?? "0.0"}%\n`;
+        }
+        if (opt.ops) {
+          if (split && data.opSummaryByGroup) {
+            csv += `\nRESUMO POR OP - BASES (DEMAIS)\nOP;Encontradas;Percentual\n`;
+            csv += (data.opSummaryByGroup.base || []).map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`).join("\n") + "\n";
+            csv += `\nRESUMO POR OP - PELÍCULAS\nOP;Encontradas;Percentual\n`;
+            csv += (data.opSummaryByGroup.pelicula || []).map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`).join("\n") + "\n";
+          } else {
+            csv += `\nRESUMO POR OP\nOP;Encontradas;Percentual\n`;
+            csv += (data.opSummary || []).map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`).join("\n") + "\n";
+          }
+        }
+        const cols = ["Código", "OP", "Peso"];
+        if (split) { cols.push("Grupo", "Material"); }
+        cols.push("Status", "Hora", "Localização");
+        if (opt.obs) cols.push("Observação");
+        if (opt.photoLinks) cols.push("Foto");
         csv += `\nBOBINAS\n${cols.join(";")}\n`;
-        csv += cloudFilterRowsForExport(data.rows, opt).map((i) => { const row = [i.code, i.op, i.peso, i.status, i.time || "", i.location || ""]; if (opt.obs) row.push(i.observation || ""); if (opt.photoLinks) row.push(i.fotoUrl || (i.hasPhoto ? "Sim" : "Não")); return row.join(";"); }).join("\n");
+        csv += cloudFilterRowsForExport(data.rows, opt).map((i) => {
+          const row = [i.code, i.op, i.peso];
+          if (split) row.push(i.grupo || i.grupoKey || "", i.material || "");
+          row.push(i.status, i.time || "", i.location || "");
+          if (opt.obs) row.push(i.observation || "");
+          if (opt.photoLinks) row.push(i.fotoUrl || (i.hasPhoto ? "Sim" : "Não"));
+          return row.join(";");
+        }).join("\n");
         return csv;
       }
       function cloudBuildTxtReport(data, opt) {
         const date = new Date(); const r = data.resumo || {};
-        let txt = `${data.title}\nData: ${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente: ${data.operador}\nTipo: ${data.tipo}\nID: ${data.id}\nStatus: ${data.status}\n${"=".repeat(95)}\n`;
+        const split = !!(data.splitBases || data.opSummaryByGroup);
+        let txt = `${data.title}\nData: ${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente: ${data.operador}\nTipo: ${data.tipo}\nID: ${data.id}\nStatus: ${data.status}\nData Início: ${data.dataInicioBR || cloudFormatDateTimeBR(data.dataInicio || data.iniciadoEmLocal || data.criadoEmLocal || "") || "—"}\nData Fim: ${data.dataFimBR || cloudFormatDateTimeBR(data.dataFim || data.finalizadoEmLocal || "") || "—"}\n${"=".repeat(95)}\n`;
         if (opt.summary) txt += `\nTotal: ${r.total ?? 0}\nConferidos: ${r.conferidos ?? 0}\nPendentes: ${r.pendentes ?? 0}\nNão Previstas: ${r.naoPrevistas ?? 0}\nPercentual: ${r.percentual ?? 0}%\n`;
-        if (opt.ops) { txt += `\n${"=".repeat(95)}\nRESUMO POR OP\n${"=".repeat(95)}\n`; txt += (data.opSummary || []).map((op) => `OP: ${String(op.op || "-").padEnd(15)} | Encontradas: ${String(op.checked + "/" + op.total).padEnd(8)} | ${op.pct}%`).join("\n"); }
+        if (split && data.baseGroupTotals) {
+          const b = data.baseGroupTotals.base || {};
+          const p = data.baseGroupTotals.pelicula || {};
+          txt += `\n${"=".repeat(95)}\nSEPARAÇÃO BASES (Todas)\n${"=".repeat(95)}\n`;
+          txt += `Bases - Demais: ${b.checked ?? 0}/${b.total ?? 0} (${b.pct ?? "0.0"}%) | Pendentes: ${b.pending ?? 0}\n`;
+          txt += `Películas (BOPP/PP/PET): ${p.checked ?? 0}/${p.total ?? 0} (${p.pct ?? "0.0"}%) | Pendentes: ${p.pending ?? 0}\n`;
+        }
+        if (opt.ops) {
+          if (split && data.opSummaryByGroup) {
+            txt += `\n${"=".repeat(95)}\nRESUMO POR OP - BASES (DEMAIS)\n${"=".repeat(95)}\n`;
+            txt += (data.opSummaryByGroup.base || []).map((op) => `OP: ${String(op.op || "-").padEnd(15)} | Encontradas: ${String(op.checked + "/" + op.total).padEnd(8)} | ${op.pct}%`).join("\n");
+            txt += `\n\n${"=".repeat(95)}\nRESUMO POR OP - PELÍCULAS\n${"=".repeat(95)}\n`;
+            txt += (data.opSummaryByGroup.pelicula || []).map((op) => `OP: ${String(op.op || "-").padEnd(15)} | Encontradas: ${String(op.checked + "/" + op.total).padEnd(8)} | ${op.pct}%`).join("\n");
+          } else {
+            txt += `\n${"=".repeat(95)}\nRESUMO POR OP\n${"=".repeat(95)}\n`;
+            txt += (data.opSummary || []).map((op) => `OP: ${String(op.op || "-").padEnd(15)} | Encontradas: ${String(op.checked + "/" + op.total).padEnd(8)} | ${op.pct}%`).join("\n");
+          }
+        }
         txt += `\n\n${"=".repeat(95)}\nBOBINAS\n${"=".repeat(95)}\n\n`;
-        txt += cloudFilterRowsForExport(data.rows, opt).map((i) => { let line = `${String(i.code).padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${String(i.status).padEnd(16)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)}`; if (opt.obs) line += `| Obs: ${(i.observation || "—").padEnd(20)}`; if (opt.photoLinks) line += `| ${i.fotoUrl ? "📸 " + i.fotoUrl : (i.hasPhoto ? "📸 Sim" : "—")}`; return line; }).join("\n");
+        txt += cloudFilterRowsForExport(data.rows, opt).map((i) => {
+          const g = split ? (i.grupoKey === "pelicula" ? "PEL" : (i.grupoKey === "base" ? "BASE" : "")) : "";
+          let line = `${String(i.code).padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)}`;
+          if (g) line += ` | ${g.padEnd(4)}`;
+          line += ` | ${String(i.status).padEnd(16)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)}`;
+          if (opt.obs) line += `| Obs: ${(i.observation || "—").padEnd(20)}`;
+          if (opt.photoLinks) line += `| ${i.fotoUrl ? "📸 " + i.fotoUrl : (i.hasPhoto ? "📸 Sim" : "—")}`;
+          return line;
+        }).join("\n");
         return txt;
       }
       function cloudCloseExportModal() { document.getElementById("cloudExportModal")?.classList.remove("show"); }
@@ -2409,7 +2506,11 @@ let cloudLastHeaderWrite = 0;
           const pctNum = Number(r.percentual != null ? r.percentual : 0);
           const pct = (Number.isFinite(pctNum) ? pctNum : 0).toFixed(1) + "%";
           // UI compacta: NÃO mostra lista/resumo abertos — só cards "Abrir"
-          box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(data.operador || "-")} • ${esc(cloudFormatSessionMeta(data.id, data.data || ""))}</div><div class="cloud-detail-sub">${esc(data.tipo || "-")}</div></div>
+          const inicioTxt = cloudFormatDateTimeBR(data.dataInicio || data.iniciadoEmLocal || data.criadoEmLocal || data.iniciadoEm || data.criadoEm || data.data) || "—";
+          const fimTxt = (data.dataFim || data.finalizadoEmLocal || data.finalizadoEm)
+            ? cloudFormatDateTimeBR(data.dataFim || data.finalizadoEmLocal || data.finalizadoEm)
+            : (data.status === "finalizada" ? "—" : "em andamento");
+          box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(data.operador || "-")} • ${esc(cloudFormatSessionMeta(data.id, data.data || ""))}</div><div class="cloud-detail-sub">${esc(data.tipo || "-")}</div><div class="cloud-detail-sub">▶️ Início: ${esc(inicioTxt)} · ⏹️ Fim: ${esc(fimTxt)}</div></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
               <button class="cloud-report-btn" onclick="cloudShowExportModal(cloudDetailConfId)">Exportar</button>
               <button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">✕ Fechar</button>
@@ -2582,7 +2683,15 @@ let cloudLastHeaderWrite = 0;
         try {
           cloudSetStatus("sync", "☁️ Finalizando conferência..."); if (!(await cloudInit())) throw new Error("Firebase indisponível");
           const ref = cloudDb.collection("conferencias").doc(confId); const snap = await ref.get(); if (!snap.exists) throw new Error("Conferência não encontrada");
-          await ref.set({ status: "finalizada", finalizadoEm: firebase.firestore.FieldValue.serverTimestamp(), atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+          const finishedIso = new Date().toISOString();
+          await ref.set({
+            status: "finalizada",
+            finalizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            finalizadoEmLocal: finishedIso,
+            dataFim: finishedIso,
+            dataFimBR: cloudFormatDateTimeBR(finishedIso),
+          }, { merge: true });
           if (confId === S.cloudSessionId) cloudSetStatus("ok", "☁️ Conferência atual finalizada"); else cloudSetStatus("ok", "☁️ Conferência finalizada");
           notify("Conferência finalizada.");
         } catch (e) { console.error(e); cloudSetStatus("error", "☁️ Erro ao finalizar"); notify("Erro ao finalizar: " + (e.message || e), "error"); }
@@ -2828,9 +2937,17 @@ let cloudLastHeaderWrite = 0;
         const name = document.getElementById("checkerInput").value.trim();
         if (!name) { document.getElementById("checkerError").style.display = "block"; document.getElementById("checkerInput").focus(); return false; }
         S.checkerName = name;
+        // Início automático para TODAS as conferências: no momento em que o nome é registrado
+        if (!S.startedAt) {
+          S.startedAt = new Date().toISOString();
+          S.finishedAt = "";
+        }
         save();
         document.getElementById("checkerModal").classList.remove("show");
         if (document.getElementById("rCheckerName")) document.getElementById("rCheckerName").textContent = name;
+        updateReportDatesUI();
+        // registra início na nuvem (não bloqueia se falhar)
+        try { cloudEnsureSession(); } catch (e) { console.warn(e); }
         const cb = checkerStartCallback; checkerStartCallback = null; notify("Conferente: " + name); if (cb) cb(); return true;
       }
       function ensureCheckerName(cb) { if (S.checkerName) return true; showCheckerModal(cb); return false; }
@@ -2873,6 +2990,8 @@ let cloudLastHeaderWrite = 0;
   S.meta = {};
   S.confType = "";
   S.cloudSessionId = "";
+  S.startedAt = "";
+  S.finishedAt = "";
   S.cloudSessionStartSaved = false;
   S.db = [];
   S.scanned = [];
@@ -3061,8 +3180,11 @@ let cloudLastHeaderWrite = 0;
         // O servidor só recebe dados quando o operador clica em "Finalizar".
         // Cada nova importação/conferência deve pedir o operador do aparelho.
         S.checkerName = "";
+        S.startedAt = "";
+        S.finishedAt = "";
         save();
         if (document.getElementById("rCheckerName")) document.getElementById("rCheckerName").textContent = "—";
+        updateReportDatesUI();
         cloudSetStatus("ok", "☁️ Modo econômico: salva ao finalizar");
         setTimeout(() => showCheckerModal(), 180);
       }
@@ -3624,16 +3746,121 @@ if (S.collectorMode) {
       }
       function getOP(code) { return S.meta && S.meta[code] && S.meta[code].op ? S.meta[code].op : "-"; }
       function getPeso(code) { return S.meta && S.meta[code] && S.meta[code].peso ? S.meta[code].peso : "-"; }
-      function getOpSummaryItems() {
+      function getMaterial(code) {
+        if (S.meta && S.meta[code] && S.meta[code].material) return String(S.meta[code].material);
+        return "";
+      }
+      const PELICULA_MATERIAL_TERMS = ["BOPP", "PP", "PET"];
+      function isPeliculaMaterial(material) {
+        const m = String(material || "").toUpperCase();
+        if (!m) return false;
+        return PELICULA_MATERIAL_TERMS.some((t) => m.includes(String(t).toUpperCase()));
+      }
+      function shouldSplitBasesInReport(confType = S.confType) {
+        // Quando a conferência inclui "Bases - Todas", separa películas (BOPP/PP/PET) das demais bases.
+        return /bases\s*-\s*todas/i.test(String(confType || ""));
+      }
+      function getBaseGroupKey(codeOrItem) {
+        // 'pelicula' | 'base' | ''
+        if (!shouldSplitBasesInReport()) return "";
+        let material = "";
+        if (codeOrItem && typeof codeOrItem === "object") {
+          material = codeOrItem.material || codeOrItem.Material || "";
+          if (!material && codeOrItem.code) material = getMaterial(codeOrItem.code);
+        } else {
+          material = getMaterial(codeOrItem);
+        }
+        // extras não entram no split de base
+        if (codeOrItem && typeof codeOrItem === "object" && codeOrItem.status === "extra") return "";
+        return isPeliculaMaterial(material) ? "pelicula" : "base";
+      }
+      function getBaseGroupLabel(key) {
+        if (key === "pelicula") return "Bases - Películas (BOPP/PP/PET)";
+        if (key === "base") return "Bases - Demais (sem película)";
+        return "";
+      }
+      function getOpSummaryItems(groupFilter = null) {
+        // groupFilter: null | 'pelicula' | 'base'
         const map = new Map();
-        S.db.forEach((code) => { const op = getOP(code) || "-"; if (!map.has(op)) map.set(op, { op, total: 0, checked: 0, pending: 0, pct: 0 }); const item = map.get(op); item.total++; if (S.checked.has(code)) item.checked++; });
-        const arr = Array.from(map.values()).map((item) => { item.pending = item.total - item.checked; item.pct = item.total > 0 ? ((item.checked / item.total) * 100).toFixed(1) : "0.0"; return item; });
-        arr.sort((a, b) => String(a.op).localeCompare(String(b.op), "pt-BR", { numeric: true, sensitivity: "base" })); return arr;
+        S.db.forEach((code) => {
+          if (groupFilter) {
+            const g = getBaseGroupKey(code);
+            if (g !== groupFilter) return;
+          }
+          const op = getOP(code) || "-";
+          if (!map.has(op)) map.set(op, { op, total: 0, checked: 0, pending: 0, pct: 0, group: groupFilter || "" });
+          const item = map.get(op);
+          item.total++;
+          if (S.checked.has(code)) item.checked++;
+        });
+        const arr = Array.from(map.values()).map((item) => {
+          item.pending = item.total - item.checked;
+          item.pct = item.total > 0 ? ((item.checked / item.total) * 100).toFixed(1) : "0.0";
+          return item;
+        });
+        arr.sort((a, b) => String(a.op).localeCompare(String(b.op), "pt-BR", { numeric: true, sensitivity: "base" }));
+        return arr;
+      }
+      function getBaseGroupTotals() {
+        if (!shouldSplitBasesInReport()) return null;
+        const out = {
+          base: { total: 0, checked: 0, pending: 0, pct: "0.0" },
+          pelicula: { total: 0, checked: 0, pending: 0, pct: "0.0" },
+        };
+        S.db.forEach((code) => {
+          const g = getBaseGroupKey(code) || "base";
+          if (!out[g]) return;
+          out[g].total++;
+          if (S.checked.has(code)) out[g].checked++;
+        });
+        ["base", "pelicula"].forEach((k) => {
+          out[k].pending = Math.max(0, out[k].total - out[k].checked);
+          out[k].pct = out[k].total > 0 ? ((out[k].checked / out[k].total) * 100).toFixed(1) : "0.0";
+        });
+        return out;
       }
       function getReportItems() {
         let items = [];
-        [...new Set(S.extras)].forEach((code) => { const scan = S.scanned.find((s) => s.code === code && s.status === "not-found"); items.push({ code, op: "-", peso: "-", status: "extra", manual: false, time: scan ? scan.time : "-", location: scan?.location || "-", observation: scan?.observation || "", hasPhoto: scan?.hasPhoto || false }); });
-        S.db.forEach((code) => { const chk = S.checked.has(code), scan = S.scanned.find((s) => s.code === code && s.status === "found"); items.push({ code, op: getOP(code), peso: getPeso(code), status: chk ? "checked" : "pending", manual: !!scan?.manual, time: scan ? scan.time : "-", location: scan?.location || "", observation: scan?.observation || "", hasPhoto: !!scan?.hasPhoto }); });
+        const split = shouldSplitBasesInReport();
+        [...new Set(S.extras)].forEach((code) => {
+          const scan = S.scanned.find((s) => s.code === code && s.status === "not-found");
+          items.push({
+            code, op: "-", peso: "-", material: "", grupo: "", grupoKey: "",
+            status: "extra", manual: false,
+            time: scan ? scan.time : "-", location: scan?.location || "-",
+            observation: scan?.observation || "", hasPhoto: scan?.hasPhoto || false,
+          });
+        });
+        S.db.forEach((code) => {
+          const chk = S.checked.has(code);
+          const scan = S.scanned.find((s) => s.code === code && s.status === "found");
+          const material = getMaterial(code);
+          const grupoKey = split ? (isPeliculaMaterial(material) ? "pelicula" : "base") : "";
+          items.push({
+            code,
+            op: getOP(code),
+            peso: getPeso(code),
+            material,
+            grupoKey,
+            grupo: getBaseGroupLabel(grupoKey),
+            status: chk ? "checked" : "pending",
+            manual: !!scan?.manual,
+            time: scan ? scan.time : "-",
+            location: scan?.location || "",
+            observation: scan?.observation || "",
+            hasPhoto: !!scan?.hasPhoto,
+          });
+        });
+        // Em Bases - Todas: ordena Demais primeiro, depois Películas, depois extras
+        if (split) {
+          const order = { base: 0, pelicula: 1, "": 2 };
+          items.sort((a, b) => {
+            const ga = order[a.grupoKey || ""] ?? 2;
+            const gb = order[b.grupoKey || ""] ?? 2;
+            if (ga !== gb) return ga - gb;
+            return String(a.op || "").localeCompare(String(b.op || ""), "pt-BR", { numeric: true });
+          });
+        }
         return items;
       }
       function setText(id, value) { const el = document.getElementById(id); if (el) el.textContent = value; }
@@ -3669,19 +3896,95 @@ if (S.collectorMode) {
         setText("reportPanelOpsPending", pending);
         setText("reportPanelOpsPct", pct);
       }
-      function renderOpSummary(search = "") {
-        const box = document.getElementById("opSummaryBody"); if (!box) return;
-        let ops = getOpSummaryItems(); const q = String(search || "").trim().toLowerCase();
-        if (q) ops = ops.filter((op) => String(op.op || "").toLowerCase().includes(q));
-        if (!ops.length) { box.innerHTML = '<div class="empty">Nenhuma OP encontrada</div>'; return; }
-        box.innerHTML = '<div class="op-summary-list">' + ops.map((op) => {
+      function renderOpSummaryGroupList(ops) {
+        if (!ops.length) return '<div class="empty">Nenhuma OP encontrada</div>';
+        return '<div class="op-summary-list">' + ops.map((op) => {
           const pct = Math.max(0, Math.min(100, Number(op.pct) || 0));
           return `<div class="op-summary-item"><div class="op-summary-head"><div class="op-summary-op">OP ${esc(op.op || "-")}</div><div class="op-summary-pct">${esc(op.pct)}%</div></div><div class="op-summary-info"><span>✅ Encontradas: <strong>${op.checked}/${op.total}</strong></span><span>⏳ Pendentes: <strong>${op.pending}</strong></span></div><div class="op-summary-progress"><span style="width:${pct}%"></span></div></div>`;
         }).join("") + "</div>";
       }
+      function renderOpSummary(search = "") {
+        const box = document.getElementById("opSummaryBody"); if (!box) return;
+        const q = String(search || "").trim().toLowerCase();
+        const filterQ = (ops) => q ? ops.filter((op) => String(op.op || "").toLowerCase().includes(q)) : ops;
+
+        if (shouldSplitBasesInReport()) {
+          const bases = filterQ(getOpSummaryItems("base"));
+          const pels = filterQ(getOpSummaryItems("pelicula"));
+          const tot = getBaseGroupTotals() || {};
+          const b = tot.base || {};
+          const p = tot.pelicula || {};
+          box.innerHTML = `
+            <div style="display:grid;gap:14px">
+              <div style="border:1px solid var(--border);border-radius:14px;padding:12px;background:var(--bg-card)">
+                <div style="font-weight:900;margin-bottom:6px;color:var(--text-primary)">📦 Bases - Demais (sem película)</div>
+                <div style="font-size:.8em;color:var(--text-secondary);margin-bottom:10px">
+                  Total: <strong style="color:var(--text-primary)">${b.total || 0}</strong> ·
+                  Conferidos: <strong style="color:var(--text-primary)">${b.checked || 0}</strong> ·
+                  Pendentes: <strong style="color:var(--text-primary)">${b.pending || 0}</strong> ·
+                  ${b.pct || "0.0"}%
+                </div>
+                ${renderOpSummaryGroupList(bases)}
+              </div>
+              <div style="border:1px solid rgba(245,158,11,.35);border-radius:14px;padding:12px;background:rgba(245,158,11,.06)">
+                <div style="font-weight:900;margin-bottom:6px;color:var(--text-primary)">🎞️ Bases - Películas (BOPP / PP / PET)</div>
+                <div style="font-size:.8em;color:var(--text-secondary);margin-bottom:10px">
+                  Total: <strong style="color:var(--text-primary)">${p.total || 0}</strong> ·
+                  Conferidos: <strong style="color:var(--text-primary)">${p.checked || 0}</strong> ·
+                  Pendentes: <strong style="color:var(--text-primary)">${p.pending || 0}</strong> ·
+                  ${p.pct || "0.0"}%
+                </div>
+                ${renderOpSummaryGroupList(pels)}
+              </div>
+            </div>`;
+          return;
+        }
+
+        let ops = filterQ(getOpSummaryItems());
+        if (!ops.length) { box.innerHTML = '<div class="empty">Nenhuma OP encontrada</div>'; return; }
+        box.innerHTML = renderOpSummaryGroupList(ops);
+      }
+      function updateReportDatesUI() {
+        const sEl = document.getElementById("rStartedAt");
+        const fEl = document.getElementById("rFinishedAt");
+        if (sEl) sEl.textContent = S.startedAt ? cloudFormatDateTimeBR(S.startedAt) : "—";
+        if (fEl) fEl.textContent = S.finishedAt ? cloudFormatDateTimeBR(S.finishedAt) : "—";
+      }
       function updateReport() {
         const total = S.db.length, chk = S.checked.size, pend = total - chk, ext = [...new Set(S.extras)].length, pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0;
-        document.getElementById("rTotal").textContent = total; document.getElementById("rChecked").textContent = chk; document.getElementById("rPending").textContent = pend; document.getElementById("rExtra").textContent = ext; document.getElementById("rPct").textContent = pct + "%"; document.getElementById("rFill").style.width = pct + "%"; document.getElementById("rCheckerName").textContent = S.checkerName || "—"; document.getElementById("rConferenceType").textContent = S.confType || "—";
+        document.getElementById("rTotal").textContent = total; document.getElementById("rChecked").textContent = chk; document.getElementById("rPending").textContent = pend; document.getElementById("rExtra").textContent = ext; document.getElementById("rPct").textContent = pct + "%"; document.getElementById("rFill").style.width = pct + "%"; document.getElementById("rCheckerName").textContent = S.checkerName || "—"; document.getElementById("rConferenceType").textContent = S.confType || "—"; updateReportDatesUI();
+        // faixa de separação Bases x Películas no relatório local
+        let splitBox = document.getElementById("rBaseSplitBox");
+        if (!splitBox) {
+          const host = document.getElementById("rFill")?.closest(".card");
+          if (host) {
+            splitBox = document.createElement("div");
+            splitBox.id = "rBaseSplitBox";
+            splitBox.style.cssText = "display:none;margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px";
+            host.appendChild(splitBox);
+          }
+        }
+        if (splitBox) {
+          if (shouldSplitBasesInReport()) {
+            const t = getBaseGroupTotals() || {};
+            const b = t.base || {}, p = t.pelicula || {};
+            splitBox.style.display = "grid";
+            splitBox.innerHTML = `
+              <div style="background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.25);border-radius:12px;padding:10px">
+                <div style="font-size:.78em;font-weight:800;color:#2563eb">📦 Bases (demais)</div>
+                <div style="font-size:1.15em;font-weight:900;color:var(--text-primary);margin-top:4px">${b.checked || 0}/${b.total || 0}</div>
+                <div style="font-size:.75em;color:var(--text-secondary)">${b.pct || "0.0"}% · pend. ${b.pending || 0}</div>
+              </div>
+              <div style="background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:10px">
+                <div style="font-size:.78em;font-weight:800;color:#d97706">🎞️ Películas</div>
+                <div style="font-size:1.15em;font-weight:900;color:var(--text-primary);margin-top:4px">${p.checked || 0}/${p.total || 0}</div>
+                <div style="font-size:.75em;color:var(--text-secondary)">${p.pct || "0.0"}% · pend. ${p.pending || 0}</div>
+              </div>`;
+          } else {
+            splitBox.style.display = "none";
+            splitBox.innerHTML = "";
+          }
+        }
         updateReportPanelMetrics(); renderRpt(); renderOpSummary(reportOpSummarySearch);
       }
       function renderRpt() {
@@ -3693,10 +3996,16 @@ if (S.collectorMode) {
         }
         const counter = document.getElementById("reportDetailResultCount"); if (counter) counter.textContent = `${items.length} ${items.length === 1 ? "item" : "itens"}`;
         const d = items.slice(0, 500);
+        const split = shouldSplitBasesInReport();
         tbody.innerHTML = d.map((it, i) => {
           const loc = it.status === "extra" ? ("📌 " + esc(it.location || "-")) : (it.location ? esc(it.location) : "—");
           const photoCode = esc(it.code).replace(/'/g, "&#39;");
-          return `<tr><td>${i + 1}</td><td class="cc">${esc(it.code)}</td><td>${esc(it.op || "-")}</td><td>${esc(it.peso || "-")}</td><td>${reportStatusBadge(it)}</td><td>${esc(it.time)}</td><td>${loc}</td><td>${it.observation ? esc(it.observation) : "—"}</td><td>${it.hasPhoto ? `<button class="icon-btn" onclick="showPhotoModal('${photoCode}')">📸</button>` : "—"}</td></tr>`;
+          const grupoBadge = (split && it.grupoKey)
+            ? (it.grupoKey === "pelicula"
+                ? '<div style="font-size:.68em;font-weight:800;color:#d97706;margin-top:2px">🎞️ Película</div>'
+                : '<div style="font-size:.68em;font-weight:800;color:#2563eb;margin-top:2px">📦 Base</div>')
+            : "";
+          return `<tr><td>${i + 1}</td><td class="cc">${esc(it.code)}${grupoBadge}</td><td>${esc(it.op || "-")}</td><td>${esc(it.peso || "-")}</td><td>${reportStatusBadge(it)}</td><td>${esc(it.time)}</td><td>${loc}</td><td>${it.observation ? esc(it.observation) : "—"}</td><td>${it.hasPhoto ? `<button class="icon-btn" onclick="showPhotoModal('${photoCode}')">📸</button>` : "—"}</td></tr>`;
         }).join("");
         if (items.length > 500) tbody.innerHTML += `<tr><td colspan="9">... +${items.length - 500}</td></tr>`;
         if (!items.length) tbody.innerHTML = '<tr><td colspan="9">Nenhum item</td></tr>';
@@ -3842,22 +4151,70 @@ if (S.collectorMode) {
         }
       }
       function exportRpt(fmt) {
-        const items = getReportItems().map((i) => ({ code: i.code, op: i.op || "-", peso: i.peso || "-", status: i.status === "checked" ? (i.manual ? "Conferido Manual" : "Conferido") : i.status === "pending" ? "Pendente" : "Não Prevista", time: i.time === "-" ? "" : i.time, location: i.location === "-" ? "" : i.location, observation: i.observation || "", hasPhoto: i.hasPhoto }));
-        const total = S.db.length, chk = S.checked.size, pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0, date = new Date(), tipo = S.confType || "-", conferente = S.checkerName || "-", extras = [...new Set(S.extras)].length, opSummary = getOpSummaryItems();
+        const rawItems = getReportItems();
+        const items = rawItems.map((i) => ({
+          code: i.code, op: i.op || "-", peso: i.peso || "-",
+          material: i.material || "", grupo: i.grupo || "", grupoKey: i.grupoKey || "",
+          status: i.status === "checked" ? (i.manual ? "Conferido Manual" : "Conferido") : i.status === "pending" ? "Pendente" : "Não Prevista",
+          time: i.time === "-" ? "" : i.time, location: i.location === "-" ? "" : i.location,
+          observation: i.observation || "", hasPhoto: i.hasPhoto,
+        }));
+        const total = S.db.length, chk = S.checked.size, pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0;
+        const date = new Date(), tipo = S.confType || "-", conferente = S.checkerName || "-", extras = [...new Set(S.extras)].length;
+        const split = shouldSplitBasesInReport();
+        const opAll = getOpSummaryItems();
+        const opBase = split ? getOpSummaryItems("base") : [];
+        const opPel = split ? getOpSummaryItems("pelicula") : [];
+        const gt = split ? (getBaseGroupTotals() || {}) : null;
+
+        const mapBobinaLineCsv = (i) => {
+          if (split) return `${i.code};${i.op};${i.peso};${i.grupo || ""};${i.material || ""};${i.status};${i.time};${i.location};${i.observation};${i.hasPhoto ? "Combinada etiqueta+bobina" : "Não"}`;
+          return `${i.code};${i.op};${i.peso};${i.status};${i.time};${i.location};${i.observation};${i.hasPhoto ? "Combinada etiqueta+bobina" : "Não"}`;
+        };
+        const mapBobinaLineTxt = (i) => {
+          const g = split && i.grupoKey ? (i.grupoKey === "pelicula" ? "PEL" : "BASE") : "";
+          return `${i.code.padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)}${g ? " | " + g.padEnd(4) : ""} | ${i.status.padEnd(15)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.hasPhoto ? "📸 Combinada" : "—"}`;
+        };
+        const opLinesCsv = (ops) => ops.map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`).join("\n");
+        const opLinesTxt = (ops) => ops.map((op) => `OP: ${String(op.op || "-").padEnd(15)} | Encontradas: ${String(op.checked + "/" + op.total).padEnd(8)} | ${op.pct}%`).join("\n");
+
         if (fmt === "csv") {
-          let csv = `RELATÓRIO DE CONFERÊNCIA\nData;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente;${conferente}\nTipo de Conferência;${tipo}\n\nRESUMO\nTotal;${total}\nConferidos;${chk}\nPendentes;${total - chk}\nNão Previstas;${extras}\nPercentual;${pct}%\n\nRESUMO POR OP\nOP;Encontradas;Percentual\n`;
-          csv += opSummary.map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`).join("\n");
-          csv += `\n\nBOBINAS\nCódigo;OP;Peso;Status;Hora;Localização;Observação;Fotos\n`;
-          csv += items.map((i) => `${i.code};${i.op};${i.peso};${i.status};${i.time};${i.location};${i.observation};${i.hasPhoto ? "Combinada etiqueta+bobina" : "Não"}`).join("\n");
+          let csv = `RELATÓRIO DE CONFERÊNCIA\nData;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente;${conferente}\nTipo de Conferência;${tipo}\nData Início;${S.startedAt ? cloudFormatDateTimeBR(S.startedAt) : "—"}\nData Fim;${S.finishedAt ? cloudFormatDateTimeBR(S.finishedAt) : "—"}\n\nRESUMO\nTotal;${total}\nConferidos;${chk}\nPendentes;${total - chk}\nNão Previstas;${extras}\nPercentual;${pct}%\n`;
+          if (split && gt) {
+            csv += `\nSEPARAÇÃO BASES (Todas)\nGrupo;Total;Conferidos;Pendentes;Percentual\n`;
+            csv += `Bases - Demais (sem película);${gt.base?.total || 0};${gt.base?.checked || 0};${gt.base?.pending || 0};${gt.base?.pct || "0.0"}%\n`;
+            csv += `Bases - Películas (BOPP/PP/PET);${gt.pelicula?.total || 0};${gt.pelicula?.checked || 0};${gt.pelicula?.pending || 0};${gt.pelicula?.pct || "0.0"}%\n`;
+            csv += `\nRESUMO POR OP - BASES (DEMAIS)\nOP;Encontradas;Percentual\n`;
+            csv += opLinesCsv(opBase) + "\n";
+            csv += `\nRESUMO POR OP - PELÍCULAS\nOP;Encontradas;Percentual\n`;
+            csv += opLinesCsv(opPel) + "\n";
+            csv += `\nBOBINAS\nCódigo;OP;Peso;Grupo;Material;Status;Hora;Localização;Observação;Fotos\n`;
+          } else {
+            csv += `\nRESUMO POR OP\nOP;Encontradas;Percentual\n`;
+            csv += opLinesCsv(opAll);
+            csv += `\n\nBOBINAS\nCódigo;OP;Peso;Status;Hora;Localização;Observação;Fotos\n`;
+          }
+          csv += items.map(mapBobinaLineCsv).join("\n");
           download(csv, `conferencia_${date.toISOString().slice(0, 10)}.csv`, "text/csv");
         } else {
-          let txt = `RELATÓRIO DE CONFERÊNCIA\nData: ${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente: ${conferente}\nTipo de Conferência: ${tipo}\n${"=".repeat(95)}\nTotal: ${total}\nConferidos: ${chk}\nPendentes: ${total - chk}\nNão Previstas: ${extras}\nPercentual: ${pct}%\n${"=".repeat(95)}\nRESUMO POR OP\n${"=".repeat(95)}\n`;
-          txt += opSummary.map((op) => `OP: ${String(op.op || "-").padEnd(15)} | Encontradas: ${String(op.checked + "/" + op.total).padEnd(8)} | ${op.pct}%`).join("\n");
+          let txt = `RELATÓRIO DE CONFERÊNCIA\nData: ${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente: ${conferente}\nTipo de Conferência: ${tipo}\nData Início: ${S.startedAt ? cloudFormatDateTimeBR(S.startedAt) : "—"}\nData Fim: ${S.finishedAt ? cloudFormatDateTimeBR(S.finishedAt) : "—"}\n${"=".repeat(95)}\nTotal: ${total}\nConferidos: ${chk}\nPendentes: ${total - chk}\nNão Previstas: ${extras}\nPercentual: ${pct}%\n`;
+          if (split && gt) {
+            txt += `${"=".repeat(95)}\nSEPARAÇÃO BASES (Todas)\n${"=".repeat(95)}\n`;
+            txt += `Bases - Demais: ${gt.base?.checked || 0}/${gt.base?.total || 0} (${gt.base?.pct || "0.0"}%) | Pendentes: ${gt.base?.pending || 0}\n`;
+            txt += `Películas (BOPP/PP/PET): ${gt.pelicula?.checked || 0}/${gt.pelicula?.total || 0} (${gt.pelicula?.pct || "0.0"}%) | Pendentes: ${gt.pelicula?.pending || 0}\n`;
+            txt += `\n${"=".repeat(95)}\nRESUMO POR OP - BASES (DEMAIS)\n${"=".repeat(95)}\n`;
+            txt += opLinesTxt(opBase) + "\n";
+            txt += `\n${"=".repeat(95)}\nRESUMO POR OP - PELÍCULAS\n${"=".repeat(95)}\n`;
+            txt += opLinesTxt(opPel) + "\n";
+          } else {
+            txt += `${"=".repeat(95)}\nRESUMO POR OP\n${"=".repeat(95)}\n`;
+            txt += opLinesTxt(opAll) + "\n";
+          }
           txt += `\n${"=".repeat(95)}\nBOBINAS\n${"=".repeat(95)}\n`;
-          txt += items.map((i) => `${i.code.padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${i.status.padEnd(15)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.hasPhoto ? "📸 Combinada" : "—"}`).join("\n");
+          txt += items.map(mapBobinaLineTxt).join("\n");
           download(txt, `conferencia_${date.toISOString().slice(0, 10)}.txt`, "text/plain");
         }
-        notify("Relatório exportado!");
+        notify(split ? "Relatório exportado com Bases e Películas separadas!" : "Relatório exportado!");
       }
       async function exportZip() {
         const extrasUniq = [...new Set(S.extras)]; if (extrasUniq.length === 0) { notify("Nenhuma bobina não prevista para exportar!", "warning"); return; }
@@ -4371,7 +4728,7 @@ if (S.collectorMode) {
   setTimeout(() => { if (collectorCanFocus()) focusCollectorInput(); }, 400);
 }
       function init() {
-  try { console.log("APP_BUILD_VERSION", APP_BUILD_VERSION); const b=document.getElementById("appVersionBadge"); if(b) b.textContent="v11"; } catch(e) {}
+  try { console.log("APP_BUILD_VERSION", APP_BUILD_VERSION); const b=document.getElementById("appVersionBadge"); if(b) b.textContent="v13"; } catch(e) {}
   setupMobileCopyProtection();
   load();
   initCollectorMode();
@@ -4402,5 +4759,5 @@ document.addEventListener("keydown", (e) => {
 
 init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a180e007b82c9872',t:'MTc4MzUzMjQzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1eb9d390d0ee033',t:'MTc4NDY1MTY3Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a223ff41bff94bbe',t:'MTc4NTI0Mjg5NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2248a2aea68f171',t:'MTc4NTI0ODU4NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a180e007b82c9872',t:'MTc4MzUzMjQzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1eb9d390d0ee033',t:'MTc4NDY1MTY3Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a223ff41bff94bbe',t:'MTc4NTI0Mjg5NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2248a2aea68f171',t:'MTc4NTI0ODU4NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a26dff459a2b6eae',t:'MTc4NjAxODg0Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
