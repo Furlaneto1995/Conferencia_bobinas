@@ -502,14 +502,8 @@
         .report-fullscreen .op-summary-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       }
       @media (max-width: 520px) {
-        .report-open-pill {
-          display: inline-flex !important;
-          align-self: center;
-          min-height: 36px;
-          padding: 8px 12px;
-          margin-top: 4px;
-        }
-        .report-action-card { align-items: flex-start; flex-wrap: wrap; }
+        .report-open-pill { display: none; }
+        .report-action-card { align-items: flex-start; }
         .report-action-icon { width: 42px; height: 42px; font-size: 1.25em; }
         .report-panel-metrics { grid-template-columns: repeat(2, 1fr); }
       }
@@ -680,7 +674,7 @@
         </button>
       </div>
       <div class="header">
-        <h1>📦 Conferência de Bobinas <span id="appVersionBadge" style="font-size:0.45em;vertical-align:middle;margin-left:8px;padding:4px 8px;border-radius:999px;background:rgba(59,130,246,.12);color:#2563eb;border:1px solid rgba(59,130,246,.28);font-weight:900">v13</span></h1>
+        <h1>📦 Conferência de Bobinas</h1>
         <p>Sistema de conferência por código de barras</p>
         <div class="collector-topbar">
           <div class="collector-toggle-wrap">
@@ -787,8 +781,6 @@
             <div class="stat green"><div class="s-val" id="rChecked">0</div><div class="s-lbl">Conferidos ✅</div></div>
             <div class="stat yellow"><div class="s-val" id="rPending">0</div><div class="s-lbl">Pendentes ⏳</div></div>
             <div class="stat red"><div class="s-val" id="rExtra">0</div><div class="s-lbl">Não Previstas ⚠️</div></div>
-            <div class="stat blue"><div class="s-val" id="rStartedAt" style="font-size:0.95em;line-height:1.15;word-break:break-word">—</div><div class="s-lbl">Início ▶️</div></div>
-            <div class="stat green"><div class="s-val" id="rFinishedAt" style="font-size:0.95em;line-height:1.15;word-break:break-word">—</div><div class="s-lbl">Fim ⏹️</div></div>
           </div>
           <div class="prog-wrap" style="margin-top: 10px"><div class="prog-head"><span>Conferência Geral</span><span class="pct" id="rPct">0%</span></div><div class="prog-bar"><div class="prog-fill" id="rFill" style="width: 0%"></div></div></div>
         </div>
@@ -902,49 +894,6 @@
           <div class="export-progress" id="exportProgress">⏳ Gerando arquivo ZIP...</div>
           <div id="cloudDetailBox" class="cloud-detail"></div>
           <div id="cloudConsultBox" class="cloud-list" style="margin-top: 12px"><div class="empty">Clique em atualizar para consultar.</div></div>
-        </div>
-
-        <div class="report-fullscreen" id="cloudReportFullscreen" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="cloudReportPanelTitle">
-          <div class="report-fullscreen-head">
-            <div class="report-panel-row">
-              <button type="button" class="report-back-btn" onclick="closeCloudReportPanel()">← Voltar</button>
-              <div class="report-panel-title-wrap">
-                <div class="report-panel-title" id="cloudReportPanelTitle">📦 Resumo por OP's</div>
-                <div class="report-panel-sub" id="cloudReportPanelSub">Progresso por OP em tela cheia.</div>
-              </div>
-            </div>
-            <div class="report-mode-switch" aria-label="Alternar visualização da conferência">
-              <button type="button" id="cloudReportModeOps" class="active" onclick="setCloudReportPanelMode('ops')">📦 OP's</button>
-              <button type="button" id="cloudReportModeDetail" onclick="setCloudReportPanelMode('detail')">📋 Lista</button>
-            </div>
-            <div class="search-wrap report-panel-search"><span class="si">🔍</span><input class="search-input" id="cloudReportFullscreenSearch" placeholder="Buscar OP..." oninput="cloudReportPanelSearch(this.value)" /></div>
-            <div class="filters report-detail-filters" id="cloudReportDetailFilters" style="display:none">
-              <button class="fbtn active" data-filter="all" onclick="cloudSetDetailFilter('all')">📋 Todos</button>
-              <button class="fbtn" data-filter="checked" onclick="cloudSetDetailFilter('checked')">✅ Conferidos</button>
-              <button class="fbtn" data-filter="pending" onclick="cloudSetDetailFilter('pending')">⏳ Pendentes</button>
-              <button class="fbtn" data-filter="extra" onclick="cloudSetDetailFilter('extra')">⚠️ Extras</button>
-            </div>
-          </div>
-          <div class="report-panel-content">
-            <div class="report-panel-view active" id="cloudReportOpsView">
-              <div class="report-panel-metrics">
-                <div class="report-mini-stat"><strong id="cloudReportPanelOpsCount">0</strong><span>OP's</span></div>
-                <div class="report-mini-stat"><strong id="cloudReportPanelOpsFound">0</strong><span>Encontradas</span></div>
-                <div class="report-mini-stat"><strong id="cloudReportPanelOpsPending">0</strong><span>Pendentes</span></div>
-                <div class="report-mini-stat"><strong id="cloudReportPanelOpsPct">0%</strong><span>Geral</span></div>
-              </div>
-              <div class="op-summary-scroll report-op-summary-scroll"><div id="cloudDetailOpSummary"></div></div>
-            </div>
-            <div class="report-panel-view" id="cloudReportDetailView">
-              <div class="report-result-count" id="cloudReportDetailResultCount">0 itens</div>
-              <div class="tbl-wrap report-table-wrap">
-                <table class="dtbl report-detail-table">
-                  <thead><tr><th>#</th><th>Código</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Obs.</th><th>📸</th></tr></thead>
-                  <tbody id="cloudDetailRowsBody"></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -1081,12 +1030,15 @@
       let S = {
         db: [], scanned: [], checked: new Set(), extras: [], sep: "newline", fileData: null,
         fileLayout: null, meta: {}, confType: "", filter: "all", rptSearch: "",
-        checkerName: "", startedAt: "", finishedAt: "", cloudSessionId: "", cloudSessionStartSaved: false, collectorMode: false, collectorActive: false,
+        checkerName: "", cloudSessionId: "", cloudSessionStartSaved: false, collectorMode: false, collectorActive: false,
       };
       let reportPanelMode = "ops";
       let reportOpSummarySearch = "";
-      let cloudReportPanelMode = "ops";
-      let cloudReportOpSummarySearch = "";
+      let stateBackupDbPromise = null;
+      let stateBackupLatest = null;
+      let stateBackupWriting = false;
+      let stateBackupWarnAt = 0;
+      let lastLoadedStateSavedAt = 0;
       let currentImportedFile = {
         name: "",
         content: "",
@@ -1129,7 +1081,6 @@ let cloudLastHeaderWrite = 0;
         camCurrentPhotoBobina = null, camActx = null;
       const CAM_SCAN_DELAY_MS = 1800;
       const ADMIN_PASSWORD = "35210712";
-      const APP_BUILD_VERSION = "v13b-inicio-fim-cards";
       const FIREBASE_CONFIG = {
         apiKey: "AIzaSyCJTpQfv3pTOXHvV4TpQl2h2tF0TdtWiNw",
         authDomain: "conferencia-bobinas.firebaseapp.com",
@@ -1144,40 +1095,166 @@ let cloudLastHeaderWrite = 0;
       const CLOUD_ACTIVE_BASE_DOC_ID = "base_atual";
 
       function esc(v) { return String(v ?? "").replace(/[&<>"]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[m]); }
+      function makeStateSnapshot() {
+        return {
+          schemaVersion: 3,
+          savedAt: Date.now(),
+          db: S.db || [],
+          scanned: S.scanned || [],
+          checked: Array.from(S.checked || []),
+          extras: S.extras || [],
+          meta: S.meta || {},
+          confType: S.confType || "",
+          checkerName: S.checkerName || "",
+          cloudSessionId: S.cloudSessionId || "",
+          cloudSessionStartSaved: !!S.cloudSessionStartSaved && !!S.cloudSessionId,
+          collectorMode: !!S.collectorMode,
+          // BUG 1 CORRIGIDO: sempre grava false para não reabrir ativo
+          collectorActive: false,
+        };
+      }
+      function applyStateSnapshot(s) {
+        if (!s) return false;
+        S.db = s.db || [];
+        S.scanned = s.scanned || [];
+        S.checked = new Set(s.checked || []);
+        S.extras = s.extras || [];
+        S.meta = s.meta || {};
+        S.confType = s.confType || "";
+        S.checkerName = s.checkerName || "";
+        S.cloudSessionId = s.cloudSessionId || "";
+        S.cloudSessionStartSaved = !!s.cloudSessionStartSaved && !!S.cloudSessionId;
+        S.collectorMode = !!s.collectorMode;
+        // O operador deve iniciar manualmente após recarregar/restaurar.
+        S.collectorActive = false;
+        lastLoadedStateSavedAt = Number(s.savedAt || 0);
+        return true;
+      }
+      function stateProgressScore(s) {
+        if (!s) return 0;
+        const checked = Array.isArray(s.checked) ? s.checked.length : 0;
+        const extras = Array.isArray(s.extras) ? new Set(s.extras).size : 0;
+        const scanned = Array.isArray(s.scanned) ? s.scanned.length : 0;
+        return checked * 1000000 + extras * 1000 + scanned;
+      }
+      function stateDbFingerprint(s) {
+        const db = s && Array.isArray(s.db) ? s.db : [];
+        if (!db.length) return "empty";
+        return [db.length, db.slice(0, 12).join("|"), db.slice(-12).join("|")].join("::");
+      }
+      function statesCompatible(a, b) {
+        if (!a || !b) return false;
+        if ((a.cloudSessionId || "") && (b.cloudSessionId || "")) return a.cloudSessionId === b.cloudSessionId;
+        if ((!a.db || !a.db.length) && b.db && b.db.length) return true;
+        return stateDbFingerprint(a) === stateDbFingerprint(b)
+          && String(a.checkerName || "") === String(b.checkerName || "")
+          && String(a.confType || "") === String(b.confType || "");
+      }
+      function isQuotaError(e) {
+        const msg = String(e && (e.name || e.message || e) || "").toLowerCase();
+        return msg.includes("quota") || msg.includes("storage") || msg.includes("espaço") || msg.includes("space") || e?.code === 22 || e?.code === 1014;
+      }
+      function warnPersistenceProblem(e) {
+        const now = Date.now();
+        if (now - stateBackupWarnAt < 20000) return;
+        stateBackupWarnAt = now;
+        const quota = isQuotaError(e);
+        notify(quota
+          ? "⚠️ Armazenamento do dispositivo/navegador está cheio. A conferência foi protegida no backup interno, mas finalize ou exporte assim que possível."
+          : "⚠️ Falha ao salvar o progresso local. Não feche a tela; finalize ou exporte assim que possível.", "error");
+      }
+      function stateBackupOpen() {
+        if (!window.indexedDB) return Promise.reject(new Error("IndexedDB indisponível"));
+        if (stateBackupDbPromise) return stateBackupDbPromise;
+        stateBackupDbPromise = new Promise((resolve, reject) => {
+          const req = indexedDB.open("bobinas_state_backup", 1);
+          req.onupgradeneeded = () => {
+            const db = req.result;
+            if (!db.objectStoreNames.contains("state")) db.createObjectStore("state");
+          };
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error || new Error("Erro IndexedDB estado"));
+          req.onblocked = () => reject(new Error("IndexedDB bloqueado"));
+        });
+        return stateBackupDbPromise;
+      }
+      async function stateBackupWriteLoop() {
+        if (stateBackupWriting) return;
+        stateBackupWriting = true;
+        try {
+          while (stateBackupLatest) {
+            const snapshot = stateBackupLatest;
+            stateBackupLatest = null;
+            const db = await stateBackupOpen();
+            await new Promise((resolve, reject) => {
+              const tx = db.transaction("state", "readwrite");
+              tx.objectStore("state").put(snapshot, "latest");
+              tx.oncomplete = () => resolve();
+              tx.onerror = () => reject(tx.error || new Error("Erro ao salvar backup interno"));
+            });
+          }
+        } catch (e) {
+          console.warn("Backup interno não salvo:", e);
+          warnPersistenceProblem(e);
+        } finally {
+          stateBackupWriting = false;
+          if (stateBackupLatest) stateBackupWriteLoop();
+        }
+      }
+      function stateBackupSet(snapshot) {
+        stateBackupLatest = snapshot;
+        stateBackupWriteLoop();
+      }
+      async function stateBackupGet() {
+        try {
+          const db = await stateBackupOpen();
+          return await new Promise((resolve, reject) => {
+            const tx = db.transaction("state", "readonly");
+            const req = tx.objectStore("state").get("latest");
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => reject(req.error || new Error("Erro ao ler backup interno"));
+          });
+        } catch (e) { console.warn("Backup interno indisponível:", e); return null; }
+      }
       function load() {
-  try {
-    const s = JSON.parse(localStorage.getItem("bob3"));
-    if (s) {
-      S.db = s.db || [];
-      S.scanned = s.scanned || [];
-      S.checked = new Set(s.checked || []);
-      S.extras = s.extras || [];
-      S.meta = s.meta || {};
-      S.confType = s.confType || "";
-      S.checkerName = s.checkerName || "";
-      S.startedAt = s.startedAt || "";
-      S.finishedAt = s.finishedAt || "";
-      S.cloudSessionId = s.cloudSessionId || "";
-      S.cloudSessionStartSaved = !!s.cloudSessionStartSaved && !!S.cloudSessionId;
-      S.collectorMode = !!s.collectorMode;
-      // BUG 1 CORRIGIDO: nunca restaurar collectorActive = true
-      // O operador deve iniciar manualmente após recarregar
-      S.collectorActive = false;
-    }
-  } catch (e) {}
-}
+        try {
+          const raw = localStorage.getItem("bob3");
+          const s = raw ? JSON.parse(raw) : null;
+          if (s) applyStateSnapshot(s);
+        } catch (e) {
+          console.warn("Falha ao carregar localStorage:", e);
+        }
+      }
       function save() {
-  try {
-    localStorage.setItem("bob3", JSON.stringify({
-      db: S.db, scanned: S.scanned, checked: Array.from(S.checked), extras: S.extras,
-      meta: S.meta, confType: S.confType, checkerName: S.checkerName,
-      startedAt: S.startedAt || "", finishedAt: S.finishedAt || "",
-      cloudSessionId: S.cloudSessionId, cloudSessionStartSaved: !!S.cloudSessionStartSaved, collectorMode: S.collectorMode,
-      // BUG 1 CORRIGIDO: sempre grava false para não reabrir ativo
-      collectorActive: false,
-    }));
-  } catch (e) {}
-}
+        const snapshot = makeStateSnapshot();
+        stateBackupSet(snapshot);
+        try {
+          localStorage.setItem("bob3", JSON.stringify(snapshot));
+          lastLoadedStateSavedAt = snapshot.savedAt;
+          return true;
+        } catch (e) {
+          console.warn("localStorage não salvou o progresso:", e);
+          warnPersistenceProblem(e);
+          return false;
+        }
+      }
+      async function restoreStateBackupIfBetter() {
+        const backup = await stateBackupGet();
+        if (!backup) return false;
+        const current = makeStateSnapshot();
+        const backupHasBase = backup.db && backup.db.length;
+        const currentHasBase = current.db && current.db.length;
+        const compatible = statesCompatible(current, backup);
+        const shouldRestore = backupHasBase && ((!currentHasBase) || (compatible && stateProgressScore(backup) > stateProgressScore(current)));
+        if (!shouldRestore) return false;
+        const oldChecked = S.checked.size;
+        applyStateSnapshot(backup);
+        save();
+        updateDBUI(); updateStats(); updateHistory(); updateReport(); updateCollectorModeUI();
+        document.getElementById("btnUndo").disabled = !S.scanned.length;
+        notify(`✅ Backup interno restaurado: ${oldChecked} → ${S.checked.size} bobinas conferidas.`, "success");
+        return true;
+      }
       function download(content, name, type) {
         const blob = new Blob(["\uFEFF" + content], { type: type + ";charset=utf-8" });
         const a = document.createElement("a");
@@ -1464,9 +1541,7 @@ let cloudLastHeaderWrite = 0;
         }
         try {
           cloudSetStatus("sync", "☁️ Registrando início...");
-          const d = S.startedAt ? new Date(S.startedAt) : new Date();
-          const startedIso = S.startedAt || d.toISOString();
-          if (!S.startedAt) { S.startedAt = startedIso; save(); }
+          const d = new Date();
           const resumo = cloudSummary();
           const payload = {
             id: S.cloudSessionId,
@@ -1478,13 +1553,10 @@ let cloudLastHeaderWrite = 0;
             resumo,
             storageMode: "economico_supabase_json",
             atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-            // início = registro do nome do operador (todas as conferências)
             iniciadoEm: firebase.firestore.FieldValue.serverTimestamp(),
             criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-            criadoEmLocal: startedIso,
-            iniciadoEmLocal: startedIso,
-            dataInicio: startedIso,
-            dataInicioBR: cloudFormatDateTimeBR(startedIso),
+            criadoEmLocal: d.toISOString(),
+            iniciadoEmLocal: d.toISOString(),
           };
           // merge: se já existir (ex.: reload), não apaga campos de finalização
           await cloudDb.collection("conferencias").doc(S.cloudSessionId).set(payload, { merge: true });
@@ -1550,7 +1622,7 @@ let cloudLastHeaderWrite = 0;
         for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
         return new Blob([arr], { type: mime });
       }
-      async function cloudUploadPhoto(code, dataUrl, location = "") {
+      async function cloudUploadPhoto(code, dataUrl) {
         try {
           if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !dataUrl) return null;
           if (!S.cloudSessionId) {
@@ -1559,15 +1631,8 @@ let cloudLastHeaderWrite = 0;
             save();
           }
           if (!S.cloudSessionId) return null;
-          let loc = location;
-          if (!loc) {
-            const scan = (S.scanned || []).find((s) => String(s.code) === String(code) && s.location);
-            loc = scan?.location || "";
-          }
-          const fileName = (typeof photoFileName === "function")
-            ? photoFileName(code, loc)
-            : `${String(code).replace(/[^a-zA-Z0-9_-]/g, "_")}_etiqueta_bobina.jpg`;
-          const path = `${cloudOperatorKey()}/${cloudDateKey()}/${S.cloudSessionId}/${fileName}`;
+          const safeCode = String(code).replace(/[^a-zA-Z0-9_-]/g, "_");
+          const path = `${cloudOperatorKey()}/${cloudDateKey()}/${S.cloudSessionId}/${safeCode}_etiqueta_bobina.jpg`;
           const blob = cloudDataUrlToBlob(dataUrl);
           const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`;
           const res = await fetch(uploadUrl, { method: "POST", headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "image/jpeg", "x-upsert": "true" }, body: blob });
@@ -1979,7 +2044,6 @@ let cloudLastHeaderWrite = 0;
       function cloudBuildLocalFinalReportData(photoUploads = {}) {
         const date = new Date();
         const resumo = cloudSummary();
-        const split = shouldSplitBasesInReport();
         const rows = getReportItems().map((i) => {
           const up = photoUploads[i.code] || null;
           const status = i.status === "checked" ? (i.manual ? "Conferido Manual" : "Conferido") : i.status === "pending" ? "Pendente" : "Não Prevista";
@@ -1987,53 +2051,33 @@ let cloudLastHeaderWrite = 0;
             code: String(i.code),
             op: i.op || "-",
             peso: i.peso || "-",
-            material: i.material || getMaterial(i.code) || "",
-            grupoKey: i.grupoKey || "",
-            grupo: i.grupo || "",
             status,
             manual: !!i.manual,
             time: i.time === "-" ? "" : (i.time || ""),
             location: i.location === "-" ? "" : (i.location || ""),
             observation: i.observation || "",
-            hasPhoto: !!(i.hasPhoto || up?.url || up?.path),
+            hasPhoto: !!(i.hasPhoto || up?.url),
             fotoUrl: up?.url || "",
-            fotoPath: up?.path || up?.storagePath || "",
+            fotoPath: up?.path || "",
           };
         });
-        const startedIso = S.startedAt || date.toISOString();
-        const finishedIso = S.finishedAt || date.toISOString();
-        const payload = {
-          schemaVersion: split ? 3 : 2,
+        return {
+          schemaVersion: 2,
           storageMode: "economico_supabase_json",
           id: S.cloudSessionId || cloudMakeSessionId(),
           title: "RELATÓRIO DE CONFERÊNCIA - NUVEM",
           operador: S.checkerName || "-",
           operadorKey: cloudOperatorKey(),
           tipo: S.confType || "-",
-          data: cloudDateKey(S.startedAt ? new Date(S.startedAt) : date),
+          data: cloudDateKey(date),
           status: "finalizada",
-          // início = nome do operador | fim = finalizar
-          dataInicio: startedIso,
-          dataFim: finishedIso,
-          dataInicioBR: cloudFormatDateTimeBR(startedIso),
-          dataFimBR: cloudFormatDateTimeBR(finishedIso),
-          criadoEmLocal: startedIso,
-          iniciadoEmLocal: startedIso,
-          finalizadoEmLocal: finishedIso,
+          criadoEmLocal: date.toISOString(),
+          finalizadoEmLocal: date.toISOString(),
           resumo,
           opSummary: getOpSummaryItems(),
           rows,
           confIds: [S.cloudSessionId || ""],
         };
-        if (split) {
-          payload.splitBases = true;
-          payload.baseGroupTotals = getBaseGroupTotals();
-          payload.opSummaryByGroup = {
-            base: getOpSummaryItems("base"),
-            pelicula: getOpSummaryItems("pelicula"),
-          };
-        }
-        return payload;
       }
       async function cloudUploadLocalPhotosForFinalReport() {
         const progress = document.getElementById("exportProgress");
@@ -2086,16 +2130,11 @@ let cloudLastHeaderWrite = 0;
 
           if (progress) progress.textContent = "Gravando resumo...";
           const d = new Date();
-          const finishedIso = d.toISOString();
-          S.finishedAt = finishedIso;
-          if (!S.startedAt) S.startedAt = reportData.dataInicio || finishedIso;
-          save();
-          updateReportDatesUI();
           await cloudDb.collection("conferencias").doc(S.cloudSessionId).set({
             id: S.cloudSessionId,
             operador: S.checkerName || "",
             operadorKey: cloudOperatorKey(),
-            data: cloudDateKey(S.startedAt ? new Date(S.startedAt) : d),
+            data: cloudDateKey(d),
             tipo: S.confType || "",
             status: "finalizada",
             resumo: reportData.resumo,
@@ -2105,16 +2144,10 @@ let cloudLastHeaderWrite = 0;
             reportUrl: reportUpload.url,
             reportSize: reportUpload.size,
             fotosEnviadas: Object.keys(photoUploads).length,
-            storagePrefix: `${cloudOperatorKey()}/${cloudDateKey(S.startedAt ? new Date(S.startedAt) : d)}/${S.cloudSessionId}/`,
+            storagePrefix: `${cloudOperatorKey()}/${cloudDateKey()}/${S.cloudSessionId}/`,
             atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-            // fim = clique em Finalizar (todas as conferências)
             finalizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-            finalizadoEmLocal: finishedIso,
-            dataFim: finishedIso,
-            dataFimBR: cloudFormatDateTimeBR(finishedIso),
-            dataInicio: S.startedAt || reportData.dataInicio || "",
-            dataInicioBR: cloudFormatDateTimeBR(S.startedAt || reportData.dataInicio || ""),
-            iniciadoEmLocal: S.startedAt || reportData.dataInicio || "",
+            finalizadoEmLocal: d.toISOString(),
           }, { merge: true });
           S.cloudSessionStartSaved = true;
           save();
@@ -2195,9 +2228,8 @@ let cloudLastHeaderWrite = 0;
                 <span>⏳ Pendentes: <strong>${r.pendentes ?? 0}</strong></span>
                 <span>⚠️ Não previstas: <strong>${r.naoPrevistas ?? 0}</strong></span>
                 <span>📊 <strong>${r.percentual ?? 0}%</strong></span>
-                <span>▶️ Início: <strong>${esc(cloudFormatDateTimeBR(d.dataInicio || d.iniciadoEmLocal || d.criadoEmLocal || d.iniciadoEm || d.criadoEm || cloudParseSessionId(d.id)?.date || d.data) || "—")}</strong></span>
-                <span>⏹️ Fim: <strong>${esc(d.dataFim || d.finalizadoEmLocal || d.finalizadoEm ? cloudFormatDateTimeBR(d.dataFim || d.finalizadoEmLocal || d.finalizadoEm) : (status === "finalizada" ? "—" : "em andamento"))}</strong></span>
               </div>
+              <div class="small" style="margin-top:6px;color:var(--text-muted)">🕒 ${esc(cloudFormatSessionMeta(d.id, d.data))}</div>
             </div>`;
         }).join("");
         cloudUpdateMergeButton();
@@ -2290,76 +2322,21 @@ let cloudLastHeaderWrite = 0;
       }
       function cloudBuildCsvReport(data, opt) {
         const date = new Date(); const r = data.resumo || {};
-        const split = !!(data.splitBases || data.opSummaryByGroup);
-        let csv = `${data.title}\nData;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente;${data.operador}\nTipo;${data.tipo}\nID;${data.id}\nStatus;${data.status}\nData Início;${data.dataInicioBR || cloudFormatDateTimeBR(data.dataInicio || data.iniciadoEmLocal || data.criadoEmLocal || "") || "—"}\nData Fim;${data.dataFimBR || cloudFormatDateTimeBR(data.dataFim || data.finalizadoEmLocal || "") || "—"}\n`;
+        let csv = `${data.title}\nData;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente;${data.operador}\nTipo;${data.tipo}\nID;${data.id}\nStatus;${data.status}\n`;
         if (opt.summary) csv += `\nRESUMO\nTotal;${r.total ?? 0}\nConferidos;${r.conferidos ?? 0}\nPendentes;${r.pendentes ?? 0}\nNão Previstas;${r.naoPrevistas ?? 0}\nPercentual;${r.percentual ?? 0}%\n`;
-        if (split && data.baseGroupTotals) {
-          const b = data.baseGroupTotals.base || {};
-          const p = data.baseGroupTotals.pelicula || {};
-          csv += `\nSEPARAÇÃO BASES (Todas)\nGrupo;Total;Conferidos;Pendentes;Percentual\n`;
-          csv += `Bases - Demais (sem película);${b.total ?? 0};${b.checked ?? 0};${b.pending ?? 0};${b.pct ?? "0.0"}%\n`;
-          csv += `Bases - Películas (BOPP/PP/PET);${p.total ?? 0};${p.checked ?? 0};${p.pending ?? 0};${p.pct ?? "0.0"}%\n`;
-        }
-        if (opt.ops) {
-          if (split && data.opSummaryByGroup) {
-            csv += `\nRESUMO POR OP - BASES (DEMAIS)\nOP;Encontradas;Percentual\n`;
-            csv += (data.opSummaryByGroup.base || []).map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`).join("\n") + "\n";
-            csv += `\nRESUMO POR OP - PELÍCULAS\nOP;Encontradas;Percentual\n`;
-            csv += (data.opSummaryByGroup.pelicula || []).map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`).join("\n") + "\n";
-          } else {
-            csv += `\nRESUMO POR OP\nOP;Encontradas;Percentual\n`;
-            csv += (data.opSummary || []).map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`).join("\n") + "\n";
-          }
-        }
-        const cols = ["Código", "OP", "Peso"];
-        if (split) { cols.push("Grupo", "Material"); }
-        cols.push("Status", "Hora", "Localização");
-        if (opt.obs) cols.push("Observação");
-        if (opt.photoLinks) cols.push("Foto");
+        if (opt.ops) { csv += `\nRESUMO POR OP\nOP;Encontradas;Percentual\n`; csv += (data.opSummary || []).map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`).join("\n") + "\n"; }
+        const cols = ["Código", "OP", "Peso", "Status", "Hora", "Localização"]; if (opt.obs) cols.push("Observação"); if (opt.photoLinks) cols.push("Foto");
         csv += `\nBOBINAS\n${cols.join(";")}\n`;
-        csv += cloudFilterRowsForExport(data.rows, opt).map((i) => {
-          const row = [i.code, i.op, i.peso];
-          if (split) row.push(i.grupo || i.grupoKey || "", i.material || "");
-          row.push(i.status, i.time || "", i.location || "");
-          if (opt.obs) row.push(i.observation || "");
-          if (opt.photoLinks) row.push(i.fotoUrl || (i.hasPhoto ? "Sim" : "Não"));
-          return row.join(";");
-        }).join("\n");
+        csv += cloudFilterRowsForExport(data.rows, opt).map((i) => { const row = [i.code, i.op, i.peso, i.status, i.time || "", i.location || ""]; if (opt.obs) row.push(i.observation || ""); if (opt.photoLinks) row.push(i.fotoUrl || (i.hasPhoto ? "Sim" : "Não")); return row.join(";"); }).join("\n");
         return csv;
       }
       function cloudBuildTxtReport(data, opt) {
         const date = new Date(); const r = data.resumo || {};
-        const split = !!(data.splitBases || data.opSummaryByGroup);
-        let txt = `${data.title}\nData: ${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente: ${data.operador}\nTipo: ${data.tipo}\nID: ${data.id}\nStatus: ${data.status}\nData Início: ${data.dataInicioBR || cloudFormatDateTimeBR(data.dataInicio || data.iniciadoEmLocal || data.criadoEmLocal || "") || "—"}\nData Fim: ${data.dataFimBR || cloudFormatDateTimeBR(data.dataFim || data.finalizadoEmLocal || "") || "—"}\n${"=".repeat(95)}\n`;
+        let txt = `${data.title}\nData: ${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente: ${data.operador}\nTipo: ${data.tipo}\nID: ${data.id}\nStatus: ${data.status}\n${"=".repeat(95)}\n`;
         if (opt.summary) txt += `\nTotal: ${r.total ?? 0}\nConferidos: ${r.conferidos ?? 0}\nPendentes: ${r.pendentes ?? 0}\nNão Previstas: ${r.naoPrevistas ?? 0}\nPercentual: ${r.percentual ?? 0}%\n`;
-        if (split && data.baseGroupTotals) {
-          const b = data.baseGroupTotals.base || {};
-          const p = data.baseGroupTotals.pelicula || {};
-          txt += `\n${"=".repeat(95)}\nSEPARAÇÃO BASES (Todas)\n${"=".repeat(95)}\n`;
-          txt += `Bases - Demais: ${b.checked ?? 0}/${b.total ?? 0} (${b.pct ?? "0.0"}%) | Pendentes: ${b.pending ?? 0}\n`;
-          txt += `Películas (BOPP/PP/PET): ${p.checked ?? 0}/${p.total ?? 0} (${p.pct ?? "0.0"}%) | Pendentes: ${p.pending ?? 0}\n`;
-        }
-        if (opt.ops) {
-          if (split && data.opSummaryByGroup) {
-            txt += `\n${"=".repeat(95)}\nRESUMO POR OP - BASES (DEMAIS)\n${"=".repeat(95)}\n`;
-            txt += (data.opSummaryByGroup.base || []).map((op) => `OP: ${String(op.op || "-").padEnd(15)} | Encontradas: ${String(op.checked + "/" + op.total).padEnd(8)} | ${op.pct}%`).join("\n");
-            txt += `\n\n${"=".repeat(95)}\nRESUMO POR OP - PELÍCULAS\n${"=".repeat(95)}\n`;
-            txt += (data.opSummaryByGroup.pelicula || []).map((op) => `OP: ${String(op.op || "-").padEnd(15)} | Encontradas: ${String(op.checked + "/" + op.total).padEnd(8)} | ${op.pct}%`).join("\n");
-          } else {
-            txt += `\n${"=".repeat(95)}\nRESUMO POR OP\n${"=".repeat(95)}\n`;
-            txt += (data.opSummary || []).map((op) => `OP: ${String(op.op || "-").padEnd(15)} | Encontradas: ${String(op.checked + "/" + op.total).padEnd(8)} | ${op.pct}%`).join("\n");
-          }
-        }
+        if (opt.ops) { txt += `\n${"=".repeat(95)}\nRESUMO POR OP\n${"=".repeat(95)}\n`; txt += (data.opSummary || []).map((op) => `OP: ${String(op.op || "-").padEnd(15)} | Encontradas: ${String(op.checked + "/" + op.total).padEnd(8)} | ${op.pct}%`).join("\n"); }
         txt += `\n\n${"=".repeat(95)}\nBOBINAS\n${"=".repeat(95)}\n\n`;
-        txt += cloudFilterRowsForExport(data.rows, opt).map((i) => {
-          const g = split ? (i.grupoKey === "pelicula" ? "PEL" : (i.grupoKey === "base" ? "BASE" : "")) : "";
-          let line = `${String(i.code).padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)}`;
-          if (g) line += ` | ${g.padEnd(4)}`;
-          line += ` | ${String(i.status).padEnd(16)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)}`;
-          if (opt.obs) line += `| Obs: ${(i.observation || "—").padEnd(20)}`;
-          if (opt.photoLinks) line += `| ${i.fotoUrl ? "📸 " + i.fotoUrl : (i.hasPhoto ? "📸 Sim" : "—")}`;
-          return line;
-        }).join("\n");
+        txt += cloudFilterRowsForExport(data.rows, opt).map((i) => { let line = `${String(i.code).padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${String(i.status).padEnd(16)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)}`; if (opt.obs) line += `| Obs: ${(i.observation || "—").padEnd(20)}`; if (opt.photoLinks) line += `| ${i.fotoUrl ? "📸 " + i.fotoUrl : (i.hasPhoto ? "📸 Sim" : "—")}`; return line; }).join("\n");
         return txt;
       }
       function cloudCloseExportModal() { document.getElementById("cloudExportModal")?.classList.remove("show"); }
@@ -2419,9 +2396,7 @@ let cloudLastHeaderWrite = 0;
                 const r = rows[idx];
                 try {
                   const resp = await fetch(r.fotoUrl); if (!resp.ok) throw new Error("HTTP " + resp.status);
-                  const blob = await resp.blob();
-                  const fname = (typeof photoFileName === "function") ? photoFileName(r.code, r.location || "") : `${r.code}_etiqueta_bobina.jpg`;
-                  fotosFolder.file(fname, blob);
+                  const blob = await resp.blob(); fotosFolder.file(`${r.code}_etiqueta_bobina.jpg`, blob);
                   const progress = document.getElementById("exportProgress");
                   if (progress) { progress.classList.add("show"); progress.textContent = `⏳ Baixando fotos ${idx + 1}/${rows.length}...`; }
                 } catch (e) { console.warn("Falha ao baixar foto para ZIP:", r.code, e); }
@@ -2497,71 +2472,30 @@ let cloudLastHeaderWrite = 0;
         if (!silent) box.innerHTML = '<div class="empty">Abrindo conferência...</div>';
         try {
           const data = await cloudBuildExportData(confId);
-          cloudDetailRows = data.rows || [];
-          cloudDetailFilter = prevFilter || "all";
-          cloudDetailSearch = prevSearch || "";
-          cloudReportOpSummarySearch = silent ? cloudReportOpSummarySearch : "";
+          cloudDetailRows = data.rows;
+          cloudDetailFilter = prevFilter;
+          cloudDetailSearch = prevSearch;
           cloudDetailConfId = data.id;
-          const r = data.resumo || {};
-          const opCount = Array.isArray(data.opSummary) ? data.opSummary.length : 0;
-          const pctNum = Number(r.percentual != null ? r.percentual : 0);
-          const pct = (Number.isFinite(pctNum) ? pctNum : 0).toFixed(1) + "%";
-          // UI compacta: NÃO mostra lista/resumo abertos — só cards "Abrir"
-          const inicioTxt = cloudFormatDateTimeBR(data.dataInicio || data.iniciadoEmLocal || data.criadoEmLocal || data.iniciadoEm || data.criadoEm || data.data) || "—";
-          const fimTxt = (data.dataFim || data.finalizadoEmLocal || data.finalizadoEm)
-            ? cloudFormatDateTimeBR(data.dataFim || data.finalizadoEmLocal || data.finalizadoEm)
-            : (data.status === "finalizada" ? "—" : "em andamento");
-          box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(data.operador || "-")} • ${esc(cloudFormatSessionMeta(data.id, data.data || ""))}</div><div class="cloud-detail-sub">${esc(data.tipo || "-")}</div></div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
-              <button class="cloud-report-btn" onclick="cloudShowExportModal(cloudDetailConfId)">Exportar</button>
-              <button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">✕ Fechar</button>
-            </div>
-          </div>
+          box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(data.operador || "-")} • ${esc(cloudFormatSessionMeta(data.id, data.data || ""))}</div><div class="cloud-detail-sub">${esc(data.tipo || "-")}</div></div><button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">✕ Fechar</button></div>
           <div class="cloud-detail-stats">
-            <div class="cloud-detail-stat">Total<strong>${r.total ?? 0}</strong></div>
-            <div class="cloud-detail-stat">Conferidas<strong>${r.conferidos ?? 0}</strong></div>
-            <div class="cloud-detail-stat">Pendentes<strong>${r.pendentes ?? 0}</strong></div>
-            <div class="cloud-detail-stat">Não previstas<strong>${r.naoPrevistas ?? 0}</strong></div>
-            <div class="cloud-detail-stat">Início ▶️<strong style="font-size:0.95em;line-height:1.2">${esc(inicioTxt)}</strong></div>
-            <div class="cloud-detail-stat">Fim ⏹️<strong style="font-size:0.95em;line-height:1.2">${esc(fimTxt)}</strong></div>
+            <div class="cloud-detail-stat clickable active" id="cloudDetailStatAll" onclick="cloudSetDetailFilter('all')">Total<strong>${data.resumo.total}</strong></div>
+            <div class="cloud-detail-stat clickable" id="cloudDetailStatChecked" onclick="cloudSetDetailFilter('checked')">Conferidas<strong>${data.resumo.conferidos}</strong></div>
+            <div class="cloud-detail-stat clickable" id="cloudDetailStatPending" onclick="cloudSetDetailFilter('pending')">Pendentes<strong>${data.resumo.pendentes}</strong></div>
+            <div class="cloud-detail-stat clickable" id="cloudDetailStatExtra" onclick="cloudSetDetailFilter('extra')">Não previstas<strong>${data.resumo.naoPrevistas}</strong></div>
           </div>
-          <div class="prog-wrap" style="margin:10px 0 12px"><div class="prog-head"><span>Conferência Geral</span><span class="pct">${esc(pct)}</span></div><div class="prog-bar"><div class="prog-fill" style="width:${esc(pct)}"></div></div></div>
-          ${data.missingBobinas ? `<div style="margin:0 0 10px; padding:10px 12px; border-radius:10px; border:1px solid rgba(245,158,11,.28); background: rgba(245,158,11,.08); color: var(--accent-yellow); font-size:.82em; font-weight:700;">⚠️ Conferência antiga sem base de bobinas.</div>` : ""}
-          <div class="card-title" style="margin-top:4px">🔎 Detalhes da conferência</div>
-          <div class="card-sub">Toque em uma opção para abrir em tela cheia. Resumo e lista ficam fechados.</div>
-          <div class="report-actions-grid" style="margin-top:10px">
-            <button type="button" class="report-action-card" onclick="openCloudReportPanel('ops')">
-              <span class="report-action-icon blue">📦</span>
-              <span class="report-action-main">
-                <span class="report-action-title">Resumo por OP's</span>
-                <span class="report-action-desc">Visualizar o progresso de cada OP, com encontradas, pendentes e percentual.</span>
-                <span class="report-action-metrics">
-                  <span><strong id="cloudCardOpCount">${opCount}</strong> OP's</span>
-                  <span><strong id="cloudCardOpFound">${r.conferidos ?? 0}</strong>/<strong id="cloudCardOpTotal">${r.total ?? 0}</strong> encontradas</span>
-                  <span><strong id="cloudCardOpPct">${esc(pct)}</strong> geral</span>
-                </span>
-              </span>
-              <span class="report-open-pill">Abrir</span>
-            </button>
-            <button type="button" class="report-action-card" onclick="openCloudReportPanel('detail')">
-              <span class="report-action-icon green">📋</span>
-              <span class="report-action-main">
-                <span class="report-action-title">Lista detalhada</span>
-                <span class="report-action-desc">Ver bobina a bobina com código, OP, peso, status, horário, local, observação e foto.</span>
-                <span class="report-action-metrics">
-                  <span><strong id="cloudCardDetailCount">${(data.rows || []).length}</strong> itens</span>
-                  <span><strong id="cloudCardDetailChecked">${r.conferidos ?? 0}</strong> conferidas</span>
-                  <span><strong id="cloudCardDetailPending">${r.pendentes ?? 0}</strong> pendentes</span>
-                  <span><strong id="cloudCardDetailExtra">${r.naoPrevistas ?? 0}</strong> extras</span>
-                </span>
-              </span>
-              <span class="report-open-pill">Abrir</span>
-            </button>
-          </div>`;
-          updateCloudReportPanelMetrics();
-          if (document.getElementById("cloudReportFullscreen")?.classList.contains("show")) {
-            setCloudReportPanelMode(cloudReportPanelMode);
-          }
+          <div class="cloud-detail-section-title">📦 Resumo por OP</div>
+          <div class="op-summary-list" id="cloudDetailOpSummary" style="max-height:220px;overflow:auto;padding-right:4px"></div>
+          <div class="cloud-detail-toolbar">
+            <div class="cloud-detail-section-title" style="margin:0">📋 Bobinas e leituras</div>
+            <button class="cloud-report-btn" onclick="cloudShowExportModal(cloudDetailConfId)">Exportar</button>
+          </div>
+          <div class="search-wrap" style="margin-bottom: 8px"><span class="si">🔍</span><input class="search-input" id="cloudDetailSearch" placeholder="Buscar código, OP, status ou observação..." oninput="cloudDetailSearch=this.value; cloudRenderDetailRows(); cloudRenderDetailOpSummary()" /></div>
+          ${data.missingBobinas ? `<div style="margin:8px 0 0; padding:10px 12px; border-radius:10px; border:1px solid rgba(245,158,11,.28); background: rgba(245,158,11,.08); color: var(--accent-yellow); font-size:.82em; font-weight:700;">⚠️ Conferência antiga sem base de bobinas.</div>` : ""}
+          <div class="cloud-detail-scroll" style="margin-top: 8px"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>`;
+          const detailSearchInput = document.getElementById("cloudDetailSearch"); if (detailSearchInput) detailSearchInput.value = cloudDetailSearch || "";
+          cloudApplyDetailFilterUI();
+          cloudRenderDetailOpSummary();
+          cloudRenderDetailRows();
           if (!silent) box.scrollIntoView({ behavior: "smooth", block: "start" });
           cloudSetStatus("ok", "☁️ Conferência aberta");
         } catch (e) {
@@ -2620,12 +2554,10 @@ let cloudLastHeaderWrite = 0;
             box.innerHTML = '<div class="empty">Nenhuma OP encontrada.</div>';
             return;
           }
-          box.innerHTML = '<div class="op-summary-list">' + entries.map((op) => {
+          box.innerHTML = entries.map((op) => {
             const pct = op.total > 0 ? ((op.checked / op.total) * 100).toFixed(1) : "0.0";
-            const pctNum = Math.max(0, Math.min(100, Number(pct) || 0));
-            return `<div class="op-summary-item"><div class="op-summary-head"><div class="op-summary-op">OP ${esc(op.op || "-")}</div><div class="op-summary-pct">${esc(pct)}%</div></div><div class="op-summary-info"><span>✅ Encontradas: <strong>${op.checked}/${op.total}</strong></span><span>⏳ Pendentes: <strong>${Math.max(0, op.total - op.checked)}</strong></span></div><div class="op-summary-progress"><span style="width:${pctNum}%"></span></div></div>`;
-          }).join("") + '</div>';
-          if (cloudReportOpSummarySearch) cloudFilterOpSummaryCards(cloudReportOpSummarySearch);
+            return `<div class="op-summary-item"><div class="op-summary-op">OP ${esc(op.op || "-")}</div><div class="op-summary-info"><span>✅ Encontradas: <strong>${op.checked}/${op.total}</strong></span><span>📊 <strong>${pct}%</strong></span></div></div>`;
+          }).join("");
           return;
         }
         entries = Array.from(filteredMap.values()).sort((a, b) => String(a.op).localeCompare(String(b.op), "pt-BR", { numeric: true, sensitivity: "base" }));
@@ -2656,18 +2588,12 @@ let cloudLastHeaderWrite = 0;
       function cloudSetDetailFilter(filter) {
         cloudDetailFilter = filter || "all";
         cloudApplyDetailFilterUI();
-        document.querySelectorAll("#cloudReportDetailFilters .fbtn").forEach((b) => {
-          b.classList.toggle("active", (b.getAttribute("data-filter") || "") === cloudDetailFilter);
-        });
         cloudRenderDetailOpSummary();
         cloudRenderDetailRows();
-        updateCloudReportPanelMetrics();
       }
       function cloudRenderDetailRows() {
         const tbody = document.getElementById("cloudDetailRowsBody"); if (!tbody) return;
         const rows = cloudRowsByDetailFilter(true);
-        const counter = document.getElementById("cloudReportDetailResultCount");
-        if (counter) counter.textContent = `${rows.length} ${rows.length === 1 ? "item" : "itens"}`;
         const limited = rows.slice(0, 700);
         if (!limited.length) { tbody.innerHTML = '<tr><td colspan="9">Nenhum item encontrado</td></tr>'; return; }
         tbody.innerHTML = limited.map((r, i) => `<tr><td>${i + 1}</td><td class="cc">${esc(r.code)}</td><td>${esc(r.op)}</td><td>${esc(r.peso)}</td><td>${esc(r.status)}</td><td>${esc(r.time || "")}</td><td>${esc(r.location || "")}</td><td>${esc(r.observation || "")}</td><td>${r.fotoUrl ? `<a href="${esc(r.fotoUrl)}" target="_blank" rel="noopener">📸</a>` : (r.hasPhoto ? "📸" : "—")}</td></tr>`).join("");
@@ -2675,26 +2601,15 @@ let cloudLastHeaderWrite = 0;
       }
       function cloudCloseConferenceDetail() {
         cloudClearDetailLiveListeners();
-        closeCloudReportPanel();
         document.querySelectorAll(".cloud-inline-detail").forEach((box) => { box.className = "cloud-detail cloud-inline-detail"; box.innerHTML = ""; });
         const box = document.getElementById("cloudDetailBox"); if (box) { box.className = "cloud-detail"; box.innerHTML = ""; }
-        cloudDetailConfId = "";
-        cloudDetailRows = [];
       }
       async function cloudFinishConferenceById(confId) {
         if (!confirm(`Finalizar a conferência ${confId}?`)) return;
         try {
           cloudSetStatus("sync", "☁️ Finalizando conferência..."); if (!(await cloudInit())) throw new Error("Firebase indisponível");
           const ref = cloudDb.collection("conferencias").doc(confId); const snap = await ref.get(); if (!snap.exists) throw new Error("Conferência não encontrada");
-          const finishedIso = new Date().toISOString();
-          await ref.set({
-            status: "finalizada",
-            finalizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-            finalizadoEmLocal: finishedIso,
-            dataFim: finishedIso,
-            dataFimBR: cloudFormatDateTimeBR(finishedIso),
-          }, { merge: true });
+          await ref.set({ status: "finalizada", finalizadoEm: firebase.firestore.FieldValue.serverTimestamp(), atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
           if (confId === S.cloudSessionId) cloudSetStatus("ok", "☁️ Conferência atual finalizada"); else cloudSetStatus("ok", "☁️ Conferência finalizada");
           notify("Conferência finalizada.");
         } catch (e) { console.error(e); cloudSetStatus("error", "☁️ Erro ao finalizar"); notify("Erro ao finalizar: " + (e.message || e), "error"); }
@@ -2759,61 +2674,23 @@ let cloudLastHeaderWrite = 0;
       }
       function cloudRenderMergedReport() {
         const box = document.getElementById("cloudDetailBox"); if (!box || !cloudMergedReport) return;
-        const r = cloudMergedReport.resumo || {};
-        cloudDetailRows = cloudMergedReport.rows || [];
-        cloudDetailFilter = "all";
-        cloudDetailSearch = "";
-        cloudReportOpSummarySearch = "";
-        cloudDetailConfId = "__merged__";
-        const opCount = Array.isArray(cloudMergedReport.opSummary) ? cloudMergedReport.opSummary.length : 0;
-        const pctNum = Number(r.percentual != null ? r.percentual : 0);
-        const pct = (Number.isFinite(pctNum) ? pctNum : 0).toFixed(1) + "%";
+        const r = cloudMergedReport.resumo || {}; cloudDetailRows = cloudMergedReport.rows || []; cloudDetailFilter = "all"; cloudDetailSearch = ""; cloudDetailConfId = "__merged__";
         box.className = "cloud-detail show";
-        box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(cloudMergedReport.title)}</div><div class="cloud-detail-sub">${esc(cloudMergedReport.subtitle || "")}</div></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
-            <button class="cloud-report-btn" onclick="cloudShowMergedExportModal()">Exportar consolidado</button>
-            <button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">✕ Fechar</button>
-          </div>
-        </div>
+        box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(cloudMergedReport.title)}</div><div class="cloud-detail-sub">${esc(cloudMergedReport.subtitle || "")}</div></div><button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">✕ Fechar</button></div>
         <div class="cloud-detail-stats">
-          <div class="cloud-detail-stat">Total<strong>${r.total ?? 0}</strong></div>
-          <div class="cloud-detail-stat">Conferidas<strong>${r.conferidos ?? 0}</strong></div>
-          <div class="cloud-detail-stat">Pendentes<strong>${r.pendentes ?? 0}</strong></div>
-          <div class="cloud-detail-stat">Não previstas<strong>${r.naoPrevistas ?? 0}</strong></div>
+          <div class="cloud-detail-stat clickable active" id="cloudDetailStatAll" onclick="cloudSetDetailFilter('all')">Total<strong>${r.total ?? 0}</strong></div>
+          <div class="cloud-detail-stat clickable" id="cloudDetailStatChecked" onclick="cloudSetDetailFilter('checked')">Conferidas<strong>${r.conferidos ?? 0}</strong></div>
+          <div class="cloud-detail-stat clickable" id="cloudDetailStatPending" onclick="cloudSetDetailFilter('pending')">Pendentes<strong>${r.pendentes ?? 0}</strong></div>
+          <div class="cloud-detail-stat clickable" id="cloudDetailStatExtra" onclick="cloudSetDetailFilter('extra')">Não previstas<strong>${r.naoPrevistas ?? 0}</strong></div>
         </div>
-        <div class="prog-wrap" style="margin:10px 0 12px"><div class="prog-head"><span>Conferência Geral</span><span class="pct">${esc(pct)}</span></div><div class="prog-bar"><div class="prog-fill" style="width:${esc(pct)}"></div></div></div>
-        <div class="card-title" style="margin-top:4px">🔎 Detalhes do consolidado</div>
-        <div class="card-sub">Toque em uma opção para abrir em tela cheia. Resumo e lista ficam fechados.</div>
-        <div class="report-actions-grid" style="margin-top:10px">
-          <button type="button" class="report-action-card" onclick="openCloudReportPanel('ops')">
-            <span class="report-action-icon blue">📦</span>
-            <span class="report-action-main">
-              <span class="report-action-title">Resumo por OP's</span>
-              <span class="report-action-desc">Visualizar o progresso de cada OP do consolidado.</span>
-              <span class="report-action-metrics">
-                <span><strong id="cloudCardOpCount">${opCount}</strong> OP's</span>
-                <span><strong id="cloudCardOpFound">${r.conferidos ?? 0}</strong>/<strong id="cloudCardOpTotal">${r.total ?? 0}</strong> encontradas</span>
-                <span><strong id="cloudCardOpPct">${esc(pct)}</strong> geral</span>
-              </span>
-            </span>
-            <span class="report-open-pill">Abrir</span>
-          </button>
-          <button type="button" class="report-action-card" onclick="openCloudReportPanel('detail')">
-            <span class="report-action-icon green">📋</span>
-            <span class="report-action-main">
-              <span class="report-action-title">Lista detalhada</span>
-              <span class="report-action-desc">Ver bobina a bobina do consolidado.</span>
-              <span class="report-action-metrics">
-                <span><strong id="cloudCardDetailCount">${(cloudMergedReport.rows || []).length}</strong> itens</span>
-                <span><strong id="cloudCardDetailChecked">${r.conferidos ?? 0}</strong> conferidas</span>
-                <span><strong id="cloudCardDetailPending">${r.pendentes ?? 0}</strong> pendentes</span>
-                <span><strong id="cloudCardDetailExtra">${r.naoPrevistas ?? 0}</strong> extras</span>
-              </span>
-            </span>
-            <span class="report-open-pill">Abrir</span>
-          </button>
-        </div>`;
-        updateCloudReportPanelMetrics();
+        <div class="cloud-detail-section-title">📦 Resumo por OP</div>
+        <div class="op-summary-list" id="cloudDetailOpSummary" style="max-height:220px;overflow:auto;padding-right:4px"></div>
+        <div class="cloud-detail-toolbar"><div class="cloud-detail-section-title" style="margin:0">📋 Bobinas e leituras</div><button class="cloud-report-btn" onclick="cloudShowMergedExportModal()">Exportar consolidado</button></div>
+        <div class="search-wrap" style="margin-bottom: 8px"><span class="si">🔍</span><input class="search-input" id="cloudDetailSearch" placeholder="Buscar código, OP, status ou observação..." oninput="cloudDetailSearch=this.value; cloudRenderDetailRows(); cloudRenderDetailOpSummary()" /></div>
+        <div class="cloud-detail-scroll" style="margin-top: 8px"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>`;
+        cloudApplyDetailFilterUI();
+        cloudRenderDetailOpSummary();
+        cloudRenderDetailRows();
       }
       function cloudShowMergedExportModal() { if (!cloudMergedReport) return; cloudShowExportModal("__merged__"); }
       async function cloudDeleteSupabasePhotos(confRef) {
@@ -2940,17 +2817,9 @@ let cloudLastHeaderWrite = 0;
         const name = document.getElementById("checkerInput").value.trim();
         if (!name) { document.getElementById("checkerError").style.display = "block"; document.getElementById("checkerInput").focus(); return false; }
         S.checkerName = name;
-        // Início automático para TODAS as conferências: no momento em que o nome é registrado
-        if (!S.startedAt) {
-          S.startedAt = new Date().toISOString();
-          S.finishedAt = "";
-        }
         save();
         document.getElementById("checkerModal").classList.remove("show");
         if (document.getElementById("rCheckerName")) document.getElementById("rCheckerName").textContent = name;
-        updateReportDatesUI();
-        // registra início na nuvem (não bloqueia se falhar)
-        try { cloudEnsureSession(); } catch (e) { console.warn(e); }
         const cb = checkerStartCallback; checkerStartCallback = null; notify("Conferente: " + name); if (cb) cb(); return true;
       }
       function ensureCheckerName(cb) { if (S.checkerName) return true; showCheckerModal(cb); return false; }
@@ -2993,8 +2862,6 @@ let cloudLastHeaderWrite = 0;
   S.meta = {};
   S.confType = "";
   S.cloudSessionId = "";
-  S.startedAt = "";
-  S.finishedAt = "";
   S.cloudSessionStartSaved = false;
   S.db = [];
   S.scanned = [];
@@ -3183,11 +3050,8 @@ let cloudLastHeaderWrite = 0;
         // O servidor só recebe dados quando o operador clica em "Finalizar".
         // Cada nova importação/conferência deve pedir o operador do aparelho.
         S.checkerName = "";
-        S.startedAt = "";
-        S.finishedAt = "";
         save();
         if (document.getElementById("rCheckerName")) document.getElementById("rCheckerName").textContent = "—";
-        updateReportDatesUI();
         cloudSetStatus("ok", "☁️ Modo econômico: salva ao finalizar");
         setTimeout(() => showCheckerModal(), 180);
       }
@@ -3683,7 +3547,21 @@ if (S.collectorMode) {
         if (!skipChecker && !ensureCheckerName(() => startConference())) return;
         startIntegratedScanner();
       }
-      window.addEventListener("storage", function (e) { if (e.key === "bob3") { load(); updateDBUI(); updateStats(); updateHistory(); updateReport(); updateCollectorModeUI(); } });
+      window.addEventListener("storage", function (e) {
+        if (e.key !== "bob3") return;
+        try {
+          const incoming = e.newValue ? JSON.parse(e.newValue) : null;
+          const current = makeStateSnapshot();
+          if (!incoming && stateProgressScore(current) > 0) { save(); return; }
+          if (incoming && statesCompatible(current, incoming) && stateProgressScore(incoming) < stateProgressScore(current)) {
+            console.warn("Estado local mais antigo ignorado para evitar perda de conferência.");
+            save();
+            return;
+          }
+          if (incoming) applyStateSnapshot(incoming); else load();
+        } catch (err) { console.warn("Falha ao tratar storage event:", err); load(); }
+        updateDBUI(); updateStats(); updateHistory(); updateReport(); updateCollectorModeUI();
+      });
       function updateStats() {
         const total = S.db.length, chk = S.checked.size, pend = total - chk, ext = S.extras.length, pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0;
         document.getElementById("sTotal").textContent = total; document.getElementById("sChecked").textContent = chk; document.getElementById("sPending").textContent = pend; document.getElementById("sExtra").textContent = ext; document.getElementById("pPct").textContent = pct + "%"; document.getElementById("pFill").style.width = pct + "%"; document.getElementById("scanBadge").textContent = chk;
@@ -3749,121 +3627,16 @@ if (S.collectorMode) {
       }
       function getOP(code) { return S.meta && S.meta[code] && S.meta[code].op ? S.meta[code].op : "-"; }
       function getPeso(code) { return S.meta && S.meta[code] && S.meta[code].peso ? S.meta[code].peso : "-"; }
-      function getMaterial(code) {
-        if (S.meta && S.meta[code] && S.meta[code].material) return String(S.meta[code].material);
-        return "";
-      }
-      const PELICULA_MATERIAL_TERMS = ["BOPP", "PP", "PET"];
-      function isPeliculaMaterial(material) {
-        const m = String(material || "").toUpperCase();
-        if (!m) return false;
-        return PELICULA_MATERIAL_TERMS.some((t) => m.includes(String(t).toUpperCase()));
-      }
-      function shouldSplitBasesInReport(confType = S.confType) {
-        // Quando a conferência inclui "Bases - Todas", separa películas (BOPP/PP/PET) das demais bases.
-        return /bases\s*-\s*todas/i.test(String(confType || ""));
-      }
-      function getBaseGroupKey(codeOrItem) {
-        // 'pelicula' | 'base' | ''
-        if (!shouldSplitBasesInReport()) return "";
-        let material = "";
-        if (codeOrItem && typeof codeOrItem === "object") {
-          material = codeOrItem.material || codeOrItem.Material || "";
-          if (!material && codeOrItem.code) material = getMaterial(codeOrItem.code);
-        } else {
-          material = getMaterial(codeOrItem);
-        }
-        // extras não entram no split de base
-        if (codeOrItem && typeof codeOrItem === "object" && codeOrItem.status === "extra") return "";
-        return isPeliculaMaterial(material) ? "pelicula" : "base";
-      }
-      function getBaseGroupLabel(key) {
-        if (key === "pelicula") return "Bases - Películas (BOPP/PP/PET)";
-        if (key === "base") return "Bases - Demais (sem película)";
-        return "";
-      }
-      function getOpSummaryItems(groupFilter = null) {
-        // groupFilter: null | 'pelicula' | 'base'
+      function getOpSummaryItems() {
         const map = new Map();
-        S.db.forEach((code) => {
-          if (groupFilter) {
-            const g = getBaseGroupKey(code);
-            if (g !== groupFilter) return;
-          }
-          const op = getOP(code) || "-";
-          if (!map.has(op)) map.set(op, { op, total: 0, checked: 0, pending: 0, pct: 0, group: groupFilter || "" });
-          const item = map.get(op);
-          item.total++;
-          if (S.checked.has(code)) item.checked++;
-        });
-        const arr = Array.from(map.values()).map((item) => {
-          item.pending = item.total - item.checked;
-          item.pct = item.total > 0 ? ((item.checked / item.total) * 100).toFixed(1) : "0.0";
-          return item;
-        });
-        arr.sort((a, b) => String(a.op).localeCompare(String(b.op), "pt-BR", { numeric: true, sensitivity: "base" }));
-        return arr;
-      }
-      function getBaseGroupTotals() {
-        if (!shouldSplitBasesInReport()) return null;
-        const out = {
-          base: { total: 0, checked: 0, pending: 0, pct: "0.0" },
-          pelicula: { total: 0, checked: 0, pending: 0, pct: "0.0" },
-        };
-        S.db.forEach((code) => {
-          const g = getBaseGroupKey(code) || "base";
-          if (!out[g]) return;
-          out[g].total++;
-          if (S.checked.has(code)) out[g].checked++;
-        });
-        ["base", "pelicula"].forEach((k) => {
-          out[k].pending = Math.max(0, out[k].total - out[k].checked);
-          out[k].pct = out[k].total > 0 ? ((out[k].checked / out[k].total) * 100).toFixed(1) : "0.0";
-        });
-        return out;
+        S.db.forEach((code) => { const op = getOP(code) || "-"; if (!map.has(op)) map.set(op, { op, total: 0, checked: 0, pending: 0, pct: 0 }); const item = map.get(op); item.total++; if (S.checked.has(code)) item.checked++; });
+        const arr = Array.from(map.values()).map((item) => { item.pending = item.total - item.checked; item.pct = item.total > 0 ? ((item.checked / item.total) * 100).toFixed(1) : "0.0"; return item; });
+        arr.sort((a, b) => String(a.op).localeCompare(String(b.op), "pt-BR", { numeric: true, sensitivity: "base" })); return arr;
       }
       function getReportItems() {
         let items = [];
-        const split = shouldSplitBasesInReport();
-        [...new Set(S.extras)].forEach((code) => {
-          const scan = S.scanned.find((s) => s.code === code && s.status === "not-found");
-          items.push({
-            code, op: "-", peso: "-", material: "", grupo: "", grupoKey: "",
-            status: "extra", manual: false,
-            time: scan ? scan.time : "-", location: scan?.location || "-",
-            observation: scan?.observation || "", hasPhoto: scan?.hasPhoto || false,
-          });
-        });
-        S.db.forEach((code) => {
-          const chk = S.checked.has(code);
-          const scan = S.scanned.find((s) => s.code === code && s.status === "found");
-          const material = getMaterial(code);
-          const grupoKey = split ? (isPeliculaMaterial(material) ? "pelicula" : "base") : "";
-          items.push({
-            code,
-            op: getOP(code),
-            peso: getPeso(code),
-            material,
-            grupoKey,
-            grupo: getBaseGroupLabel(grupoKey),
-            status: chk ? "checked" : "pending",
-            manual: !!scan?.manual,
-            time: scan ? scan.time : "-",
-            location: scan?.location || "",
-            observation: scan?.observation || "",
-            hasPhoto: !!scan?.hasPhoto,
-          });
-        });
-        // Em Bases - Todas: ordena Demais primeiro, depois Películas, depois extras
-        if (split) {
-          const order = { base: 0, pelicula: 1, "": 2 };
-          items.sort((a, b) => {
-            const ga = order[a.grupoKey || ""] ?? 2;
-            const gb = order[b.grupoKey || ""] ?? 2;
-            if (ga !== gb) return ga - gb;
-            return String(a.op || "").localeCompare(String(b.op || ""), "pt-BR", { numeric: true });
-          });
-        }
+        [...new Set(S.extras)].forEach((code) => { const scan = S.scanned.find((s) => s.code === code && s.status === "not-found"); items.push({ code, op: "-", peso: "-", status: "extra", manual: false, time: scan ? scan.time : "-", location: scan?.location || "-", observation: scan?.observation || "", hasPhoto: scan?.hasPhoto || false }); });
+        S.db.forEach((code) => { const chk = S.checked.has(code), scan = S.scanned.find((s) => s.code === code && s.status === "found"); items.push({ code, op: getOP(code), peso: getPeso(code), status: chk ? "checked" : "pending", manual: !!scan?.manual, time: scan ? scan.time : "-", location: scan?.location || "", observation: scan?.observation || "", hasPhoto: !!scan?.hasPhoto }); });
         return items;
       }
       function setText(id, value) { const el = document.getElementById(id); if (el) el.textContent = value; }
@@ -3899,110 +3672,19 @@ if (S.collectorMode) {
         setText("reportPanelOpsPending", pending);
         setText("reportPanelOpsPct", pct);
       }
-      function renderOpSummaryGroupList(ops) {
-        if (!ops.length) return '<div class="empty">Nenhuma OP encontrada</div>';
-        return '<div class="op-summary-list">' + ops.map((op) => {
+      function renderOpSummary(search = "") {
+        const box = document.getElementById("opSummaryBody"); if (!box) return;
+        let ops = getOpSummaryItems(); const q = String(search || "").trim().toLowerCase();
+        if (q) ops = ops.filter((op) => String(op.op || "").toLowerCase().includes(q));
+        if (!ops.length) { box.innerHTML = '<div class="empty">Nenhuma OP encontrada</div>'; return; }
+        box.innerHTML = '<div class="op-summary-list">' + ops.map((op) => {
           const pct = Math.max(0, Math.min(100, Number(op.pct) || 0));
           return `<div class="op-summary-item"><div class="op-summary-head"><div class="op-summary-op">OP ${esc(op.op || "-")}</div><div class="op-summary-pct">${esc(op.pct)}%</div></div><div class="op-summary-info"><span>✅ Encontradas: <strong>${op.checked}/${op.total}</strong></span><span>⏳ Pendentes: <strong>${op.pending}</strong></span></div><div class="op-summary-progress"><span style="width:${pct}%"></span></div></div>`;
         }).join("") + "</div>";
       }
-      function renderOpSummary(search = "") {
-        const box = document.getElementById("opSummaryBody"); if (!box) return;
-        const q = String(search || "").trim().toLowerCase();
-        const filterQ = (ops) => q ? ops.filter((op) => String(op.op || "").toLowerCase().includes(q)) : ops;
-
-        if (shouldSplitBasesInReport()) {
-          const bases = filterQ(getOpSummaryItems("base"));
-          const pels = filterQ(getOpSummaryItems("pelicula"));
-          const tot = getBaseGroupTotals() || {};
-          const b = tot.base || {};
-          const p = tot.pelicula || {};
-          box.innerHTML = `
-            <div style="display:grid;gap:14px">
-              <div style="border:1px solid var(--border);border-radius:14px;padding:12px;background:var(--bg-card)">
-                <div style="font-weight:900;margin-bottom:6px;color:var(--text-primary)">📦 Bases - Demais (sem película)</div>
-                <div style="font-size:.8em;color:var(--text-secondary);margin-bottom:10px">
-                  Total: <strong style="color:var(--text-primary)">${b.total || 0}</strong> ·
-                  Conferidos: <strong style="color:var(--text-primary)">${b.checked || 0}</strong> ·
-                  Pendentes: <strong style="color:var(--text-primary)">${b.pending || 0}</strong> ·
-                  ${b.pct || "0.0"}%
-                </div>
-                ${renderOpSummaryGroupList(bases)}
-              </div>
-              <div style="border:1px solid rgba(245,158,11,.35);border-radius:14px;padding:12px;background:rgba(245,158,11,.06)">
-                <div style="font-weight:900;margin-bottom:6px;color:var(--text-primary)">🎞️ Bases - Películas (BOPP / PP / PET)</div>
-                <div style="font-size:.8em;color:var(--text-secondary);margin-bottom:10px">
-                  Total: <strong style="color:var(--text-primary)">${p.total || 0}</strong> ·
-                  Conferidos: <strong style="color:var(--text-primary)">${p.checked || 0}</strong> ·
-                  Pendentes: <strong style="color:var(--text-primary)">${p.pending || 0}</strong> ·
-                  ${p.pct || "0.0"}%
-                </div>
-                ${renderOpSummaryGroupList(pels)}
-              </div>
-            </div>`;
-          return;
-        }
-
-        let ops = filterQ(getOpSummaryItems());
-        if (!ops.length) { box.innerHTML = '<div class="empty">Nenhuma OP encontrada</div>'; return; }
-        box.innerHTML = renderOpSummaryGroupList(ops);
-      }
-      function formatReportDateCard(value) {
-        if (!value) return "—";
-        const d = cloudValueToDate(value);
-        if (!d) return cloudFormatDateTimeBR(value) || "—";
-        // mesmo peso visual dos outros cards: data + hora em 2 linhas curtas
-        const data = d.toLocaleDateString("pt-BR");
-        const hora = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-        return data + "\n" + hora;
-      }
-      function updateReportDatesUI() {
-        const sEl = document.getElementById("rStartedAt");
-        const fEl = document.getElementById("rFinishedAt");
-        if (sEl) {
-          sEl.style.whiteSpace = "pre-line";
-          sEl.textContent = formatReportDateCard(S.startedAt);
-        }
-        if (fEl) {
-          fEl.style.whiteSpace = "pre-line";
-          fEl.textContent = formatReportDateCard(S.finishedAt);
-        }
-      }
       function updateReport() {
         const total = S.db.length, chk = S.checked.size, pend = total - chk, ext = [...new Set(S.extras)].length, pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0;
-        document.getElementById("rTotal").textContent = total; document.getElementById("rChecked").textContent = chk; document.getElementById("rPending").textContent = pend; document.getElementById("rExtra").textContent = ext; document.getElementById("rPct").textContent = pct + "%"; document.getElementById("rFill").style.width = pct + "%"; document.getElementById("rCheckerName").textContent = S.checkerName || "—"; document.getElementById("rConferenceType").textContent = S.confType || "—"; updateReportDatesUI();
-        // faixa de separação Bases x Películas no relatório local
-        let splitBox = document.getElementById("rBaseSplitBox");
-        if (!splitBox) {
-          const host = document.getElementById("rFill")?.closest(".card");
-          if (host) {
-            splitBox = document.createElement("div");
-            splitBox.id = "rBaseSplitBox";
-            splitBox.style.cssText = "display:none;margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px";
-            host.appendChild(splitBox);
-          }
-        }
-        if (splitBox) {
-          if (shouldSplitBasesInReport()) {
-            const t = getBaseGroupTotals() || {};
-            const b = t.base || {}, p = t.pelicula || {};
-            splitBox.style.display = "grid";
-            splitBox.innerHTML = `
-              <div style="background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.25);border-radius:12px;padding:10px">
-                <div style="font-size:.78em;font-weight:800;color:#2563eb">📦 Bases (demais)</div>
-                <div style="font-size:1.15em;font-weight:900;color:var(--text-primary);margin-top:4px">${b.checked || 0}/${b.total || 0}</div>
-                <div style="font-size:.75em;color:var(--text-secondary)">${b.pct || "0.0"}% · pend. ${b.pending || 0}</div>
-              </div>
-              <div style="background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:10px">
-                <div style="font-size:.78em;font-weight:800;color:#d97706">🎞️ Películas</div>
-                <div style="font-size:1.15em;font-weight:900;color:var(--text-primary);margin-top:4px">${p.checked || 0}/${p.total || 0}</div>
-                <div style="font-size:.75em;color:var(--text-secondary)">${p.pct || "0.0"}% · pend. ${p.pending || 0}</div>
-              </div>`;
-          } else {
-            splitBox.style.display = "none";
-            splitBox.innerHTML = "";
-          }
-        }
+        document.getElementById("rTotal").textContent = total; document.getElementById("rChecked").textContent = chk; document.getElementById("rPending").textContent = pend; document.getElementById("rExtra").textContent = ext; document.getElementById("rPct").textContent = pct + "%"; document.getElementById("rFill").style.width = pct + "%"; document.getElementById("rCheckerName").textContent = S.checkerName || "—"; document.getElementById("rConferenceType").textContent = S.confType || "—";
         updateReportPanelMetrics(); renderRpt(); renderOpSummary(reportOpSummarySearch);
       }
       function renderRpt() {
@@ -4014,16 +3696,10 @@ if (S.collectorMode) {
         }
         const counter = document.getElementById("reportDetailResultCount"); if (counter) counter.textContent = `${items.length} ${items.length === 1 ? "item" : "itens"}`;
         const d = items.slice(0, 500);
-        const split = shouldSplitBasesInReport();
         tbody.innerHTML = d.map((it, i) => {
           const loc = it.status === "extra" ? ("📌 " + esc(it.location || "-")) : (it.location ? esc(it.location) : "—");
           const photoCode = esc(it.code).replace(/'/g, "&#39;");
-          const grupoBadge = (split && it.grupoKey)
-            ? (it.grupoKey === "pelicula"
-                ? '<div style="font-size:.68em;font-weight:800;color:#d97706;margin-top:2px">🎞️ Película</div>'
-                : '<div style="font-size:.68em;font-weight:800;color:#2563eb;margin-top:2px">📦 Base</div>')
-            : "";
-          return `<tr><td>${i + 1}</td><td class="cc">${esc(it.code)}${grupoBadge}</td><td>${esc(it.op || "-")}</td><td>${esc(it.peso || "-")}</td><td>${reportStatusBadge(it)}</td><td>${esc(it.time)}</td><td>${loc}</td><td>${it.observation ? esc(it.observation) : "—"}</td><td>${it.hasPhoto ? `<button class="icon-btn" onclick="showPhotoModal('${photoCode}')">📸</button>` : "—"}</td></tr>`;
+          return `<tr><td>${i + 1}</td><td class="cc">${esc(it.code)}</td><td>${esc(it.op || "-")}</td><td>${esc(it.peso || "-")}</td><td>${reportStatusBadge(it)}</td><td>${esc(it.time)}</td><td>${loc}</td><td>${it.observation ? esc(it.observation) : "—"}</td><td>${it.hasPhoto ? `<button class="icon-btn" onclick="showPhotoModal('${photoCode}')">📸</button>` : "—"}</td></tr>`;
         }).join("");
         if (items.length > 500) tbody.innerHTML += `<tr><td colspan="9">... +${items.length - 500}</td></tr>`;
         if (!items.length) tbody.innerHTML = '<tr><td colspan="9">Nenhum item</td></tr>';
@@ -4063,176 +3739,23 @@ if (S.collectorMode) {
         if (reportPanelMode === "ops") { reportOpSummarySearch = v; renderOpSummary(v); }
         else rptSearch(v);
       }
-
-      function updateCloudReportPanelMetrics() {
-        const rows = cloudDetailRows || [];
-        const base = rows.filter((r) => !String(r.status || "").includes("Não Prevista"));
-        const total = base.length;
-        const checked = rows.filter((r) => /Conferid|Manual/i.test(String(r.status || ""))).length;
-        const pending = rows.filter((r) => String(r.status || "").includes("Pendente")).length;
-        const extras = rows.filter((r) => String(r.status || "").includes("Não Prevista")).length;
-        const ops = new Set(base.map((r) => r.op || "-"));
-        const pct = total > 0 ? ((checked / total) * 100).toFixed(1) + "%" : "0.0%";
-        const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-        set("cloudReportPanelOpsCount", ops.size);
-        set("cloudReportPanelOpsFound", checked);
-        set("cloudReportPanelOpsPending", pending);
-        set("cloudReportPanelOpsPct", pct);
-        set("cloudCardOpCount", ops.size);
-        set("cloudCardOpFound", checked);
-        set("cloudCardOpTotal", total);
-        set("cloudCardOpPct", pct);
-        set("cloudCardDetailCount", rows.length);
-        set("cloudCardDetailChecked", checked);
-        set("cloudCardDetailPending", pending);
-        set("cloudCardDetailExtra", extras);
-        const detailCount = document.getElementById("cloudReportDetailResultCount");
-        if (detailCount && typeof cloudRowsByDetailFilter === "function") {
-          const filtered = cloudRowsByDetailFilter(true);
-          detailCount.textContent = `${filtered.length} ${filtered.length === 1 ? "item" : "itens"}`;
-        }
-      }
-      function openCloudReportPanel(mode) {
-        if (!cloudDetailConfId) { notify("Abra uma conferência primeiro.", "warning"); return; }
-        if (!(cloudDetailRows || []).length) { notify("Esta conferência não tem itens para exibir.", "warning"); return; }
-        try { closeReportPanel(); } catch (e) {}
-        const panel = document.getElementById("cloudReportFullscreen");
-        if (!panel) { notify("Painel de detalhes indisponível.", "error"); return; }
-        panel.classList.add("show");
-        panel.setAttribute("aria-hidden", "false");
-        document.body.classList.add("report-panel-open");
-        setCloudReportPanelMode(mode || cloudReportPanelMode || "ops");
-      }
-      function closeCloudReportPanel() {
-        const panel = document.getElementById("cloudReportFullscreen");
-        if (!panel) return;
-        panel.classList.remove("show");
-        panel.setAttribute("aria-hidden", "true");
-        if (!document.getElementById("reportFullscreen")?.classList.contains("show")) {
-          document.body.classList.remove("report-panel-open");
-        }
-      }
-      function setCloudReportPanelMode(mode) {
-        cloudReportPanelMode = mode === "detail" ? "detail" : "ops";
-        const isOps = cloudReportPanelMode === "ops";
-        document.getElementById("cloudReportOpsView")?.classList.toggle("active", isOps);
-        document.getElementById("cloudReportDetailView")?.classList.toggle("active", !isOps);
-        document.getElementById("cloudReportModeOps")?.classList.toggle("active", isOps);
-        document.getElementById("cloudReportModeDetail")?.classList.toggle("active", !isOps);
-        const filters = document.getElementById("cloudReportDetailFilters");
-        if (filters) filters.style.display = isOps ? "none" : "flex";
-        const title = document.getElementById("cloudReportPanelTitle");
-        if (title) title.textContent = isOps ? "📦 Resumo por OP's" : "📋 Lista detalhada";
-        const sub = document.getElementById("cloudReportPanelSub");
-        if (sub) sub.textContent = isOps
-          ? "Progresso por OP em tela cheia, com busca e rolagem própria."
-          : "Bobina a bobina em tela cheia, com filtros, busca, local, observação e fotos.";
-        const search = document.getElementById("cloudReportFullscreenSearch");
-        if (search) {
-          search.placeholder = isOps ? "Buscar OP..." : "Buscar código, OP, status, local...";
-          search.value = isOps ? (cloudReportOpSummarySearch || "") : (cloudDetailSearch || "");
-        }
-        document.querySelectorAll("#cloudReportDetailFilters .fbtn").forEach((b) => {
-          b.classList.toggle("active", (b.getAttribute("data-filter") || "") === (cloudDetailFilter || "all"));
-        });
-        updateCloudReportPanelMetrics();
-        if (isOps) {
-          const prevSearch = cloudDetailSearch;
-          cloudDetailSearch = "";
-          cloudRenderDetailOpSummary();
-          cloudDetailSearch = prevSearch;
-          if (cloudReportOpSummarySearch) cloudFilterOpSummaryCards(cloudReportOpSummarySearch);
-        } else {
-          cloudRenderDetailRows();
-        }
-      }
-      function cloudFilterOpSummaryCards(q) {
-        const box = document.getElementById("cloudDetailOpSummary");
-        if (!box) return;
-        const query = String(q || "").trim().toLowerCase();
-        box.querySelectorAll(".op-summary-item").forEach((el) => {
-          const txt = (el.textContent || "").toLowerCase();
-          el.style.display = !query || txt.includes(query) ? "" : "none";
-        });
-      }
-      function cloudReportPanelSearch(v) {
-        if (cloudReportPanelMode === "ops") {
-          cloudReportOpSummarySearch = v || "";
-          const prev = cloudDetailSearch;
-          cloudDetailSearch = "";
-          cloudRenderDetailOpSummary();
-          cloudDetailSearch = prev;
-          cloudFilterOpSummaryCards(cloudReportOpSummarySearch);
-        } else {
-          cloudDetailSearch = v || "";
-          cloudRenderDetailRows();
-        }
-      }
       function exportRpt(fmt) {
-        const rawItems = getReportItems();
-        const items = rawItems.map((i) => ({
-          code: i.code, op: i.op || "-", peso: i.peso || "-",
-          material: i.material || "", grupo: i.grupo || "", grupoKey: i.grupoKey || "",
-          status: i.status === "checked" ? (i.manual ? "Conferido Manual" : "Conferido") : i.status === "pending" ? "Pendente" : "Não Prevista",
-          time: i.time === "-" ? "" : i.time, location: i.location === "-" ? "" : i.location,
-          observation: i.observation || "", hasPhoto: i.hasPhoto,
-        }));
-        const total = S.db.length, chk = S.checked.size, pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0;
-        const date = new Date(), tipo = S.confType || "-", conferente = S.checkerName || "-", extras = [...new Set(S.extras)].length;
-        const split = shouldSplitBasesInReport();
-        const opAll = getOpSummaryItems();
-        const opBase = split ? getOpSummaryItems("base") : [];
-        const opPel = split ? getOpSummaryItems("pelicula") : [];
-        const gt = split ? (getBaseGroupTotals() || {}) : null;
-
-        const mapBobinaLineCsv = (i) => {
-          if (split) return `${i.code};${i.op};${i.peso};${i.grupo || ""};${i.material || ""};${i.status};${i.time};${i.location};${i.observation};${i.hasPhoto ? "Combinada etiqueta+bobina" : "Não"}`;
-          return `${i.code};${i.op};${i.peso};${i.status};${i.time};${i.location};${i.observation};${i.hasPhoto ? "Combinada etiqueta+bobina" : "Não"}`;
-        };
-        const mapBobinaLineTxt = (i) => {
-          const g = split && i.grupoKey ? (i.grupoKey === "pelicula" ? "PEL" : "BASE") : "";
-          return `${i.code.padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)}${g ? " | " + g.padEnd(4) : ""} | ${i.status.padEnd(15)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.hasPhoto ? "📸 Combinada" : "—"}`;
-        };
-        const opLinesCsv = (ops) => ops.map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`).join("\n");
-        const opLinesTxt = (ops) => ops.map((op) => `OP: ${String(op.op || "-").padEnd(15)} | Encontradas: ${String(op.checked + "/" + op.total).padEnd(8)} | ${op.pct}%`).join("\n");
-
+        const items = getReportItems().map((i) => ({ code: i.code, op: i.op || "-", peso: i.peso || "-", status: i.status === "checked" ? (i.manual ? "Conferido Manual" : "Conferido") : i.status === "pending" ? "Pendente" : "Não Prevista", time: i.time === "-" ? "" : i.time, location: i.location === "-" ? "" : i.location, observation: i.observation || "", hasPhoto: i.hasPhoto }));
+        const total = S.db.length, chk = S.checked.size, pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0, date = new Date(), tipo = S.confType || "-", conferente = S.checkerName || "-", extras = [...new Set(S.extras)].length, opSummary = getOpSummaryItems();
         if (fmt === "csv") {
-          let csv = `RELATÓRIO DE CONFERÊNCIA\nData;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente;${conferente}\nTipo de Conferência;${tipo}\nData Início;${S.startedAt ? cloudFormatDateTimeBR(S.startedAt) : "—"}\nData Fim;${S.finishedAt ? cloudFormatDateTimeBR(S.finishedAt) : "—"}\n\nRESUMO\nTotal;${total}\nConferidos;${chk}\nPendentes;${total - chk}\nNão Previstas;${extras}\nPercentual;${pct}%\n`;
-          if (split && gt) {
-            csv += `\nSEPARAÇÃO BASES (Todas)\nGrupo;Total;Conferidos;Pendentes;Percentual\n`;
-            csv += `Bases - Demais (sem película);${gt.base?.total || 0};${gt.base?.checked || 0};${gt.base?.pending || 0};${gt.base?.pct || "0.0"}%\n`;
-            csv += `Bases - Películas (BOPP/PP/PET);${gt.pelicula?.total || 0};${gt.pelicula?.checked || 0};${gt.pelicula?.pending || 0};${gt.pelicula?.pct || "0.0"}%\n`;
-            csv += `\nRESUMO POR OP - BASES (DEMAIS)\nOP;Encontradas;Percentual\n`;
-            csv += opLinesCsv(opBase) + "\n";
-            csv += `\nRESUMO POR OP - PELÍCULAS\nOP;Encontradas;Percentual\n`;
-            csv += opLinesCsv(opPel) + "\n";
-            csv += `\nBOBINAS\nCódigo;OP;Peso;Grupo;Material;Status;Hora;Localização;Observação;Fotos\n`;
-          } else {
-            csv += `\nRESUMO POR OP\nOP;Encontradas;Percentual\n`;
-            csv += opLinesCsv(opAll);
-            csv += `\n\nBOBINAS\nCódigo;OP;Peso;Status;Hora;Localização;Observação;Fotos\n`;
-          }
-          csv += items.map(mapBobinaLineCsv).join("\n");
+          let csv = `RELATÓRIO DE CONFERÊNCIA\nData;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente;${conferente}\nTipo de Conferência;${tipo}\n\nRESUMO\nTotal;${total}\nConferidos;${chk}\nPendentes;${total - chk}\nNão Previstas;${extras}\nPercentual;${pct}%\n\nRESUMO POR OP\nOP;Encontradas;Percentual\n`;
+          csv += opSummary.map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`).join("\n");
+          csv += `\n\nBOBINAS\nCódigo;OP;Peso;Status;Hora;Localização;Observação;Fotos\n`;
+          csv += items.map((i) => `${i.code};${i.op};${i.peso};${i.status};${i.time};${i.location};${i.observation};${i.hasPhoto ? "Combinada etiqueta+bobina" : "Não"}`).join("\n");
           download(csv, `conferencia_${date.toISOString().slice(0, 10)}.csv`, "text/csv");
         } else {
-          let txt = `RELATÓRIO DE CONFERÊNCIA\nData: ${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente: ${conferente}\nTipo de Conferência: ${tipo}\nData Início: ${S.startedAt ? cloudFormatDateTimeBR(S.startedAt) : "—"}\nData Fim: ${S.finishedAt ? cloudFormatDateTimeBR(S.finishedAt) : "—"}\n${"=".repeat(95)}\nTotal: ${total}\nConferidos: ${chk}\nPendentes: ${total - chk}\nNão Previstas: ${extras}\nPercentual: ${pct}%\n`;
-          if (split && gt) {
-            txt += `${"=".repeat(95)}\nSEPARAÇÃO BASES (Todas)\n${"=".repeat(95)}\n`;
-            txt += `Bases - Demais: ${gt.base?.checked || 0}/${gt.base?.total || 0} (${gt.base?.pct || "0.0"}%) | Pendentes: ${gt.base?.pending || 0}\n`;
-            txt += `Películas (BOPP/PP/PET): ${gt.pelicula?.checked || 0}/${gt.pelicula?.total || 0} (${gt.pelicula?.pct || "0.0"}%) | Pendentes: ${gt.pelicula?.pending || 0}\n`;
-            txt += `\n${"=".repeat(95)}\nRESUMO POR OP - BASES (DEMAIS)\n${"=".repeat(95)}\n`;
-            txt += opLinesTxt(opBase) + "\n";
-            txt += `\n${"=".repeat(95)}\nRESUMO POR OP - PELÍCULAS\n${"=".repeat(95)}\n`;
-            txt += opLinesTxt(opPel) + "\n";
-          } else {
-            txt += `${"=".repeat(95)}\nRESUMO POR OP\n${"=".repeat(95)}\n`;
-            txt += opLinesTxt(opAll) + "\n";
-          }
+          let txt = `RELATÓRIO DE CONFERÊNCIA\nData: ${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente: ${conferente}\nTipo de Conferência: ${tipo}\n${"=".repeat(95)}\nTotal: ${total}\nConferidos: ${chk}\nPendentes: ${total - chk}\nNão Previstas: ${extras}\nPercentual: ${pct}%\n${"=".repeat(95)}\nRESUMO POR OP\n${"=".repeat(95)}\n`;
+          txt += opSummary.map((op) => `OP: ${String(op.op || "-").padEnd(15)} | Encontradas: ${String(op.checked + "/" + op.total).padEnd(8)} | ${op.pct}%`).join("\n");
           txt += `\n${"=".repeat(95)}\nBOBINAS\n${"=".repeat(95)}\n`;
-          txt += items.map(mapBobinaLineTxt).join("\n");
+          txt += items.map((i) => `${i.code.padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${i.status.padEnd(15)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.hasPhoto ? "📸 Combinada" : "—"}`).join("\n");
           download(txt, `conferencia_${date.toISOString().slice(0, 10)}.txt`, "text/plain");
         }
-        notify(split ? "Relatório exportado com Bases e Películas separadas!" : "Relatório exportado!");
+        notify("Relatório exportado!");
       }
       async function exportZip() {
         const extrasUniq = [...new Set(S.extras)]; if (extrasUniq.length === 0) { notify("Nenhuma bobina não prevista para exportar!", "warning"); return; }
@@ -4243,12 +3766,7 @@ if (S.collectorMode) {
           for (const code of extrasUniq) {
             const scan = S.scanned.find((s) => s.code === code && s.status === "not-found"); const loc = scan?.location || ""; const time = scan?.time || ""; const obs = scan?.observation || "";
             let fotoName = ""; const photo = getPhoto(code); const base = photo && photo.includes(",") ? photo.split(",")[1] : null;
-            if (base) {
-              const fname = (typeof photoFileName === "function") ? photoFileName(code, loc) : `${code}_etiqueta_bobina.jpg`;
-              fotosFolder.file(fname, base, { base64: true });
-              fotoName = `fotos/${fname}`;
-              countFotos++;
-            }
+            if (base) { fotosFolder.file(`${code}_etiqueta_bobina.jpg`, base, { base64: true }); fotoName = `fotos/${code}_etiqueta_bobina.jpg`; countFotos++; }
             csv += `${code};${time};${loc};${obs};${fotoName}\n`;
           }
           const total = S.db.length, chk = S.checked.size, pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0;
@@ -4368,72 +3886,18 @@ if (S.collectorMode) {
       }
       function loadImgData(src) { return new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = reject; img.src = src; }); }
       function drawContain(ctx, img, x, y, w, h) { const r = Math.min(w / img.width, h / img.height), nw = img.width * r, nh = img.height * r; ctx.drawImage(img, x + (w - nw) / 2, y + (h - nh) / 2, nw, nh); }
-      function fitCanvasText(ctx, text, maxWidth) {
-        let t = String(text || "");
-        if (!t) return "";
-        if (ctx.measureText(t).width <= maxWidth) return t;
-        while (t.length > 1 && ctx.measureText(t + "...").width > maxWidth) t = t.slice(0, -1);
-        return t + "...";
-      }
-      function safeFilePart(v, fallback = "sem_local") {
-        const s = String(v || "")
-          .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-          .replace(/[^a-zA-Z0-9]+/g, "_")
-          .replace(/^_+|_+$/g, "")
-          .slice(0, 40);
-        return s || fallback;
-      }
-      function photoFileName(code, location = "") {
-        const c = safeFilePart(code, "sem_codigo");
-        const loc = safeFilePart(location, "");
-        return loc ? `${c}__${loc}_etiqueta_bobina.jpg` : `${c}_etiqueta_bobina.jpg`;
-      }
-      async function combinePhotosHalf(code, photoEtiqueta, photoBobina, location = "") {
-        const [etq, bob] = await Promise.all([loadImgData(photoEtiqueta), loadImgData(photoBobina)]);
-        const maxW = 900;
-        const labelH = 48;
-        // Endereço SOMENTE embaixo, em área extra (não cobre as fotos)
-        const footerH = location ? 120 : 0;
+      async function combinePhotosHalf(code, photoEtiqueta, photoBobina) {
+        const [etq, bob] = await Promise.all([loadImgData(photoEtiqueta), loadImgData(photoBobina)]); const maxW = 900; const labelH = 44;
         const etqRatio = Math.min(maxW / etq.width, 1), bobRatio = Math.min(maxW / bob.width, 1);
         const etqH = Math.round(etq.height * etqRatio), bobH = Math.round(bob.height * bobRatio);
-        const canvas = document.createElement("canvas");
-        canvas.width = maxW;
-        canvas.height = labelH + etqH + labelH + bobH + footerH;
-        const ctx = canvas.getContext("2d");
-        ctx.fillStyle = "#fff";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        // fotos intactas
-        drawContain(ctx, etq, 0, labelH, maxW, etqH);
-        drawContain(ctx, bob, 0, labelH + etqH + labelH, maxW, bobH);
-        // faixas de título (só código, sem endereço por cima da foto)
-        ctx.fillStyle = "rgba(0,0,0,.78)";
-        ctx.fillRect(0, 0, maxW, labelH);
-        ctx.fillRect(0, labelH + etqH, maxW, labelH);
-        ctx.fillStyle = "#fff";
-        ctx.font = "bold 24px Arial";
-        ctx.fillText(fitCanvasText(ctx, "ETIQUETA • " + code, maxW - 32), 16, 32);
-        ctx.fillText(fitCanvasText(ctx, "BOBINA • " + code, maxW - 32), 16, labelH + etqH + 32);
-        // endereço GRANDE só no rodapé, abaixo das fotos
-        if (location) {
-          const y0 = labelH + etqH + labelH + bobH;
-          ctx.fillStyle = "rgba(185, 28, 28, 0.96)";
-          ctx.fillRect(0, y0, maxW, footerH);
-          ctx.fillStyle = "#fecaca";
-          ctx.font = "bold 22px Arial";
-          ctx.fillText("LOCAL / ENDERECO", 18, y0 + 30);
-          ctx.fillStyle = "#ffffff";
-          ctx.font = "bold 42px Arial";
-          ctx.fillText(fitCanvasText(ctx, String(location), maxW - 36), 18, y0 + 78);
-          ctx.fillStyle = "#fee2e2";
-          ctx.font = "bold 22px Arial";
-          ctx.fillText(fitCanvasText(ctx, "Codigo: " + code, maxW - 36), 18, y0 + 108);
-        }
-        return canvas.toDataURL("image/jpeg", 0.78);
+        const canvas = document.createElement("canvas"); canvas.width = maxW; canvas.height = labelH + etqH + labelH + bobH; const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height); drawContain(ctx, etq, 0, labelH, maxW, etqH); drawContain(ctx, bob, 0, labelH + etqH + labelH, maxW, bobH); ctx.fillStyle = "rgba(0,0,0,.75)"; ctx.fillRect(0, 0, maxW, labelH); ctx.fillRect(0, labelH + etqH, maxW, labelH); ctx.fillStyle = "#fff"; ctx.font = "bold 22px Arial"; ctx.fillText("ETIQUETA • " + code, 16, 28); ctx.fillText("BOBINA • " + code, 16, labelH + etqH + 28);
+        return canvas.toDataURL("image/jpeg", 0.72);
       }
-      async function savePhotosExtra(code, photoEtiqueta, photoBobina, location = "") {
+      async function savePhotosExtra(code, photoEtiqueta, photoBobina) {
         const key = String(code || "");
         try {
-          const combined = await combinePhotosHalf(key, photoEtiqueta, photoBobina, location);
+          const combined = await combinePhotosHalf(key, photoEtiqueta, photoBobina);
           photoMemoryCache[key] = combined;
           const savedIndexed = await photoStoreSet(key, combined);
           let savedLocal = false;
@@ -4601,12 +4065,12 @@ if (S.collectorMode) {
         if (!camCurrentPhotoBobina) { document.getElementById("camPhotoErrorBobina").style.display = "block"; hasError = true; } else document.getElementById("camPhotoErrorBobina").style.display = "none";
         if (hasError) { camVibrate("notfound"); return; }
         if (camManualMode === "manualFound" && camManualSelectedCode) {
-          const code = camManualSelectedCode, time = new Date().toLocaleTimeString("pt-BR"), savedPhoto = await savePhotosExtra(code, camCurrentPhotoEtiqueta, camCurrentPhotoBobina, loc);
+          const code = camManualSelectedCode, time = new Date().toLocaleTimeString("pt-BR"), savedPhoto = await savePhotosExtra(code, camCurrentPhotoEtiqueta, camCurrentPhotoBobina);
           S.checked.add(code); S.scanned.unshift({ code, time, status: "found", manual: true, location: loc, observation: obs, hasPhoto: savedPhoto, hasPhotoEtiqueta: savedPhoto, hasPhotoBobina: savedPhoto });
           if (!savedPhoto) notify("Foto não foi salva. Não vai sair no exportador.", "warning");
           camShowResult("green", `📸 MANUAL — "${code}"`); save(); cloudSyncReading(S.scanned[0]); camUpdateCounters(); camUpdateHistory(); updateStats(); updateHistory(); updateDBUI(); camManualSelectedCode = null;
         } else if (camPendingExtra) {
-          const savedPhoto = await savePhotosExtra(camPendingExtra.code, camCurrentPhotoEtiqueta, camCurrentPhotoBobina, loc);
+          const savedPhoto = await savePhotosExtra(camPendingExtra.code, camCurrentPhotoEtiqueta, camCurrentPhotoBobina);
           S.extras.push(camPendingExtra.code); S.scanned.unshift({ code: camPendingExtra.code, time: camPendingExtra.time, status: "not-found", location: loc, observation: obs, hasPhoto: savedPhoto, hasPhotoEtiqueta: savedPhoto, hasPhotoBobina: savedPhoto });
           if (!savedPhoto) notify("Foto não foi salva. Não vai sair no exportador.", "warning");
           camShowResult("red", `⚠️ "${camPendingExtra.code}" — 📌 ${loc} 🏷️`); save(); cloudSyncReading(S.scanned[0]); camUpdateCounters(); camUpdateHistory(); updateStats(); updateHistory(); updateDBUI(); camPendingExtra = null;
@@ -4721,7 +4185,7 @@ if (S.collectorMode) {
         if (pendingExtraMain) {
           let savedPhoto = false;
           if (requirePhotos) {
-            savedPhoto = await savePhotosExtra(pendingExtraMain.code, pendingExtraMainPhotoEtiqueta, pendingExtraMainPhotoBobina, loc);
+            savedPhoto = await savePhotosExtra(pendingExtraMain.code, pendingExtraMainPhotoEtiqueta, pendingExtraMainPhotoBobina);
             if (!savedPhoto) notify("Foto não foi salva. Não vai sair no exportador.", "warning");
           }
           const scanItem = { code: pendingExtraMain.code, time: pendingExtraMain.time, status: "not-found", location: loc, observation: obs, hasPhoto: savedPhoto, source: pendingExtraMain.source || "manual" };
@@ -4746,7 +4210,6 @@ if (S.collectorMode) {
   setTimeout(() => { if (collectorCanFocus()) focusCollectorInput(); }, 400);
 }
       function init() {
-  try { console.log("APP_BUILD_VERSION", APP_BUILD_VERSION); const b=document.getElementById("appVersionBadge"); if(b) b.textContent="v13"; } catch(e) {}
   setupMobileCopyProtection();
   load();
   initCollectorMode();
@@ -4756,6 +4219,8 @@ if (S.collectorMode) {
   updateReport();
   updateCollectorModeUI();
   document.getElementById("btnUndo").disabled = !S.scanned.length;
+  // Se o localStorage voltou para um ponto antigo após erro/reload, recupera o backup interno em IndexedDB.
+  restoreStateBackupIfBetter().catch((e) => console.warn("Falha ao restaurar backup interno:", e));
   // BUG 1 CORRIGIDO: não tenta reativar o coletor automaticamente
   if (S.collectorMode) {
     setCollectorLastRead("Coletor ativado.");
@@ -4765,17 +4230,16 @@ if (S.collectorMode) {
 
 // Flush ao trocar de aba ou fechar (mobile e desktop)
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "hidden") cloudFlushBuffer();
+  if (document.visibilityState === "hidden") { save(); cloudFlushBuffer(); }
 });
 window.addEventListener("beforeunload", () => {
   try { cloudFlushBuffer(); } catch (e) {}
 });
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && document.getElementById("cloudReportFullscreen")?.classList.contains("show")) closeCloudReportPanel();
-  else if (e.key === "Escape" && document.getElementById("reportFullscreen")?.classList.contains("show")) closeReportPanel();
+  if (e.key === "Escape" && document.getElementById("reportFullscreen")?.classList.contains("show")) closeReportPanel();
 });
 
 init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a180e007b82c9872',t:'MTc4MzUzMjQzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1eb9d390d0ee033',t:'MTc4NDY1MTY3Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a223ff41bff94bbe',t:'MTc4NTI0Mjg5NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2248a2aea68f171',t:'MTc4NTI0ODU4NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a26ec8bd1d28920d',t:'MTc4NjAyNzA5NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a180e007b82c9872',t:'MTc4MzUzMjQzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1eb9d390d0ee033',t:'MTc4NDY1MTY3Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a302fbe91ac8a2ef',t:'MTc4NzU4MTA4Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
