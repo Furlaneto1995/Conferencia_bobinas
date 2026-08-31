@@ -1029,7 +1029,7 @@
     <script>
       let S = {
         db: [], scanned: [], checked: new Set(), extras: [], sep: "newline", fileData: null,
-        fileLayout: null, meta: {}, confType: "", filter: "all", rptSearch: "",
+        fileLayout: null, meta: {}, coilCategories: {}, confType: "", filter: "all", rptSearch: "",
         checkerName: "", cloudSessionId: "", cloudSessionStartSaved: false, collectorMode: false, collectorActive: false,
       };
       let reportPanelMode = "ops";
@@ -1104,6 +1104,7 @@ let cloudLastHeaderWrite = 0;
           checked: Array.from(S.checked || []),
           extras: S.extras || [],
           meta: S.meta || {},
+          coilCategories: S.coilCategories || {},
           confType: S.confType || "",
           checkerName: S.checkerName || "",
           cloudSessionId: S.cloudSessionId || "",
@@ -1120,6 +1121,7 @@ let cloudLastHeaderWrite = 0;
         S.checked = new Set(s.checked || []);
         S.extras = s.extras || [];
         S.meta = s.meta || {};
+        S.coilCategories = s.coilCategories || {};
         S.confType = s.confType || "";
         S.checkerName = s.checkerName || "";
         S.cloudSessionId = s.cloudSessionId || "";
@@ -1631,8 +1633,8 @@ let cloudLastHeaderWrite = 0;
             save();
           }
           if (!S.cloudSessionId) return null;
-          const safeCode = String(code).replace(/[^a-zA-Z0-9_-]/g, "_");
-          const path = `${cloudOperatorKey()}/${cloudDateKey()}/${S.cloudSessionId}/${safeCode}_etiqueta_bobina.jpg`;
+          const categoriaKey = coilCategoryForCode(code);
+          const path = `${cloudOperatorKey()}/${cloudDateKey()}/${S.cloudSessionId}/${coilCategoryFolder(categoriaKey)}/${barcodePhotoFileName(code)}`;
           const blob = cloudDataUrlToBlob(dataUrl);
           const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`;
           const res = await fetch(uploadUrl, { method: "POST", headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "image/jpeg", "x-upsert": "true" }, body: blob });
@@ -1644,6 +1646,9 @@ let cloudLastHeaderWrite = 0;
             url: `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`,
             path,
             size: blob.size,
+            categoriaKey,
+            categoria: coilCategoryLabel(categoriaKey),
+            fileName: barcodePhotoFileName(code),
           };
         } catch (e) {
           console.warn("Falha ao enviar foto ao Supabase:", e);
@@ -1955,10 +1960,13 @@ let cloudLastHeaderWrite = 0;
         const special = detectSpecialLayout(rows);
         if (special) {
           S.fileLayout = special;
+          S.coilCategories = buildCoilCategoryMapFromRows(rows, special);
+          save();
           updateImportActionButtons();
           showConferenceTypeModal(special);
           return rows.length;
         }
+        S.coilCategories = {};
         if (maxC <= 1) {
           const codes = rows.map((r) => r[0]).filter(Boolean);
           S.db = [...new Set([...S.db, ...codes])];
@@ -2047,10 +2055,13 @@ let cloudLastHeaderWrite = 0;
         const rows = getReportItems().map((i) => {
           const up = photoUploads[i.code] || null;
           const status = i.status === "checked" ? (i.manual ? "Conferido Manual" : "Conferido") : i.status === "pending" ? "Pendente" : "Não Prevista";
+          const categoriaKey = i.categoriaKey || up?.categoriaKey || coilCategoryForCode(i.code, i);
           return {
             code: String(i.code),
             op: i.op || "-",
             peso: i.peso || "-",
+            categoriaKey,
+            categoria: coilCategoryLabel(categoriaKey),
             status,
             manual: !!i.manual,
             time: i.time === "-" ? "" : (i.time || ""),
@@ -2059,6 +2070,7 @@ let cloudLastHeaderWrite = 0;
             hasPhoto: !!(i.hasPhoto || up?.url),
             fotoUrl: up?.url || "",
             fotoPath: up?.path || "",
+            fotoFileName: barcodePhotoFileName(i.code),
           };
         });
         return {
@@ -2390,13 +2402,12 @@ let cloudLastHeaderWrite = 0;
             if (csv) zip.file(`relatorio_${safeId}.csv`, "\uFEFF" + csv);
             if (txt) zip.file(`relatorio_${safeId}.txt`, "\uFEFF" + txt);
             if (opt.photosZip) {
-              const fotosFolder = zip.folder("fotos");
               const rows = cloudFilterRowsForExport(data.rows, opt).filter((r) => r.fotoUrl);
               for (let idx = 0; idx < rows.length; idx++) {
                 const r = rows[idx];
                 try {
                   const resp = await fetch(r.fotoUrl); if (!resp.ok) throw new Error("HTTP " + resp.status);
-                  const blob = await resp.blob(); fotosFolder.file(`${r.code}_etiqueta_bobina.jpg`, blob);
+                  const blob = await resp.blob(); zip.file(photoZipRelativePath(r.code, r), blob);
                   const progress = document.getElementById("exportProgress");
                   if (progress) { progress.classList.add("show"); progress.textContent = `⏳ Baixando fotos ${idx + 1}/${rows.length}...`; }
                 } catch (e) { console.warn("Falha ao baixar foto para ZIP:", r.code, e); }
@@ -2860,6 +2871,7 @@ let cloudLastHeaderWrite = 0;
   }
   const modal = document.getElementById("confTypeModal"); if (modal) modal.classList.remove("show");
   S.meta = {};
+  S.coilCategories = {};
   S.confType = "";
   S.cloudSessionId = "";
   S.cloudSessionStartSaved = false;
@@ -2928,12 +2940,12 @@ let cloudLastHeaderWrite = 0;
         const nextMeta = {};
         const codes = [];
         if (special) {
-          const bIdx = special.idx.BARRAS_ORIGEM, opIdx = special.idx.OP, eIdx = special.idx.ETAPA, mIdx = special.idx.MATERIAL, pIdx = special.idx.PESO;
+          const bIdx = special.idx.BARRAS_ORIGEM, opIdx = special.idx.OP, eIdx = special.idx.ETAPA, mIdx = special.idx.MATERIAL, tIdx = special.idx.TIPO_BOBINA, dIdx = special.idx.DESCRICAO, pIdx = special.idx.PESO;
           rows.slice(1).forEach((r) => {
             const code = String(r[bIdx] || "").trim();
             if (!code) return;
             codes.push(code);
-            nextMeta[code] = { op: String(r[opIdx] || "").trim(), etapa: String(r[eIdx] || "").trim(), material: String(r[mIdx] || "").trim(), peso: String(r[pIdx] || "").trim() };
+            nextMeta[code] = { op: String(r[opIdx] || "").trim(), etapa: String(r[eIdx] || "").trim(), material: String(r[mIdx] || "").trim(), tipoBobina: tIdx >= 0 ? String(r[tIdx] || "").trim() : "", descricao: dIdx >= 0 ? String(r[dIdx] || "").trim() : "", peso: String(r[pIdx] || "").trim() };
           });
         } else if (maxC <= 1) {
           rows.forEach((r) => { const code = String(r[0] || "").trim(); if (code) codes.push(code); });
@@ -2955,6 +2967,7 @@ let cloudLastHeaderWrite = 0;
         S.fileData = rows;
         S.fileLayout = special || null;
         S.meta = nextMeta;
+        S.coilCategories = special ? buildCoilCategoryMapFromRows(rows, special) : {};
         S.db = uniq;
         S.confType = "Arquivo completo";
         save();
@@ -2976,10 +2989,13 @@ let cloudLastHeaderWrite = 0;
         const special = detectSpecialLayout(rows);
         if (special) {
           S.fileLayout = special;
+          S.coilCategories = buildCoilCategoryMapFromRows(rows, special);
+          save();
           updateImportActionButtons();
           showConferenceTypeModal(special);
           return rows.length;
         }
+        S.coilCategories = {};
         if (maxC <= 1) {
           const codes = rows.map((r) => r[0]).filter(Boolean);
           S.db = [...new Set([...S.db, ...codes])];
@@ -3061,12 +3077,13 @@ let cloudLastHeaderWrite = 0;
           resetConferenceData({ keepImportedFile: true });
         }
         const nextMeta = {};
-        const bIdx = S.fileLayout.idx.BARRAS_ORIGEM, eIdx = S.fileLayout.idx.ETAPA, mIdx = S.fileLayout.idx.MATERIAL, opIdx = S.fileLayout.idx.OP, pIdx = S.fileLayout.idx.PESO;
+        const bIdx = S.fileLayout.idx.BARRAS_ORIGEM, eIdx = S.fileLayout.idx.ETAPA, mIdx = S.fileLayout.idx.MATERIAL, tIdx = S.fileLayout.idx.TIPO_BOBINA, dIdx = S.fileLayout.idx.DESCRICAO, opIdx = S.fileLayout.idx.OP, pIdx = S.fileLayout.idx.PESO;
+        S.coilCategories = buildCoilCategoryMapFromRows(S.fileData, S.fileLayout);
         const rows = S.fileData.slice(1); const codes = []; let matched = 0;
         rows.forEach((r) => {
           const etapaTxt = String(r[eIdx] || "").trim(); const m = etapaTxt.match(/\d+/); const etapa = m ? parseInt(m[0], 10) : NaN; const material = String(r[mIdx] || "").toUpperCase();
           const ok = cfgList.some((cfg) => { const etapas = new Set(cfg.etapas.map(Number)); if (!etapas.has(etapa)) return false; const terms = (cfg.materialTerms || []).map((t) => String(t).toUpperCase()); return !terms.length || terms.some((t) => material.includes(t)); });
-          if (!ok) return; matched++; const code = String(r[bIdx] || "").trim(); if (code) { codes.push(code); nextMeta[code] = { op: String(r[opIdx] || "").trim(), etapa: String(r[eIdx] || "").trim(), material: String(r[mIdx] || "").trim(), peso: String(r[pIdx] || "").trim() }; }
+          if (!ok) return; matched++; const code = String(r[bIdx] || "").trim(); if (code) { codes.push(code); nextMeta[code] = { op: String(r[opIdx] || "").trim(), etapa: String(r[eIdx] || "").trim(), material: String(r[mIdx] || "").trim(), tipoBobina: tIdx >= 0 ? String(r[tIdx] || "").trim() : "", descricao: dIdx >= 0 ? String(r[dIdx] || "").trim() : "", peso: String(r[pIdx] || "").trim() }; }
         });
         const uniq = [...new Set(codes)]; const labels = cfgList.map((c) => c.label).join(", "); if (!uniq.length) { notify(`Nenhum código encontrado para: ${labels}.`, "warning"); return; }
         S.meta = replaceExisting ? nextMeta : { ...S.meta, ...nextMeta };
@@ -3627,6 +3644,49 @@ if (S.collectorMode) {
       }
       function getOP(code) { return S.meta && S.meta[code] && S.meta[code].op ? S.meta[code].op : "-"; }
       function getPeso(code) { return S.meta && S.meta[code] && S.meta[code].peso ? S.meta[code].peso : "-"; }
+      function normalizeCategoryText(v) {
+        return String(v || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
+      }
+      function coilCategoryFromMeta(meta = {}) {
+        const txt = normalizeCategoryText([meta.material, meta.tipoBobina, meta.tipo_bobina, meta.descricao].filter(Boolean).join(" "));
+        if (txt.includes("BOPP") || txt.includes("PET") || txt.includes("PELICULA") || /(^|[^A-Z0-9])PP([^A-Z0-9]|$)/.test(txt)) return "peliculas";
+        return "extrusao";
+      }
+      function coilCategoryForCode(code, row = null) {
+        const explicit = normalizeCategoryText(row?.categoriaKey || row?.categoryKey || row?.categoria || row?.category || "");
+        if (explicit.includes("PELIC")) return "peliculas";
+        if (explicit.includes("EXTRUS") || explicit.includes("IMPRESS")) return "extrusao";
+        const key = String(code || "");
+        if (S.coilCategories && S.coilCategories[key]) return S.coilCategories[key] === "peliculas" ? "peliculas" : "extrusao";
+        if (S.meta && S.meta[key]) return coilCategoryFromMeta(S.meta[key]);
+        return "extrusao";
+      }
+      function coilCategoryLabel(cat) { return cat === "peliculas" ? "Películas" : "Extrusão"; }
+      function coilCategoryFolder(cat) { return cat === "peliculas" ? "peliculas" : "extrusao"; }
+      function barcodePhotoFileName(code) {
+        const safe = String(code || "sem_codigo").trim().replace(/[^a-zA-Z0-9_-]+/g, "_") || "sem_codigo";
+        return `${safe}.jpg`;
+      }
+      function photoZipRelativePath(code, catOrRow = null) {
+        const cat = typeof catOrRow === "string" ? catOrRow : coilCategoryForCode(code, catOrRow);
+        return `fotos/${coilCategoryFolder(cat)}/${barcodePhotoFileName(code)}`;
+      }
+      function buildCoilCategoryMapFromRows(rows, layout) {
+        const map = {};
+        if (!rows || !rows.length || !layout || !layout.idx) return map;
+        const bIdx = layout.idx.BARRAS_ORIGEM, mIdx = layout.idx.MATERIAL, tIdx = layout.idx.TIPO_BOBINA, dIdx = layout.idx.DESCRICAO;
+        if (bIdx < 0) return map;
+        rows.slice(1).forEach((r) => {
+          const code = String(r[bIdx] || "").trim();
+          if (!code) return;
+          map[code] = coilCategoryFromMeta({
+            material: mIdx >= 0 ? String(r[mIdx] || "").trim() : "",
+            tipoBobina: tIdx >= 0 ? String(r[tIdx] || "").trim() : "",
+            descricao: dIdx >= 0 ? String(r[dIdx] || "").trim() : "",
+          });
+        });
+        return map;
+      }
       function getOpSummaryItems() {
         const map = new Map();
         S.db.forEach((code) => { const op = getOP(code) || "-"; if (!map.has(op)) map.set(op, { op, total: 0, checked: 0, pending: 0, pct: 0 }); const item = map.get(op); item.total++; if (S.checked.has(code)) item.checked++; });
@@ -3635,8 +3695,16 @@ if (S.collectorMode) {
       }
       function getReportItems() {
         let items = [];
-        [...new Set(S.extras)].forEach((code) => { const scan = S.scanned.find((s) => s.code === code && s.status === "not-found"); items.push({ code, op: "-", peso: "-", status: "extra", manual: false, time: scan ? scan.time : "-", location: scan?.location || "-", observation: scan?.observation || "", hasPhoto: scan?.hasPhoto || false }); });
-        S.db.forEach((code) => { const chk = S.checked.has(code), scan = S.scanned.find((s) => s.code === code && s.status === "found"); items.push({ code, op: getOP(code), peso: getPeso(code), status: chk ? "checked" : "pending", manual: !!scan?.manual, time: scan ? scan.time : "-", location: scan?.location || "", observation: scan?.observation || "", hasPhoto: !!scan?.hasPhoto }); });
+        [...new Set(S.extras)].forEach((code) => {
+          const scan = S.scanned.find((s) => s.code === code && s.status === "not-found");
+          const categoriaKey = coilCategoryForCode(code, scan);
+          items.push({ code, op: "-", peso: "-", status: "extra", manual: false, time: scan ? scan.time : "-", location: scan?.location || "-", observation: scan?.observation || "", hasPhoto: scan?.hasPhoto || false, categoriaKey, categoria: coilCategoryLabel(categoriaKey) });
+        });
+        S.db.forEach((code) => {
+          const chk = S.checked.has(code), scan = S.scanned.find((s) => s.code === code && s.status === "found");
+          const categoriaKey = coilCategoryForCode(code, scan);
+          items.push({ code, op: getOP(code), peso: getPeso(code), status: chk ? "checked" : "pending", manual: !!scan?.manual, time: scan ? scan.time : "-", location: scan?.location || "", observation: scan?.observation || "", hasPhoto: !!scan?.hasPhoto, categoriaKey, categoria: coilCategoryLabel(categoriaKey) });
+        });
         return items;
       }
       function setText(id, value) { const el = document.getElementById(id); if (el) el.textContent = value; }
@@ -3761,21 +3829,22 @@ if (S.collectorMode) {
         const extrasUniq = [...new Set(S.extras)]; if (extrasUniq.length === 0) { notify("Nenhuma bobina não prevista para exportar!", "warning"); return; }
         const progress = document.getElementById("exportProgress"); progress.classList.add("show"); progress.textContent = "⏳ Gerando arquivo ZIP...";
         try {
-          const zip = new JSZip(); const fotosFolder = zip.folder("fotos"); const dateStr = new Date().toISOString().slice(0, 10); const timeStr = new Date().toLocaleTimeString("pt-BR");
-          let csv = "Código;Hora;Localização;Observação;Foto Combinada\n"; let countFotos = 0;
+          const zip = new JSZip(); const dateStr = new Date().toISOString().slice(0, 10); const timeStr = new Date().toLocaleTimeString("pt-BR");
+          let csv = "Código;Categoria;Hora;Localização;Observação;Foto\n"; let countFotos = 0, countPeliculas = 0, countExtrusao = 0;
           for (const code of extrasUniq) {
             const scan = S.scanned.find((s) => s.code === code && s.status === "not-found"); const loc = scan?.location || ""; const time = scan?.time || ""; const obs = scan?.observation || "";
+            const categoriaKey = coilCategoryForCode(code, scan); if (categoriaKey === "peliculas") countPeliculas++; else countExtrusao++;
             let fotoName = ""; const photo = getPhoto(code); const base = photo && photo.includes(",") ? photo.split(",")[1] : null;
-            if (base) { fotosFolder.file(`${code}_etiqueta_bobina.jpg`, base, { base64: true }); fotoName = `fotos/${code}_etiqueta_bobina.jpg`; countFotos++; }
-            csv += `${code};${time};${loc};${obs};${fotoName}\n`;
+            if (base) { fotoName = photoZipRelativePath(code, categoriaKey); zip.file(fotoName, base, { base64: true }); countFotos++; }
+            csv += `${code};${coilCategoryLabel(categoriaKey)};${time};${loc};${obs};${fotoName}\n`;
           }
           const total = S.db.length, chk = S.checked.size, pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0;
-          csv += `\n;RESUMO;\n;Conferente;${S.checkerName || ""}\n;Tipo de Conferência;${S.confType || ""}\n;Total no sistema;${total}\n;Conferidos;${chk}\n;Pendentes;${total - chk}\n;Não Previstas;${extrasUniq.length}\n;Fotos anexadas;${countFotos}\n;Percentual conferido;${pct}%\n;Data;${dateStr} ${timeStr}`;
+          csv += `\n;RESUMO;\n;Conferente;${S.checkerName || ""}\n;Tipo de Conferência;${S.confType || ""}\n;Total no sistema;${total}\n;Conferidos;${chk}\n;Pendentes;${total - chk}\n;Não Previstas;${extrasUniq.length}\n;Películas;${countPeliculas}\n;Extrusão;${countExtrusao}\n;Fotos anexadas;${countFotos}\n;Percentual conferido;${pct}%\n;Data;${dateStr} ${timeStr}`;
           zip.file(`nao_previstas_${dateStr}.csv`, "\uFEFF" + csv);
-          let txt = `RELATÓRIO DE BOBINAS NÃO PREVISTAS\nData: ${new Date().toLocaleDateString("pt-BR")} ${timeStr}\nConferente: ${S.checkerName || "-"}\nTipo de Conferência: ${S.confType || "-"}\n${"=".repeat(70)}\nTotal não previstas: ${extrasUniq.length}\nFotos anexadas: ${countFotos}\n${"=".repeat(70)}\n`;
+          let txt = `RELATÓRIO DE BOBINAS NÃO PREVISTAS\nData: ${new Date().toLocaleDateString("pt-BR")} ${timeStr}\nConferente: ${S.checkerName || "-"}\nTipo de Conferência: ${S.confType || "-"}\n${"=".repeat(70)}\nTotal não previstas: ${extrasUniq.length}\nPelículas: ${countPeliculas}\nExtrusão: ${countExtrusao}\nFotos anexadas: ${countFotos}\n${"=".repeat(70)}\n`;
           for (const code of extrasUniq) {
-            const scan = S.scanned.find((s) => s.code === code && s.status === "not-found"); const hasPhoto = getPhoto(code);
-            txt += `Código: ${code}\nHora: ${scan?.time || "-"}\nLocal: ${scan?.location || "-"}\nObservação: ${scan?.observation || "—"}\nFoto combinada: ${hasPhoto ? "📸 Sim" : "—"}\n${"─".repeat(40)}\n`;
+            const scan = S.scanned.find((s) => s.code === code && s.status === "not-found"); const hasPhoto = getPhoto(code); const categoriaKey = coilCategoryForCode(code, scan);
+            txt += `Código: ${code}\nCategoria: ${coilCategoryLabel(categoriaKey)}\nHora: ${scan?.time || "-"}\nLocal: ${scan?.location || "-"}\nObservação: ${scan?.observation || "—"}\nFoto: ${hasPhoto ? photoZipRelativePath(code, categoriaKey) : "—"}\n${"─".repeat(40)}\n`;
           }
           zip.file(`nao_previstas_${dateStr}.txt`, "\uFEFF" + txt);
           const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } }, (m) => { progress.textContent = `⏳ ${Math.round(m.percent)}% concluído...`; });
@@ -4241,5 +4310,5 @@ document.addEventListener("keydown", (e) => {
 
 init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a180e007b82c9872',t:'MTc4MzUzMjQzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1eb9d390d0ee033',t:'MTc4NDY1MTY3Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a302fbe91ac8a2ef',t:'MTc4NzU4MTA4Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a180e007b82c9872',t:'MTc4MzUzMjQzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1eb9d390d0ee033',t:'MTc4NDY1MTY3Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a33e4cf459e1f249',t:'MTc4ODIwMzA2Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
