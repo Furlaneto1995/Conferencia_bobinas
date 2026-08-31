@@ -2050,6 +2050,7 @@ let cloudLastHeaderWrite = 0;
         }
       }
       function cloudBuildLocalFinalReportData(photoUploads = {}) {
+        refreshCoilCategoriesFromLoadedFile();
         const date = new Date();
         const resumo = cloudSummary();
         const rows = getReportItems().map((i) => {
@@ -2092,6 +2093,7 @@ let cloudLastHeaderWrite = 0;
         };
       }
       async function cloudUploadLocalPhotosForFinalReport() {
+        refreshCoilCategoriesFromLoadedFile();
         const progress = document.getElementById("exportProgress");
         const uploads = {};
         const candidates = getReportItems().filter((i) => i.hasPhoto || i.status === "extra");
@@ -3648,8 +3650,12 @@ if (S.collectorMode) {
         return String(v || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
       }
       function coilCategoryFromMeta(meta = {}) {
-        const txt = normalizeCategoryText([meta.material, meta.tipoBobina, meta.tipo_bobina, meta.descricao].filter(Boolean).join(" "));
-        if (txt.includes("BOPP") || txt.includes("PET") || txt.includes("PELICULA") || /(^|[^A-Z0-9])PP([^A-Z0-9]|$)/.test(txt)) return "peliculas";
+        // Mesma regra usada em "Tipo de Conferência" > "Bases - Películas":
+        // etapa 20 + MATERIAL contendo BOPP, PP ou PET. Aqui a etapa já vem da base;
+        // para separar as fotos, basta reaproveitar o mesmo critério do MATERIAL.
+        const material = normalizeCategoryText(meta.material || "");
+        const peliculaTerms = ["BOPP", "PP", "PET"];
+        if (peliculaTerms.some((t) => material.includes(t))) return "peliculas";
         return "extrusao";
       }
       function coilCategoryForCode(code, row = null) {
@@ -3657,8 +3663,10 @@ if (S.collectorMode) {
         if (explicit.includes("PELIC")) return "peliculas";
         if (explicit.includes("EXTRUS") || explicit.includes("IMPRESS")) return "extrusao";
         const key = String(code || "");
-        if (S.coilCategories && S.coilCategories[key]) return S.coilCategories[key] === "peliculas" ? "peliculas" : "extrusao";
+        // Se houver metadados da bobina na conferência atual, recalcula com a regra nova.
+        // O mapa salvo pode ter sido criado por versão anterior da regra.
         if (S.meta && S.meta[key]) return coilCategoryFromMeta(S.meta[key]);
+        if (S.coilCategories && S.coilCategories[key]) return S.coilCategories[key] === "peliculas" ? "peliculas" : "extrusao";
         return "extrusao";
       }
       function coilCategoryLabel(cat) { return cat === "peliculas" ? "Películas" : "Extrusão"; }
@@ -3686,6 +3694,12 @@ if (S.collectorMode) {
           });
         });
         return map;
+      }
+      function refreshCoilCategoriesFromLoadedFile() {
+        if (!S.fileData || !S.fileLayout || !S.fileLayout.idx) return false;
+        S.coilCategories = buildCoilCategoryMapFromRows(S.fileData, S.fileLayout);
+        save();
+        return true;
       }
       function getOpSummaryItems() {
         const map = new Map();
@@ -3826,6 +3840,7 @@ if (S.collectorMode) {
         notify("Relatório exportado!");
       }
       async function exportZip() {
+        refreshCoilCategoriesFromLoadedFile();
         const extrasUniq = [...new Set(S.extras)]; if (extrasUniq.length === 0) { notify("Nenhuma bobina não prevista para exportar!", "warning"); return; }
         const progress = document.getElementById("exportProgress"); progress.classList.add("show"); progress.textContent = "⏳ Gerando arquivo ZIP...";
         try {
@@ -4310,5 +4325,5 @@ document.addEventListener("keydown", (e) => {
 
 init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a180e007b82c9872',t:'MTc4MzUzMjQzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1eb9d390d0ee033',t:'MTc4NDY1MTY3Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a33e4cf459e1f249',t:'MTc4ODIwMzA2Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a180e007b82c9872',t:'MTc4MzUzMjQzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1eb9d390d0ee033',t:'MTc4NDY1MTY3Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a33ebf009d0bf1b1',t:'MTc4ODIwNzczMw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
