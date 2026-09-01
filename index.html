@@ -282,6 +282,21 @@
       .loc-photo-preview img { width: 100%; height: 108px; object-fit: cover; border-radius: 10px; border: 2px solid rgba(16, 185, 129, 0.25); }
       .loc-photo-remove { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; border: none; border-radius: 50%; background: rgba(239, 68, 68, 0.92); color: #fff; cursor: pointer; }
       .loc-photo-error { color: var(--accent-red); font-size: 0.76em; font-weight: 700; margin-top: 4px; display: none; }
+      .extra-category-box { margin: 10px 0; padding: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; }
+      .extra-category-label { color: var(--text-secondary); font-size: 0.8em; font-weight: 800; margin-bottom: 7px; }
+      .extra-category-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .extra-category-btn { border: 1px solid var(--border); background: #fff; color: var(--text-secondary); border-radius: 10px; padding: 10px 8px; font-weight: 900; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+      .extra-category-btn:active { transform: scale(0.97); }
+      .extra-category-btn.active { background: var(--accent-blue); border-color: var(--accent-blue); color: #fff; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.22); }
+      .extra-category-error { display: none; color: var(--accent-red); font-size: 0.76em; font-weight: 800; margin-top: 7px; }
+      .extra-category-review-list { display: grid; gap: 8px; margin-top: 10px; max-height: min(56dvh, 420px); overflow: auto; padding-right: 3px; }
+      .extra-category-review-item { background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 10px; }
+      .extra-category-review-code { font-family: "SF Mono", Consolas, monospace; font-weight: 900; color: var(--text-primary); margin-bottom: 8px; word-break: break-all; }
+      .cam-loc-modal .extra-category-box { background: rgba(15, 23, 42, 0.55); border-color: #2a3a4e; }
+      .cam-loc-modal .extra-category-label { color: #cbd5e1; }
+      .cam-loc-modal .extra-category-btn { background: #0d1320; border-color: #2a3a4e; color: #cbd5e1; }
+      .cam-loc-modal .extra-category-btn.active { background: #2563eb; border-color: #3b82f6; color: #fff; }
+      .cam-loc-modal .extra-category-error { color: #fca5a5; }
       @media (max-width: 520px) { .loc-photo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } .loc-photo-preview img { height: 92px; } .loc-photo-btn { font-size: 0.7em; padding: 7px 4px; } .loc-photo-label { font-size: 0.72em; } }
       .history { max-height: 350px; overflow-y: auto; margin-top: 12px; -webkit-overflow-scrolling: touch; }
       .history::-webkit-scrollbar { width: 3px; }
@@ -818,6 +833,7 @@
           </div>
           <div class="btn-group report-final-actions">
             <button class="btn btn-primary" onclick="finishConference()">✅ Finalizar</button>
+            <button class="btn btn-outline" id="reviewExtraCategoriesBtn" onclick="showExtraCategoryReviewModal()">🧭 Categorias</button>
             <button class="btn btn-outline" onclick="exportRpt('csv')">📄 CSV local</button>
             <button class="btn btn-outline" onclick="exportRpt('txt')">📝 TXT local</button>
           </div>
@@ -946,6 +962,14 @@
           <div class="cam-loc-box">
             <div class="cam-loc-header" id="camLocHeader">⚠️ BOBINA NÃO PREVISTA</div>
             <div class="cam-loc-code" id="camLocCode"></div>
+            <div class="extra-category-box" id="camExtraCategoryBox">
+              <div class="extra-category-label">🏷️ Tipo da base da bobina não prevista:</div>
+              <div class="extra-category-buttons">
+                <button type="button" class="extra-category-btn" data-cat="peliculas" onclick="setExtraCategory('cam','peliculas')">🎞️ Películas</button>
+                <button type="button" class="extra-category-btn" data-cat="extrusao" onclick="setExtraCategory('cam','extrusao')">🏭 Extrusão</button>
+              </div>
+              <div class="extra-category-error" id="camExtraCategoryError">⚠️ Selecione Películas ou Extrusão.</div>
+            </div>
             <div class="cam-loc-label" id="camLocLabel">📌 Informe a localização:</div>
             <input type="text" class="cam-loc-input" id="camLocInput" placeholder="Ex: A2, E17, 240..." autocomplete="off" />
             <div class="cam-loc-label" style="margin-top: 12px">📝 Observação:</div>
@@ -1023,7 +1047,7 @@
       </div>
     </div></div>
 
-    <div class="modal-bg" id="locModal"><div class="modal" style="border-color: var(--accent-red)"><h2 style="color: var(--accent-red)">⚠️ Bobina Não Prevista</h2><div class="loc-code-display" id="locCodeMain"></div><p id="locModalDesc">Informe a localização desta bobina:</p><input type="text" id="locInputMain" class="loc-input-main" placeholder="Ex: Galpão A, Corredor 3..." onkeydown="if (event.key === 'Enter') confirmLocMain();" autocomplete="off" /><textarea id="locObsMain" class="loc-input-main" placeholder="Observação (opcional)" style="min-height: 76px; resize: vertical; font-family: inherit;"></textarea><div class="loc-photo-section" id="locPhotoSection"><div class="loc-photo-grid"><div><div class="loc-photo-label">🏷️ Foto da etiqueta <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnEtiqueta" onclick="document.getElementById('locPhotoInputEtiqueta').click()">📷 Tirar foto da etiqueta<input type="file" id="locPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'etiqueta')" /></div><div class="loc-photo-preview" id="locPhotoPreviewEtiqueta"><img id="locPhotoImgEtiqueta" src="" /><button class="loc-photo-remove" onclick="locRemovePhoto('etiqueta')">✕</button></div><div class="loc-photo-error" id="locPhotoErrorEtiqueta">⚠️ Foto da etiqueta obrigatória!</div></div><div><div class="loc-photo-label">📦 Foto da bobina <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnBobina" onclick="document.getElementById('locPhotoInputBobina').click()">📷 Tirar foto da bobina<input type="file" id="locPhotoInputBobina" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'bobina')" /></div><div class="loc-photo-preview" id="locPhotoPreviewBobina"><img id="locPhotoImgBobina" src="" /><button class="loc-photo-remove" onclick="locRemovePhoto('bobina')">✕</button></div><div class="loc-photo-error" id="locPhotoErrorBobina">⚠️ Foto da bobina obrigatória!</div></div></div></div><div id="locErrorMain" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Localização obrigatória!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmLocMain()">✅ Confirmar</button><button class="btn btn-outline" onclick="cancelLocMain()">Cancelar</button></div></div></div>
+    <div class="modal-bg" id="locModal"><div class="modal" style="border-color: var(--accent-red)"><h2 style="color: var(--accent-red)">⚠️ Bobina Não Prevista</h2><div class="loc-code-display" id="locCodeMain"></div><p id="locModalDesc">Informe a localização desta bobina:</p><div class="extra-category-box" id="locExtraCategoryBox"><div class="extra-category-label">🏷️ Tipo da base da bobina não prevista:</div><div class="extra-category-buttons"><button type="button" class="extra-category-btn" data-cat="peliculas" onclick="setExtraCategory('loc','peliculas')">🎞️ Películas</button><button type="button" class="extra-category-btn" data-cat="extrusao" onclick="setExtraCategory('loc','extrusao')">🏭 Extrusão</button></div><div class="extra-category-error" id="locExtraCategoryError">⚠️ Selecione Películas ou Extrusão.</div></div><input type="text" id="locInputMain" class="loc-input-main" placeholder="Ex: Galpão A, Corredor 3..." onkeydown="if (event.key === 'Enter') confirmLocMain();" autocomplete="off" /><textarea id="locObsMain" class="loc-input-main" placeholder="Observação (opcional)" style="min-height: 76px; resize: vertical; font-family: inherit;"></textarea><div class="loc-photo-section" id="locPhotoSection"><div class="loc-photo-grid"><div><div class="loc-photo-label">🏷️ Foto da etiqueta <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnEtiqueta" onclick="document.getElementById('locPhotoInputEtiqueta').click()">📷 Tirar foto da etiqueta<input type="file" id="locPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'etiqueta')" /></div><div class="loc-photo-preview" id="locPhotoPreviewEtiqueta"><img id="locPhotoImgEtiqueta" src="" /><button class="loc-photo-remove" onclick="locRemovePhoto('etiqueta')">✕</button></div><div class="loc-photo-error" id="locPhotoErrorEtiqueta">⚠️ Foto da etiqueta obrigatória!</div></div><div><div class="loc-photo-label">📦 Foto da bobina <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnBobina" onclick="document.getElementById('locPhotoInputBobina').click()">📷 Tirar foto da bobina<input type="file" id="locPhotoInputBobina" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'bobina')" /></div><div class="loc-photo-preview" id="locPhotoPreviewBobina"><img id="locPhotoImgBobina" src="" /><button class="loc-photo-remove" onclick="locRemovePhoto('bobina')">✕</button></div><div class="loc-photo-error" id="locPhotoErrorBobina">⚠️ Foto da bobina obrigatória!</div></div></div></div><div id="locErrorMain" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Localização obrigatória!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmLocMain()">✅ Confirmar</button><button class="btn btn-outline" onclick="cancelLocMain()">Cancelar</button></div></div></div>
     <div class="photo-modal" id="photoModal"><div style="text-align: center; color: #fff; font-weight: 700; max-width: 100%; max-height: 82vh; overflow: auto;">🏷️ Etiqueta + 📦 Bobina<br /><img id="photoModalImg" src="" /></div><button class="photo-modal-close" onclick="closePhotoModal()">✕ Fechar</button></div>
 
     <script>
@@ -1624,7 +1648,7 @@ let cloudLastHeaderWrite = 0;
         for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
         return new Blob([arr], { type: mime });
       }
-      async function cloudUploadPhoto(code, dataUrl) {
+      async function cloudUploadPhoto(code, dataUrl, categoriaKeyOverride = "") {
         try {
           if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !dataUrl) return null;
           if (!S.cloudSessionId) {
@@ -1633,7 +1657,7 @@ let cloudLastHeaderWrite = 0;
             save();
           }
           if (!S.cloudSessionId) return null;
-          const categoriaKey = coilCategoryForCode(code);
+          const categoriaKey = categoriaKeyOverride || coilCategoryForCode(code);
           const path = `${cloudOperatorKey()}/${cloudDateKey()}/${S.cloudSessionId}/${coilCategoryFolder(categoriaKey)}/${barcodePhotoFileName(code)}`;
           const blob = cloudDataUrlToBlob(dataUrl);
           const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`;
@@ -2107,7 +2131,7 @@ let cloudLastHeaderWrite = 0;
         for (let i = 0; i < items.length; i++) {
           const item = items[i];
           if (progress) progress.textContent = `Enviando fotos ${i + 1}/${items.length}...`;
-          const up = await cloudUploadPhoto(item.code, item._photo);
+          const up = await cloudUploadPhoto(item.code, item._photo, item.categoriaKey);
           if (up && up.url) uploads[item.code] = up;
         }
         return uploads;
@@ -2128,6 +2152,8 @@ let cloudLastHeaderWrite = 0;
         }
         try {
           if (!S.db.length) { notify("Importe uma base antes de finalizar.", "warning"); return false; }
+          refreshCoilCategoriesFromLoadedFile();
+          if (requireExtraCategoryReview(() => cloudMarkFinished())) return false;
           if (!(await cloudEnsureSession())) throw new Error("Serviço indisponível ou operador não informado");
           cloudSetStatus("sync", "Finalizando...");
           if (progress) { progress.classList.add("show"); progress.textContent = "Preparando relatório final..."; }
@@ -3650,12 +3676,87 @@ if (S.collectorMode) {
         return String(v || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
       }
       function coilCategoryFromMeta(meta = {}) {
-        // Mesma regra usada em "Tipo de Conferência" > "Bases - Películas":
-        // etapa 20 + MATERIAL contendo BOPP, PP ou PET. Aqui a etapa já vem da base;
-        // para separar as fotos, basta reaproveitar o mesmo critério do MATERIAL.
-        const material = normalizeCategoryText(meta.material || "");
-        const peliculaTerms = ["BOPP", "PP", "PET"];
-        if (peliculaTerms.some((t) => material.includes(t))) return "peliculas";
+        const etapaMatch = String(meta.etapa || "").match(/\d+/);
+        const etapa = etapaMatch ? parseInt(etapaMatch[0], 10) : 0;
+        const materialRaw = String(meta.material || "").trim();
+        const material = normalizeCategoryText(materialRaw).replace(/\s+/g, " ").trim();
+        const exact = {
+          20: {
+            "1 - PE": "extrusao",
+            "3 - PE": "extrusao",
+            "5 - PE/PA": "extrusao",
+            "9 - PE/PA": "extrusao",
+            "ALTA BARREIRA": "extrusao",
+            "ALTA BARREIRA EASY OPEN + PET METAL + PET": "extrusao",
+            "BOPP + BOPP": "peliculas",
+            "BOPP + BOPP METAL": "peliculas",
+            "BOPP + BOPP PEROLA": "peliculas",
+            "BOPP + PE": "peliculas",
+            "BOPP + PP": "peliculas",
+            "BOPP + PP TERPOLIMERO": "peliculas",
+            "BOPP MATE + BOPP": "peliculas",
+            "BOPP MATE + BOPP METAL + PE": "peliculas",
+            "BOPP MATE + PE": "peliculas",
+            "BOPP MATE + PET METAL + PE": "peliculas",
+            "BOPP PEROLA": "peliculas",
+            "BOPP PLANO + BOPP": "peliculas",
+            "ENCOLHIVEL": "extrusao",
+            "NYLON + PEAD": "extrusao",
+            "PE + AD": "extrusao",
+            "PE + NYLON": "extrusao",
+            "PE + PE": "extrusao",
+            "PEMD": "extrusao",
+            "PET": "peliculas",
+            "PET + ALTA BARREIRA": "peliculas",
+            "PET + ALTA BARREIRA (ANTIFOG)": "peliculas",
+            "PET + ALTA BARREIRA (COOK IN)": "peliculas",
+            "PET + ALTA BARREIRA (EASY OPEN)": "peliculas",
+            "PET + BOPP METAL": "peliculas",
+            "PET + BOPP PEROLA": "peliculas",
+            "PET + NYLON": "peliculas",
+            "PET + PE": "peliculas",
+            "PET + PE PIGMENTADO": "peliculas",
+            "PET + PET METAL + PE": "peliculas",
+            "PET + PET METAL + PP": "peliculas",
+            "PET + PP": "peliculas",
+            "PP + PE": "peliculas",
+            "PP + PP": "peliculas",
+            "PP + PP TERPOLIMERO": "peliculas",
+          },
+          30: {
+            "BOPP + BOPP": "peliculas",
+            "BOPP + BOPP METAL": "peliculas",
+            "BOPP + BOPP PEROLA": "peliculas",
+            "BOPP + PE": "extrusao",
+            "BOPP + PP": "peliculas",
+            "BOPP + PP TERPOLIMERO": "peliculas",
+            "BOPP MATE + BOPP": "peliculas",
+            "BOPP MATE + BOPP PEROLA": "peliculas",
+            "BOPP MATE + PE": "extrusao",
+            "BOPP PLANO + BOPP": "peliculas",
+            "NYLON + PEAD": "extrusao",
+            "PE + AD": "extrusao",
+            "PE + NYLON": "extrusao",
+            "PE + PE": "extrusao",
+            "PET + ALTA BARREIRA": "extrusao",
+            "PET + ALTA BARREIRA (ANTIFOG)": "extrusao",
+            "PET + ALTA BARREIRA (COOK IN)": "extrusao",
+            "PET + ALTA BARREIRA (EASY OPEN)": "extrusao",
+            "PET + BOPP METAL": "peliculas",
+            "PET + BOPP PEROLA": "peliculas",
+            "PET + NYLON": "extrusao",
+            "PET + PE": "extrusao",
+            "PET + PE PIGMENTADO": "extrusao",
+            "PET + PP": "peliculas",
+            "PP + PE": "extrusao",
+            "PP + PP": "peliculas",
+            "PP + PP TERPOLIMERO": "peliculas",
+          },
+        };
+        if (exact[etapa] && exact[etapa][material]) return exact[etapa][material];
+        const parts = material.split("+").map((p) => p.trim()).filter(Boolean);
+        const relevant = etapa === 20 ? (parts[0] || material) : etapa === 30 ? (parts.slice(1).join(" + ") || material) : material;
+        if (relevant.includes("BOPP") || relevant.includes("PET") || relevant.includes("PP")) return "peliculas";
         return "extrusao";
       }
       function coilCategoryForCode(code, row = null) {
@@ -3699,6 +3800,131 @@ if (S.collectorMode) {
         if (!S.fileData || !S.fileLayout || !S.fileLayout.idx) return false;
         S.coilCategories = buildCoilCategoryMapFromRows(S.fileData, S.fileLayout);
         save();
+        return true;
+      }
+      function defaultExtraCategoryForCode(code) {
+        const key = String(code || "");
+        if (S.meta && S.meta[key]) return coilCategoryFromMeta(S.meta[key]);
+        if (S.coilCategories && S.coilCategories[key]) return S.coilCategories[key] === "peliculas" ? "peliculas" : "extrusao";
+        return "";
+      }
+      function conferenceTypeParts() {
+        return String(S.confType || "").split(",").map((p) => p.trim()).filter(Boolean);
+      }
+      function isOnlyPeliculasConference() {
+        const parts = conferenceTypeParts();
+        return parts.length === 1 && parts[0] === "Bases - Películas";
+      }
+      function shouldAskExtraCategoryForCurrentConference() {
+        const tipo = String(S.confType || "");
+        if (isOnlyPeliculasConference()) return false;
+        return tipo.includes("Bases - Todas") || tipo.includes("Bases - Películas") || tipo.includes("Capas");
+      }
+      function automaticExtraCategoryForCurrentConference(code) {
+        if (isOnlyPeliculasConference()) return "peliculas";
+        return defaultExtraCategoryForCode(code) || "extrusao";
+      }
+      function setExtraCategory(scope, cat) {
+        const box = document.getElementById(scope + "ExtraCategoryBox"); if (!box) return;
+        const normalized = cat === "peliculas" ? "peliculas" : "extrusao";
+        box.dataset.selected = normalized;
+        box.querySelectorAll(".extra-category-btn").forEach((btn) => btn.classList.toggle("active", btn.dataset.cat === normalized));
+        const err = document.getElementById(scope + "ExtraCategoryError"); if (err) err.style.display = "none";
+      }
+      function prepareExtraCategory(scope, code, visible = true) {
+        const box = document.getElementById(scope + "ExtraCategoryBox"); if (!box) return;
+        box.style.display = visible ? "block" : "none";
+        box.dataset.selected = "";
+        box.querySelectorAll(".extra-category-btn").forEach((btn) => btn.classList.remove("active"));
+        const err = document.getElementById(scope + "ExtraCategoryError"); if (err) err.style.display = "none";
+        if (!visible) return;
+        const guessed = defaultExtraCategoryForCode(code);
+        if (guessed) setExtraCategory(scope, guessed);
+      }
+      function validateExtraCategory(scope) {
+        const box = document.getElementById(scope + "ExtraCategoryBox");
+        if (!box || box.style.display === "none") return "";
+        const cat = box.dataset.selected || "";
+        if (!cat) { const err = document.getElementById(scope + "ExtraCategoryError"); if (err) err.style.display = "block"; return ""; }
+        return cat === "peliculas" ? "peliculas" : "extrusao";
+      }
+      function getExtraScan(code) { return (S.scanned || []).find((s) => s && s.status === "not-found" && String(s.code) === String(code)); }
+      function setExtraScanCategory(code, cat) {
+        const normalized = cat === "peliculas" ? "peliculas" : "extrusao";
+        (S.scanned || []).forEach((s) => {
+          if (s && s.status === "not-found" && String(s.code) === String(code)) { s.categoriaKey = normalized; s.categoria = coilCategoryLabel(normalized); }
+        });
+        S.coilCategories = S.coilCategories || {};
+        S.coilCategories[String(code)] = normalized;
+        save(); updateHistory(); updateReport();
+      }
+      function extraCategoryMissingCodes() {
+        if (!shouldAskExtraCategoryForCurrentConference()) {
+          [...new Set(S.extras || [])].forEach((code) => {
+            const scan = getExtraScan(code);
+            if (scan && !scan.categoriaKey) setExtraScanCategory(code, automaticExtraCategoryForCurrentConference(code));
+          });
+          return [];
+        }
+        // Em conferência mista, não prevista precisa de confirmação manual.
+        return [...new Set(S.extras || [])].filter((code) => {
+          const scan = getExtraScan(code);
+          return !(scan && scan.categoriaKey);
+        });
+      }
+      function setExtraCategoryReviewItem(code, cat, btn = null) {
+        setExtraScanCategory(code, cat);
+        const item = btn ? btn.closest(".extra-category-review-item") : document.querySelector(`.extra-category-review-item[data-code="${CSS.escape(String(code))}"]`);
+        if (item) item.querySelectorAll(".extra-category-btn").forEach((b) => b.classList.toggle("active", b.dataset.cat === cat));
+      }
+      function showExtraCategoryReviewModal(afterSave = null) {
+        const extras = [...new Set(S.extras || [])];
+        if (!extras.length) { notify("Nenhuma bobina não prevista para categorizar.", "warning"); return; }
+        let modal = document.getElementById("extraCategoryReviewModal");
+        if (!modal) {
+          modal = document.createElement("div"); modal.id = "extraCategoryReviewModal"; modal.className = "modal-bg";
+          document.body.appendChild(modal);
+        }
+        modal._afterSave = typeof afterSave === "function" ? afterSave : null;
+        modal.innerHTML = `<div class="modal" style="max-height: calc(100dvh - 32px); overflow: auto; max-width: 520px">
+          <h2>🧭 Categorizar não previstas</h2>
+          <p>Para separar as fotos corretamente, confirme se cada bobina não prevista é <strong>Películas</strong> ou <strong>Extrusão</strong>. Códigos que existem na planilha já vêm pré-selecionados.</p>
+          <div class="extra-category-review-list">
+            ${extras.map((code) => {
+              const scan = getExtraScan(code) || {};
+              const selected = scan.categoriaKey || defaultExtraCategoryForCode(code) || "";
+              const safeCode = esc(code).replace(/'/g, "&#39;");
+              return `<div class="extra-category-review-item" data-code="${esc(code)}">
+                <div class="extra-category-review-code">${esc(code)}</div>
+                <div class="extra-category-buttons">
+                  <button type="button" class="extra-category-btn ${selected === "peliculas" ? "active" : ""}" data-cat="peliculas" onclick="setExtraCategoryReviewItem('${safeCode}','peliculas',this)">🎞️ Películas</button>
+                  <button type="button" class="extra-category-btn ${selected === "extrusao" ? "active" : ""}" data-cat="extrusao" onclick="setExtraCategoryReviewItem('${safeCode}','extrusao',this)">🏭 Extrusão</button>
+                </div>
+              </div>`;
+            }).join("")}
+          </div>
+          <div id="extraCategoryReviewError" class="extra-category-error">⚠️ Selecione Películas ou Extrusão para todos os códigos.</div>
+          <div class="btn-group"><button class="btn btn-primary" onclick="confirmExtraCategoryReview()">✅ Salvar categorias</button><button class="btn btn-outline" onclick="closeExtraCategoryReviewModal()">Cancelar</button></div>
+        </div>`;
+        modal.classList.add("show");
+      }
+      function closeExtraCategoryReviewModal() { document.getElementById("extraCategoryReviewModal")?.classList.remove("show"); }
+      function confirmExtraCategoryReview() {
+        const modal = document.getElementById("extraCategoryReviewModal"); if (!modal) return;
+        let missing = false;
+        modal.querySelectorAll(".extra-category-review-item").forEach((item) => {
+          const code = item.dataset.code;
+          const active = item.querySelector(".extra-category-btn.active");
+          if (!active) missing = true; else setExtraScanCategory(code, active.dataset.cat);
+        });
+        if (missing) { const err = document.getElementById("extraCategoryReviewError"); if (err) err.style.display = "block"; return; }
+        const cb = modal._afterSave; closeExtraCategoryReviewModal(); notify("Categorias das não previstas salvas."); if (cb) setTimeout(cb, 120);
+      }
+      function requireExtraCategoryReview(callback = null) {
+        const missing = extraCategoryMissingCodes();
+        if (!missing.length) return false;
+        notify(`⚠️ ${missing.length} bobina(s) não prevista(s) sem categoria. Confirme Películas ou Extrusão antes de separar as fotos.`, "warning");
+        showExtraCategoryReviewModal(callback);
         return true;
       }
       function getOpSummaryItems() {
@@ -3767,6 +3993,8 @@ if (S.collectorMode) {
       function updateReport() {
         const total = S.db.length, chk = S.checked.size, pend = total - chk, ext = [...new Set(S.extras)].length, pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0;
         document.getElementById("rTotal").textContent = total; document.getElementById("rChecked").textContent = chk; document.getElementById("rPending").textContent = pend; document.getElementById("rExtra").textContent = ext; document.getElementById("rPct").textContent = pct + "%"; document.getElementById("rFill").style.width = pct + "%"; document.getElementById("rCheckerName").textContent = S.checkerName || "—"; document.getElementById("rConferenceType").textContent = S.confType || "—";
+        const reviewBtn = document.getElementById("reviewExtraCategoriesBtn");
+        if (reviewBtn) reviewBtn.style.display = shouldAskExtraCategoryForCurrentConference() ? "inline-flex" : "none";
         updateReportPanelMetrics(); renderRpt(); renderOpSummary(reportOpSummarySearch);
       }
       function renderRpt() {
@@ -3841,6 +4069,7 @@ if (S.collectorMode) {
       }
       async function exportZip() {
         refreshCoilCategoriesFromLoadedFile();
+        if (requireExtraCategoryReview(() => exportZip())) return;
         const extrasUniq = [...new Set(S.extras)]; if (extrasUniq.length === 0) { notify("Nenhuma bobina não prevista para exportar!", "warning"); return; }
         const progress = document.getElementById("exportProgress"); progress.classList.add("show"); progress.textContent = "⏳ Gerando arquivo ZIP...";
         try {
@@ -4140,10 +4369,12 @@ if (S.collectorMode) {
       }
       function camShowLocationModal(code, mode = "extra") {
         camManualMode = mode; document.getElementById("camLocModal").classList.add("show"); document.getElementById("camLocCode").textContent = code; document.getElementById("camLocInput").value = ""; document.getElementById("camObsInput").value = ""; document.getElementById("camLocError").style.display = "none"; document.getElementById("camPhotoErrorEtiqueta").style.display = "none"; document.getElementById("camPhotoErrorBobina").style.display = "none";
+        prepareExtraCategory("cam", code, mode !== "manualFound" && shouldAskExtraCategoryForCurrentConference());
         document.getElementById("camLocHeader").textContent = mode === "manualFound" ? "📸 CONFERÊNCIA MANUAL" : "⚠️ BOBINA NÃO PREVISTA"; document.getElementById("camLocHeader").style.color = mode === "manualFound" ? "#3b82f6" : "#ef4444"; document.getElementById("camLocLabel").textContent = mode === "manualFound" ? "📌 Observação/localização (opcional):" : "📌 Informe a localização:"; document.getElementById("camLocInput").placeholder = mode === "manualFound" ? "Opcional" : "Ex: A2, E17, 240..."; camRemovePhoto("etiqueta"); camRemovePhoto("bobina"); setTimeout(() => document.getElementById("camLocInput").focus(), 300);
       }
       async function camConfirmLocation() {
-        const input = document.getElementById("camLocInput"), loc = input.value.trim(), obs = document.getElementById("camObsInput").value.trim(); let hasError = false;
+        const input = document.getElementById("camLocInput"), loc = input.value.trim(), obs = document.getElementById("camObsInput").value.trim(); let hasError = false; let categoriaKey = "";
+        if (camManualMode !== "manualFound") { categoriaKey = shouldAskExtraCategoryForCurrentConference() ? validateExtraCategory("cam") : automaticExtraCategoryForCurrentConference(camPendingExtra?.code); if (!categoriaKey) hasError = true; }
         if (camManualMode !== "manualFound" && !loc) { document.getElementById("camLocError").style.display = "block"; input.focus(); hasError = true; } else document.getElementById("camLocError").style.display = "none";
         if (!camCurrentPhotoEtiqueta) { document.getElementById("camPhotoErrorEtiqueta").style.display = "block"; hasError = true; } else document.getElementById("camPhotoErrorEtiqueta").style.display = "none";
         if (!camCurrentPhotoBobina) { document.getElementById("camPhotoErrorBobina").style.display = "block"; hasError = true; } else document.getElementById("camPhotoErrorBobina").style.display = "none";
@@ -4155,7 +4386,7 @@ if (S.collectorMode) {
           camShowResult("green", `📸 MANUAL — "${code}"`); save(); cloudSyncReading(S.scanned[0]); camUpdateCounters(); camUpdateHistory(); updateStats(); updateHistory(); updateDBUI(); camManualSelectedCode = null;
         } else if (camPendingExtra) {
           const savedPhoto = await savePhotosExtra(camPendingExtra.code, camCurrentPhotoEtiqueta, camCurrentPhotoBobina);
-          S.extras.push(camPendingExtra.code); S.scanned.unshift({ code: camPendingExtra.code, time: camPendingExtra.time, status: "not-found", location: loc, observation: obs, hasPhoto: savedPhoto, hasPhotoEtiqueta: savedPhoto, hasPhotoBobina: savedPhoto });
+          S.extras.push(camPendingExtra.code); S.scanned.unshift({ code: camPendingExtra.code, time: camPendingExtra.time, status: "not-found", location: loc, observation: obs, hasPhoto: savedPhoto, hasPhotoEtiqueta: savedPhoto, hasPhotoBobina: savedPhoto, categoriaKey, categoria: coilCategoryLabel(categoriaKey) });
           if (!savedPhoto) notify("Foto não foi salva. Não vai sair no exportador.", "warning");
           camShowResult("red", `⚠️ "${camPendingExtra.code}" — 📌 ${loc} 🏷️`); save(); cloudSyncReading(S.scanned[0]); camUpdateCounters(); camUpdateHistory(); updateStats(); updateHistory(); updateDBUI(); camPendingExtra = null;
         }
@@ -4252,7 +4483,11 @@ if (S.collectorMode) {
         document.getElementById("locInputMain").value = "";
         document.getElementById("locObsMain").value = "";
         document.getElementById("locErrorMain").style.display = "none";
-        document.getElementById("locModalDesc").textContent = requirePhotos ? "Informe a localização e tire as fotos da etiqueta e da bobina." : "Informe a localização desta bobina:";
+        const askCategory = shouldAskExtraCategoryForCurrentConference();
+        document.getElementById("locModalDesc").textContent = askCategory
+          ? (requirePhotos ? "Informe o tipo da base, a localização e tire as fotos da etiqueta e da bobina." : "Informe o tipo da base e a localização desta bobina:")
+          : (requirePhotos ? "Informe a localização e tire as fotos da etiqueta e da bobina." : "Informe a localização desta bobina:");
+        prepareExtraCategory("loc", code, askCategory);
         document.getElementById("locPhotoSection").style.display = requirePhotos ? "block" : "none";
         resetLocPhotoState();
         setTimeout(() => document.getElementById("locInputMain").focus(), 300);
@@ -4262,6 +4497,8 @@ if (S.collectorMode) {
         const obs = document.getElementById("locObsMain").value.trim();
         if (!loc) { document.getElementById("locErrorMain").style.display = "block"; document.getElementById("locInputMain").focus(); return; }
         const requirePhotos = !!pendingExtraMain?.requirePhotos;
+        const categoriaKey = shouldAskExtraCategoryForCurrentConference() ? validateExtraCategory("loc") : automaticExtraCategoryForCurrentConference(pendingExtraMain?.code);
+        if (!categoriaKey) return;
         let photoError = false;
         if (requirePhotos && !pendingExtraMainPhotoEtiqueta) { document.getElementById("locPhotoErrorEtiqueta").style.display = "block"; photoError = true; }
         if (requirePhotos && !pendingExtraMainPhotoBobina) { document.getElementById("locPhotoErrorBobina").style.display = "block"; photoError = true; }
@@ -4272,7 +4509,7 @@ if (S.collectorMode) {
             savedPhoto = await savePhotosExtra(pendingExtraMain.code, pendingExtraMainPhotoEtiqueta, pendingExtraMainPhotoBobina);
             if (!savedPhoto) notify("Foto não foi salva. Não vai sair no exportador.", "warning");
           }
-          const scanItem = { code: pendingExtraMain.code, time: pendingExtraMain.time, status: "not-found", location: loc, observation: obs, hasPhoto: savedPhoto, source: pendingExtraMain.source || "manual" };
+          const scanItem = { code: pendingExtraMain.code, time: pendingExtraMain.time, status: "not-found", location: loc, observation: obs, hasPhoto: savedPhoto, source: pendingExtraMain.source || "manual", categoriaKey, categoria: coilCategoryLabel(categoriaKey) };
           S.extras.push(pendingExtraMain.code);
           S.scanned.unshift(scanItem);
           document.getElementById("btnUndo").disabled = false;
@@ -4325,5 +4562,5 @@ document.addEventListener("keydown", (e) => {
 
 init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a180e007b82c9872',t:'MTc4MzUzMjQzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1eb9d390d0ee033',t:'MTc4NDY1MTY3Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a33ebf009d0bf1b1',t:'MTc4ODIwNzczMw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a180e007b82c9872',t:'MTc4MzUzMjQzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1eb9d390d0ee033',t:'MTc4NDY1MTY3Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a34454f76bc7cdc3',t:'MTc4ODI2NjMwNQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
