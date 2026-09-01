@@ -1657,8 +1657,10 @@ let cloudLastHeaderWrite = 0;
             save();
           }
           if (!S.cloudSessionId) return null;
-          const categoriaKey = categoriaKeyOverride || coilCategoryForCode(code);
-          const path = `${cloudOperatorKey()}/${cloudDateKey()}/${S.cloudSessionId}/${coilCategoryFolder(categoriaKey)}/${barcodePhotoFileName(code)}`;
+          const categoriaKey = normalizedCategoryKey(categoriaKeyOverride);
+          const path = categoriaKey
+            ? `${cloudOperatorKey()}/${cloudDateKey()}/${S.cloudSessionId}/${coilCategoryFolder(categoriaKey)}/${barcodePhotoFileName(code)}`
+            : `${cloudOperatorKey()}/${cloudDateKey()}/${S.cloudSessionId}/${barcodePhotoFileName(code)}`;
           const blob = cloudDataUrlToBlob(dataUrl);
           const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`;
           const res = await fetch(uploadUrl, { method: "POST", headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "image/jpeg", "x-upsert": "true" }, body: blob });
@@ -1671,7 +1673,8 @@ let cloudLastHeaderWrite = 0;
             path,
             size: blob.size,
             categoriaKey,
-            categoria: coilCategoryLabel(categoriaKey),
+            categoria: categoriaKey ? coilCategoryLabel(categoriaKey) : "",
+            categoriaInformada: !!categoriaKey,
             fileName: barcodePhotoFileName(code),
           };
         } catch (e) {
@@ -2080,13 +2083,15 @@ let cloudLastHeaderWrite = 0;
         const rows = getReportItems().map((i) => {
           const up = photoUploads[i.code] || null;
           const status = i.status === "checked" ? (i.manual ? "Conferido Manual" : "Conferido") : i.status === "pending" ? "Pendente" : "Não Prevista";
-          const categoriaKey = i.categoriaKey || up?.categoriaKey || coilCategoryForCode(i.code, i);
+          const categoriaInformada = !!(i.categoriaInformada || up?.categoriaInformada);
+          const categoriaKey = categoriaInformada ? (i.categoriaKey || up?.categoriaKey || "") : "";
           return {
             code: String(i.code),
             op: i.op || "-",
             peso: i.peso || "-",
             categoriaKey,
-            categoria: coilCategoryLabel(categoriaKey),
+            categoria: categoriaKey ? coilCategoryLabel(categoriaKey) : "",
+            categoriaInformada,
             status,
             manual: !!i.manual,
             time: i.time === "-" ? "" : (i.time || ""),
@@ -2131,7 +2136,7 @@ let cloudLastHeaderWrite = 0;
         for (let i = 0; i < items.length; i++) {
           const item = items[i];
           if (progress) progress.textContent = `Enviando fotos ${i + 1}/${items.length}...`;
-          const up = await cloudUploadPhoto(item.code, item._photo, item.categoriaKey);
+          const up = await cloudUploadPhoto(item.code, item._photo, item.categoriaInformada ? item.categoriaKey : "");
           if (up && up.url) uploads[item.code] = up;
         }
         return uploads;
@@ -3776,8 +3781,24 @@ if (S.collectorMode) {
         const safe = String(code || "sem_codigo").trim().replace(/[^a-zA-Z0-9_-]+/g, "_") || "sem_codigo";
         return `${safe}.jpg`;
       }
+      function normalizedCategoryKey(value) {
+        const txt = normalizeCategoryText(value || "");
+        if (txt.includes("PELIC")) return "peliculas";
+        if (txt.includes("EXTRUS")) return "extrusao";
+        return "";
+      }
+      function informedCategoryFromRow(row = null) {
+        if (!row) return "";
+        const cat = normalizedCategoryKey(row.categoriaKey || row.categoryKey || row.categoria || row.category || "");
+        // Regra: só separa em pastas peliculas/extrusao quando a categoria foi salva/informada no app.
+        if (row.categoriaInformada === true || row.categorySelected === true || row.extraCategorySelected === true) return cat;
+        return "";
+      }
       function photoZipRelativePath(code, catOrRow = null) {
-        const cat = typeof catOrRow === "string" ? catOrRow : coilCategoryForCode(code, catOrRow);
+        let cat = "";
+        if (typeof catOrRow === "string") cat = normalizedCategoryKey(catOrRow);
+        else cat = informedCategoryFromRow(catOrRow);
+        if (!cat) return `fotos/${barcodePhotoFileName(code)}`;
         return `fotos/${coilCategoryFolder(cat)}/${barcodePhotoFileName(code)}`;
       }
       function buildCoilCategoryMapFromRows(rows, layout) {
@@ -3852,20 +3873,16 @@ if (S.collectorMode) {
       function setExtraScanCategory(code, cat) {
         const normalized = cat === "peliculas" ? "peliculas" : "extrusao";
         (S.scanned || []).forEach((s) => {
-          if (s && s.status === "not-found" && String(s.code) === String(code)) { s.categoriaKey = normalized; s.categoria = coilCategoryLabel(normalized); }
+          if (s && s.status === "not-found" && String(s.code) === String(code)) { s.categoriaKey = normalized; s.categoria = coilCategoryLabel(normalized); s.categoriaInformada = true; }
         });
         S.coilCategories = S.coilCategories || {};
         S.coilCategories[String(code)] = normalized;
         save(); updateHistory(); updateReport();
       }
       function extraCategoryMissingCodes() {
-        if (!shouldAskExtraCategoryForCurrentConference()) {
-          [...new Set(S.extras || [])].forEach((code) => {
-            const scan = getExtraScan(code);
-            if (scan && !scan.categoriaKey) setExtraScanCategory(code, automaticExtraCategoryForCurrentConference(code));
-          });
-          return [];
-        }
+        // Em conferências que não pedem categoria, não bloqueia exportação/finalização.
+        // Se for conferência antiga sem categoria salva, a foto fica direto em fotos/codigo.jpg.
+        if (!shouldAskExtraCategoryForCurrentConference()) return [];
         // Em conferência mista, não prevista precisa de confirmação manual.
         return [...new Set(S.extras || [])].filter((code) => {
           const scan = getExtraScan(code);
@@ -3937,13 +3954,13 @@ if (S.collectorMode) {
         let items = [];
         [...new Set(S.extras)].forEach((code) => {
           const scan = S.scanned.find((s) => s.code === code && s.status === "not-found");
-          const categoriaKey = coilCategoryForCode(code, scan);
-          items.push({ code, op: "-", peso: "-", status: "extra", manual: false, time: scan ? scan.time : "-", location: scan?.location || "-", observation: scan?.observation || "", hasPhoto: scan?.hasPhoto || false, categoriaKey, categoria: coilCategoryLabel(categoriaKey) });
+          const categoriaKey = scan?.categoriaKey || "";
+          items.push({ code, op: "-", peso: "-", status: "extra", manual: false, time: scan ? scan.time : "-", location: scan?.location || "-", observation: scan?.observation || "", hasPhoto: scan?.hasPhoto || false, categoriaKey, categoria: categoriaKey ? coilCategoryLabel(categoriaKey) : "", categoriaInformada: !!scan?.categoriaKey });
         });
         S.db.forEach((code) => {
           const chk = S.checked.has(code), scan = S.scanned.find((s) => s.code === code && s.status === "found");
           const categoriaKey = coilCategoryForCode(code, scan);
-          items.push({ code, op: getOP(code), peso: getPeso(code), status: chk ? "checked" : "pending", manual: !!scan?.manual, time: scan ? scan.time : "-", location: scan?.location || "", observation: scan?.observation || "", hasPhoto: !!scan?.hasPhoto, categoriaKey, categoria: coilCategoryLabel(categoriaKey) });
+          items.push({ code, op: getOP(code), peso: getPeso(code), status: chk ? "checked" : "pending", manual: !!scan?.manual, time: scan ? scan.time : "-", location: scan?.location || "", observation: scan?.observation || "", hasPhoto: !!scan?.hasPhoto, categoriaKey, categoria: coilCategoryLabel(categoriaKey), categoriaInformada: !!scan?.categoriaInformada });
         });
         return items;
       }
@@ -4074,21 +4091,22 @@ if (S.collectorMode) {
         const progress = document.getElementById("exportProgress"); progress.classList.add("show"); progress.textContent = "⏳ Gerando arquivo ZIP...";
         try {
           const zip = new JSZip(); const dateStr = new Date().toISOString().slice(0, 10); const timeStr = new Date().toLocaleTimeString("pt-BR");
-          let csv = "Código;Categoria;Hora;Localização;Observação;Foto\n"; let countFotos = 0, countPeliculas = 0, countExtrusao = 0;
+          let csv = "Código;Categoria;Hora;Localização;Observação;Foto\n"; let countFotos = 0, countPeliculas = 0, countExtrusao = 0, countSemCategoria = 0;
           for (const code of extrasUniq) {
             const scan = S.scanned.find((s) => s.code === code && s.status === "not-found"); const loc = scan?.location || ""; const time = scan?.time || ""; const obs = scan?.observation || "";
-            const categoriaKey = coilCategoryForCode(code, scan); if (categoriaKey === "peliculas") countPeliculas++; else countExtrusao++;
+            const categoriaKey = scan?.categoriaKey || ""; const categoriaLabel = categoriaKey ? coilCategoryLabel(categoriaKey) : "Sem categoria";
+            if (categoriaKey === "peliculas") countPeliculas++; else if (categoriaKey === "extrusao") countExtrusao++; else countSemCategoria++;
             let fotoName = ""; const photo = getPhoto(code); const base = photo && photo.includes(",") ? photo.split(",")[1] : null;
             if (base) { fotoName = photoZipRelativePath(code, categoriaKey); zip.file(fotoName, base, { base64: true }); countFotos++; }
-            csv += `${code};${coilCategoryLabel(categoriaKey)};${time};${loc};${obs};${fotoName}\n`;
+            csv += `${code};${categoriaLabel};${time};${loc};${obs};${fotoName}\n`;
           }
           const total = S.db.length, chk = S.checked.size, pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0;
-          csv += `\n;RESUMO;\n;Conferente;${S.checkerName || ""}\n;Tipo de Conferência;${S.confType || ""}\n;Total no sistema;${total}\n;Conferidos;${chk}\n;Pendentes;${total - chk}\n;Não Previstas;${extrasUniq.length}\n;Películas;${countPeliculas}\n;Extrusão;${countExtrusao}\n;Fotos anexadas;${countFotos}\n;Percentual conferido;${pct}%\n;Data;${dateStr} ${timeStr}`;
+          csv += `\n;RESUMO;\n;Conferente;${S.checkerName || ""}\n;Tipo de Conferência;${S.confType || ""}\n;Total no sistema;${total}\n;Conferidos;${chk}\n;Pendentes;${total - chk}\n;Não Previstas;${extrasUniq.length}\n;Películas;${countPeliculas}\n;Extrusão;${countExtrusao}\n;Sem categoria;${countSemCategoria}\n;Fotos anexadas;${countFotos}\n;Percentual conferido;${pct}%\n;Data;${dateStr} ${timeStr}`;
           zip.file(`nao_previstas_${dateStr}.csv`, "\uFEFF" + csv);
-          let txt = `RELATÓRIO DE BOBINAS NÃO PREVISTAS\nData: ${new Date().toLocaleDateString("pt-BR")} ${timeStr}\nConferente: ${S.checkerName || "-"}\nTipo de Conferência: ${S.confType || "-"}\n${"=".repeat(70)}\nTotal não previstas: ${extrasUniq.length}\nPelículas: ${countPeliculas}\nExtrusão: ${countExtrusao}\nFotos anexadas: ${countFotos}\n${"=".repeat(70)}\n`;
+          let txt = `RELATÓRIO DE BOBINAS NÃO PREVISTAS\nData: ${new Date().toLocaleDateString("pt-BR")} ${timeStr}\nConferente: ${S.checkerName || "-"}\nTipo de Conferência: ${S.confType || "-"}\n${"=".repeat(70)}\nTotal não previstas: ${extrasUniq.length}\nPelículas: ${countPeliculas}\nExtrusão: ${countExtrusao}\nSem categoria: ${countSemCategoria}\nFotos anexadas: ${countFotos}\n${"=".repeat(70)}\n`;
           for (const code of extrasUniq) {
-            const scan = S.scanned.find((s) => s.code === code && s.status === "not-found"); const hasPhoto = getPhoto(code); const categoriaKey = coilCategoryForCode(code, scan);
-            txt += `Código: ${code}\nCategoria: ${coilCategoryLabel(categoriaKey)}\nHora: ${scan?.time || "-"}\nLocal: ${scan?.location || "-"}\nObservação: ${scan?.observation || "—"}\nFoto: ${hasPhoto ? photoZipRelativePath(code, categoriaKey) : "—"}\n${"─".repeat(40)}\n`;
+            const scan = S.scanned.find((s) => s.code === code && s.status === "not-found"); const hasPhoto = getPhoto(code); const categoriaKey = scan?.categoriaKey || ""; const categoriaLabel = categoriaKey ? coilCategoryLabel(categoriaKey) : "Sem categoria";
+            txt += `Código: ${code}\nCategoria: ${categoriaLabel}\nHora: ${scan?.time || "-"}\nLocal: ${scan?.location || "-"}\nObservação: ${scan?.observation || "—"}\nFoto: ${hasPhoto ? photoZipRelativePath(code, categoriaKey) : "—"}\n${"─".repeat(40)}\n`;
           }
           zip.file(`nao_previstas_${dateStr}.txt`, "\uFEFF" + txt);
           const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } }, (m) => { progress.textContent = `⏳ ${Math.round(m.percent)}% concluído...`; });
@@ -4386,7 +4404,7 @@ if (S.collectorMode) {
           camShowResult("green", `📸 MANUAL — "${code}"`); save(); cloudSyncReading(S.scanned[0]); camUpdateCounters(); camUpdateHistory(); updateStats(); updateHistory(); updateDBUI(); camManualSelectedCode = null;
         } else if (camPendingExtra) {
           const savedPhoto = await savePhotosExtra(camPendingExtra.code, camCurrentPhotoEtiqueta, camCurrentPhotoBobina);
-          S.extras.push(camPendingExtra.code); S.scanned.unshift({ code: camPendingExtra.code, time: camPendingExtra.time, status: "not-found", location: loc, observation: obs, hasPhoto: savedPhoto, hasPhotoEtiqueta: savedPhoto, hasPhotoBobina: savedPhoto, categoriaKey, categoria: coilCategoryLabel(categoriaKey) });
+          S.extras.push(camPendingExtra.code); S.scanned.unshift({ code: camPendingExtra.code, time: camPendingExtra.time, status: "not-found", location: loc, observation: obs, hasPhoto: savedPhoto, hasPhotoEtiqueta: savedPhoto, hasPhotoBobina: savedPhoto, categoriaKey, categoria: coilCategoryLabel(categoriaKey), categoriaInformada: true });
           if (!savedPhoto) notify("Foto não foi salva. Não vai sair no exportador.", "warning");
           camShowResult("red", `⚠️ "${camPendingExtra.code}" — 📌 ${loc} 🏷️`); save(); cloudSyncReading(S.scanned[0]); camUpdateCounters(); camUpdateHistory(); updateStats(); updateHistory(); updateDBUI(); camPendingExtra = null;
         }
@@ -4509,7 +4527,7 @@ if (S.collectorMode) {
             savedPhoto = await savePhotosExtra(pendingExtraMain.code, pendingExtraMainPhotoEtiqueta, pendingExtraMainPhotoBobina);
             if (!savedPhoto) notify("Foto não foi salva. Não vai sair no exportador.", "warning");
           }
-          const scanItem = { code: pendingExtraMain.code, time: pendingExtraMain.time, status: "not-found", location: loc, observation: obs, hasPhoto: savedPhoto, source: pendingExtraMain.source || "manual", categoriaKey, categoria: coilCategoryLabel(categoriaKey) };
+          const scanItem = { code: pendingExtraMain.code, time: pendingExtraMain.time, status: "not-found", location: loc, observation: obs, hasPhoto: savedPhoto, source: pendingExtraMain.source || "manual", categoriaKey, categoria: coilCategoryLabel(categoriaKey), categoriaInformada: true };
           S.extras.push(pendingExtraMain.code);
           S.scanned.unshift(scanItem);
           document.getElementById("btnUndo").disabled = false;
@@ -4562,5 +4580,5 @@ document.addEventListener("keydown", (e) => {
 
 init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a180e007b82c9872',t:'MTc4MzUzMjQzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1eb9d390d0ee033',t:'MTc4NDY1MTY3Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a34454f76bc7cdc3',t:'MTc4ODI2NjMwNQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a180e007b82c9872',t:'MTc4MzUzMjQzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1eb9d390d0ee033',t:'MTc4NDY1MTY3Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
