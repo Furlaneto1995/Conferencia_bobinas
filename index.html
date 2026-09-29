@@ -1138,6 +1138,8 @@ let cloudBufferTimer = null;
 let cloudDatabaseSynced = false;
 let cloudHeaderDirty = false;
 let cloudLastHeaderWrite = 0;
+let bobinaAlertUnsub = null;
+let bobinaAlertCloudReady = false;
       let cloudReady = false, cloudDb = null, cloudStorage = null, cloudSummaryTimer = null,
         cloudConsultUnsub = null, cloudConsultDocs = [], cloudListStatusFilter = "all",
         cloudDetailRows = [], cloudDetailFilter = "all", cloudDetailSearch = "",
@@ -1168,6 +1170,7 @@ let cloudLastHeaderWrite = 0;
       const SUPABASE_ANON_KEY = "sb_publishable_xShr3sQbRBvInga95QTJRg_8XcGYNbJ";
       const SUPABASE_BUCKET = "bobinas-fotos";
       const CLOUD_ACTIVE_BASE_DOC_ID = "base_atual";
+      const BOBINA_ALERTS_COLLECTION = "alertas_bobina";
 
       function esc(v) { return String(v ?? "").replace(/[&<>"]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[m]); }
       function makeStateSnapshot() {
@@ -3204,7 +3207,124 @@ let cloudLastHeaderWrite = 0;
         renderBobinaAlertList();
         if (panel.classList.contains("show")) setTimeout(() => document.getElementById("alertBobinaCode")?.focus(), 80);
       }
-      function addBobinaAlert() {
+      function bobinaAlertDocId(shortCode) {
+        return "bobina_" + String(shortCode || "").replace(/[^0-9a-zA-Z_-]/g, "_");
+      }
+      function normalizeBobinaAlertDoc(id, d = {}) {
+        return {
+          id: d.id || id,
+          cloudId: id,
+          cloudSynced: true,
+          shortCode: String(d.shortCode || ""),
+          peso: d.peso || "",
+          op: d.op || "",
+          observation: d.observation || "",
+          createdAt: d.createdAtLocal || d.createdAt || "",
+          createdBy: d.createdBy || "",
+          found: !!d.found,
+          foundAt: d.foundAtLocal || d.foundAt || "",
+          foundTime: d.foundTime || "",
+          foundFullCode: d.foundFullCode || "",
+          foundLocation: d.foundLocation || "",
+          foundObservation: d.foundObservation || "",
+          foundBy: d.foundBy || "",
+          foundHasPhoto: !!d.foundHasPhoto,
+          foundPhotoUrl: d.foundPhotoUrl || "",
+          foundPhotoPath: d.foundPhotoPath || "",
+          removed: !!d.removed,
+          sortAt: d.sortAt || 0,
+        };
+      }
+      async function cloudStartBobinaAlertWatcher() {
+        try {
+          if (bobinaAlertUnsub) return true;
+          if (!(await cloudInit())) return false;
+          bobinaAlertUnsub = cloudDb.collection(BOBINA_ALERTS_COLLECTION).orderBy("sortAt", "desc").limit(200).onSnapshot((snap) => {
+            const remote = snap.docs.map((doc) => normalizeBobinaAlertDoc(doc.id, doc.data() || {})).filter((b) => !b.removed && b.shortCode);
+            const localUnsynced = (S.alertBobinas || []).filter((b) => !b.cloudSynced && !b.cloudId && !b.removed);
+            S.alertBobinas = [...remote, ...localUnsynced];
+            save(); renderBobinaAlertList();
+          }, (e) => {
+            console.warn("Falha ao acompanhar alertas de bobina:", e);
+          });
+          bobinaAlertCloudReady = true;
+          return true;
+        } catch (e) {
+          console.warn("Alertas de bobina sem sincronização na nuvem:", e);
+          bobinaAlertCloudReady = false;
+          return false;
+        }
+      }
+      async function cloudSaveBobinaAlert(item) {
+        if (!(await cloudInit())) throw new Error("Nuvem indisponível");
+        const docId = item.cloudId || bobinaAlertDocId(item.shortCode);
+        const now = new Date();
+        const payload = {
+          id: item.id || docId,
+          shortCode: item.shortCode,
+          peso: item.peso || "",
+          op: item.op || "",
+          observation: item.observation || "",
+          status: "procurando",
+          found: false,
+          removed: false,
+          createdBy: S.checkerName || "",
+          createdAtLocal: item.createdAt || now.toISOString(),
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          sortAt: item.sortAt || Date.now(),
+        };
+        await cloudDb.collection(BOBINA_ALERTS_COLLECTION).doc(docId).set(payload, { merge: true });
+        item.cloudId = docId; item.cloudSynced = true; item.id = docId;
+        save();
+        return docId;
+      }
+      async function cloudRemoveBobinaAlert(item) {
+        if (!item?.cloudId) return;
+        try {
+          if (!(await cloudInit())) throw new Error("Nuvem indisponível");
+          await cloudDb.collection(BOBINA_ALERTS_COLLECTION).doc(item.cloudId).set({ removed: true, status: "removido", removedAt: firebase.firestore.FieldValue.serverTimestamp(), removedAtLocal: new Date().toISOString(), updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        } catch (e) { console.warn("Falha ao remover alerta na nuvem:", e); }
+      }
+      async function cloudUploadBobinaAlertPhoto(data, dataUrl) {
+        if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !dataUrl) return null;
+        const safeShort = String(data.shortCode || "alerta").replace(/[^a-zA-Z0-9_-]/g, "_");
+        const safeFull = String(data.fullCode || "sem_codigo").replace(/[^a-zA-Z0-9_-]/g, "_");
+        const path = `alertas-bobina/${cloudDateKey()}/${safeShort}_${safeFull}.jpg`;
+        const blob = cloudDataUrlToBlob(dataUrl);
+        const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`;
+        const res = await fetch(uploadUrl, { method: "POST", headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "image/jpeg", "x-upsert": "true" }, body: blob });
+        if (!res.ok) {
+          const txt = await res.text().catch(() => "");
+          throw new Error(`Supabase upload alerta ${res.status}: ${txt}`);
+        }
+        return { path, url: `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`, size: blob.size };
+      }
+      async function cloudMarkBobinaAlertFound(item, data, info = {}) {
+        try {
+          const docId = item?.cloudId || data.itemId || bobinaAlertDocId(data.shortCode);
+          if (!(await cloudInit())) throw new Error("Nuvem indisponível");
+          await cloudDb.collection(BOBINA_ALERTS_COLLECTION).doc(docId).set({
+            found: true,
+            status: "encontrada",
+            foundFullCode: data.fullCode || "",
+            foundLocation: info.location || "",
+            foundObservation: info.observation || "",
+            foundBy: S.checkerName || "",
+            foundAtLocal: new Date().toISOString(),
+            foundTime: new Date().toLocaleTimeString("pt-BR"),
+            foundHasPhoto: !!info.hasPhoto,
+            foundPhotoUrl: info.photoUrl || "",
+            foundPhotoPath: info.photoPath || "",
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            foundAt: firebase.firestore.FieldValue.serverTimestamp(),
+          }, { merge: true });
+        } catch (e) {
+          console.warn("Falha ao salvar alerta encontrado na nuvem:", e);
+          notify("Alerta foi salvo localmente, mas não sincronizou na nuvem.", "warning");
+        }
+      }
+      async function addBobinaAlert() {
         const codeEl = document.getElementById("alertBobinaCode"), pesoEl = document.getElementById("alertBobinaPeso"), opEl = document.getElementById("alertBobinaOp"), obsEl = document.getElementById("alertBobinaObs");
         const shortCode = alertNormalizeShort(codeEl?.value || "");
         const peso = String(pesoEl?.value || "").trim();
@@ -3216,24 +3336,31 @@ let cloudLastHeaderWrite = 0;
         S.alertBobinas = S.alertBobinas || [];
         const existing = S.alertBobinas.find((b) => !b.removed && b.shortCode === shortCode && !b.found);
         if (existing) { notify("Essa bobina já está cadastrada no alerta.", "warning"); return; }
-        S.alertBobinas.unshift({ id: "alert_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7), shortCode, peso, op, observation, createdAt: new Date().toISOString(), found: false });
+        const item = { id: bobinaAlertDocId(shortCode), cloudId: bobinaAlertDocId(shortCode), cloudSynced: false, shortCode, peso, op, observation, createdAt: new Date().toISOString(), createdBy: S.checkerName || "", found: false, sortAt: Date.now() };
+        S.alertBobinas.unshift(item);
         if (codeEl) codeEl.value = ""; if (pesoEl) pesoEl.value = ""; if (opEl) opEl.value = ""; if (obsEl) obsEl.value = "";
         save(); renderBobinaAlertList(); notify("Alerta de bobina cadastrado.");
+        try { await cloudSaveBobinaAlert(item); await cloudStartBobinaAlertWatcher(); notify("Alerta sincronizado na nuvem."); }
+        catch (e) { console.warn(e); item.cloudSynced = false; save(); notify("Alerta salvo neste aparelho, mas não subiu para a nuvem.", "warning"); }
       }
       function removeBobinaAlert(id) {
-        S.alertBobinas = (S.alertBobinas || []).filter((b) => b.id !== id);
+        const item = (S.alertBobinas || []).find((b) => b.id === id || b.cloudId === id);
+        if (item) cloudRemoveBobinaAlert(item);
+        S.alertBobinas = (S.alertBobinas || []).filter((b) => b.id !== id && b.cloudId !== id);
         save(); renderBobinaAlertList(); notify("Alerta removido.", "warning");
       }
       function renderBobinaAlertList() {
         const box = document.getElementById("bobinaAlertList"); if (!box) return;
         const items = (S.alertBobinas || []).filter((b) => !b.removed);
+        items.sort((a, b) => (Number(b.sortAt || 0) - Number(a.sortAt || 0)) || String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
         if (!items.length) { box.innerHTML = '<div class="empty" style="padding:14px">Nenhuma bobina cadastrada.</div>'; return; }
         box.innerHTML = items.map((b) => {
           const found = !!b.found;
+          const removeId = esc(b.cloudId || b.id).replace(/'/g, "&#39;");
           return `<div class="bobina-alert-item ${found ? "found" : ""}">
-            <div class="bobina-alert-top"><div class="bobina-alert-code">${esc(b.shortCode)}</div><button class="icon-btn" onclick="removeBobinaAlert('${esc(b.id).replace(/'/g, "&#39;")}')">🗑️</button></div>
-            <div class="bobina-alert-meta"><span class="bobina-alert-chip">OP ${esc(b.op || "-")}</span><span class="bobina-alert-chip">Peso ${esc(b.peso || "-")}</span>${b.observation ? `<span class="bobina-alert-chip">${esc(b.observation)}</span>` : ""}</div>
-            ${found ? `<div class="bobina-alert-found">✅ Encontrada: ${esc(b.foundFullCode || "")} • ${esc(b.foundLocation || "-")} ${b.foundBy ? `• ${esc(b.foundBy)}` : ""}${b.foundObservation ? `<br>Obs.: ${esc(b.foundObservation)}` : ""}</div>` : `<div class="small" style="margin-top:7px;color:var(--text-muted)">Aguardando leitura...</div>`}
+            <div class="bobina-alert-top"><div class="bobina-alert-code">${esc(b.shortCode)}</div><button class="icon-btn" onclick="removeBobinaAlert('${removeId}')">🗑️</button></div>
+            <div class="bobina-alert-meta"><span class="bobina-alert-chip">OP ${esc(b.op || "-")}</span><span class="bobina-alert-chip">Peso ${esc(b.peso || "-")}</span>${b.observation ? `<span class="bobina-alert-chip">${esc(b.observation)}</span>` : ""}${b.cloudSynced ? `<span class="bobina-alert-chip">☁️ nuvem</span>` : `<span class="bobina-alert-chip">local</span>`}</div>
+            ${found ? `<div class="bobina-alert-found">✅ Encontrada: ${esc(b.foundFullCode || "")} • ${esc(b.foundLocation || "-")} ${b.foundBy ? `• ${esc(b.foundBy)}` : ""}${b.foundObservation ? `<br>Obs.: ${esc(b.foundObservation)}` : ""}${b.foundPhotoUrl ? `<br><a href="${esc(b.foundPhotoUrl)}" target="_blank" rel="noopener">📸 Foto</a>` : ""}</div>` : `<div class="small" style="margin-top:7px;color:var(--text-muted)">Aguardando leitura...</div>`}
           </div>`;
         }).join("");
       }
@@ -3243,23 +3370,12 @@ let cloudLastHeaderWrite = 0;
         candidates.sort((a, b) => String(b.shortCode).length - String(a.shortCode).length);
         return candidates.find((b) => short === b.shortCode || (String(b.shortCode).length === 7 && short.endsWith(b.shortCode))) || null;
       }
-      function registerNormalScanFromAlert(code, time, source) {
-        if (S.checked.has(code)) return { status: "already" };
-        if (S.db.includes(code)) {
-          const scanItem = { code, time, status: "found", source: source || "alert" };
-          S.checked.add(code); S.scanned.unshift(scanItem); save(); cloudSyncReading(scanItem); updateStats(); updateHistory(); updateDBUI(); updateReport(); document.getElementById("btnUndo").disabled = false;
-          return { status: "found", scanItem };
-        }
-        if (S.extras.includes(code)) return { status: "already-extra" };
-        return { status: "extra" };
-      }
       function handleBobinaAlertScan(code, time, source = "collector") {
         const item = matchBobinaAlert(code);
         if (!item) return false;
-        // Alerta tem prioridade: não registra como conferida automaticamente,
-        // mesmo se a bobina existir na base da conferência.
         pendingAlertFound = {
           itemId: item.id,
+          cloudId: item.cloudId || item.id,
           shortCode: item.shortCode,
           fullCode: code,
           time,
@@ -3275,9 +3391,9 @@ let cloudLastHeaderWrite = 0;
       function showBobinaAlertFlash(item, code) {
         const flash = document.getElementById("bobinaAlertFlash"); const codeEl = document.getElementById("bobinaAlertFlashCode");
         if (codeEl) codeEl.textContent = code;
-        if (flash) { flash.classList.add("show"); setTimeout(() => flash.classList.remove("show"), 1700); }
+        if (flash) { flash.classList.add("show"); setTimeout(() => flash.classList.remove("show"), 5000); }
         try { if (navigator.vibrate) navigator.vibrate([300, 120, 300, 120, 500]); } catch (e) {}
-        setTimeout(() => showAlertFoundModal(item, code), 1750);
+        setTimeout(() => showAlertFoundModal(item, code), 5050);
       }
       function resetAlertPhotoState() {
         pendingAlertPhotoEtiqueta = null; pendingAlertPhotoBobina = null;
@@ -3339,14 +3455,18 @@ let cloudLastHeaderWrite = 0;
         if (photoError) return;
         const data = pendingAlertFound;
         const savedPhoto = await savePhotosExtra(data.fullCode, pendingAlertPhotoEtiqueta, pendingAlertPhotoBobina);
-        const item = (S.alertBobinas || []).find((b) => b.id === data.itemId);
-        if (item) { item.found = true; item.foundAt = new Date().toISOString(); item.foundTime = new Date().toLocaleTimeString("pt-BR"); item.foundFullCode = data.fullCode; item.foundLocation = loc; item.foundObservation = foundObs; item.foundBy = S.checkerName || ""; item.foundHasPhoto = !!savedPhoto; }
+        let upload = null;
+        try { const photo = await getPhotoAsync(data.fullCode); if (photo) upload = await cloudUploadBobinaAlertPhoto(data, photo); }
+        catch (e) { console.warn("Foto do alerta não enviada à nuvem:", e); notify("Foto salva localmente, mas não enviada à nuvem.", "warning"); }
+        const item = (S.alertBobinas || []).find((b) => b.id === data.itemId || b.cloudId === data.cloudId);
+        if (item) { item.found = true; item.foundAt = new Date().toISOString(); item.foundTime = new Date().toLocaleTimeString("pt-BR"); item.foundFullCode = data.fullCode; item.foundLocation = loc; item.foundObservation = foundObs; item.foundBy = S.checkerName || ""; item.foundHasPhoto = !!savedPhoto; item.foundPhotoUrl = upload?.url || ""; item.foundPhotoPath = upload?.path || ""; }
         (S.scanned || []).forEach((s) => { if (s && String(s.code) === String(data.fullCode)) { s.location = s.location || loc; s.observation = s.observation || foundObs; s.hasPhoto = s.hasPhoto || !!savedPhoto; s.alertFound = true; } });
         if (data.shouldRegisterExtra && !S.extras.includes(data.fullCode)) {
           const scanItem = { code: data.fullCode, time: data.time, status: "not-found", location: loc, observation: foundObs, hasPhoto: !!savedPhoto, source: "alert", alertFound: true };
           S.extras.push(data.fullCode); S.scanned.unshift(scanItem); cloudSyncReading(scanItem);
         }
         save(); renderBobinaAlertList(); updateStats(); updateHistory(); updateDBUI(); updateReport(); camUpdateCounters?.(); camUpdateHistory?.();
+        if (item) cloudMarkBobinaAlertFound(item, data, { location: loc, observation: foundObs, hasPhoto: !!savedPhoto, photoUrl: upload?.url || "", photoPath: upload?.path || "" });
         document.getElementById("alertFoundModal").classList.remove("show"); resetAlertPhotoState();
         notify("Bobina procurada registrada como encontrada."); releaseAlertScanFlow();
       }
@@ -4783,6 +4903,7 @@ if (S.collectorMode) {
   updateReport();
   updateCollectorModeUI();
   renderBobinaAlertList();
+  cloudStartBobinaAlertWatcher().catch((e) => console.warn("Falha ao iniciar alertas na nuvem:", e));
   document.getElementById("btnUndo").disabled = !S.scanned.length;
   // Se o localStorage voltou para um ponto antigo após erro/reload, recupera o backup interno em IndexedDB.
   restoreStateBackupIfBetter().catch((e) => console.warn("Falha ao restaurar backup interno:", e));
@@ -4806,5 +4927,5 @@ document.addEventListener("keydown", (e) => {
 
 init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a42c8e1e0fb0a4b1',t:'MTc5MDcwMTM0Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
