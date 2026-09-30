@@ -906,7 +906,7 @@
               <div class="report-result-count" id="reportDetailResultCount">0 itens</div>
               <div class="tbl-wrap report-table-wrap">
                 <table class="dtbl report-detail-table">
-                  <thead><tr><th>#</th><th>Código</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Observação</th><th>📸</th></tr></thead>
+                  <thead><tr><th>#</th><th>Código</th><th>Categoria</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Observação</th><th>📸</th></tr></thead>
                   <tbody id="rptBody"></tbody>
                 </table>
               </div>
@@ -2140,7 +2140,7 @@ let bobinaAlertCloudReady = false;
           const up = photoUploads[i.code] || null;
           const status = i.status === "checked" ? (i.manual ? "Conferido Manual" : "Conferido") : i.status === "pending" ? "Pendente" : "Não Prevista";
           const categoriaInformada = !!(i.categoriaInformada || up?.categoriaInformada);
-          const categoriaKey = categoriaInformada ? (i.categoriaKey || up?.categoriaKey || "") : "";
+          const categoriaKey = i.categoriaKey || up?.categoriaKey || "";
           return {
             code: String(i.code),
             op: i.op || "-",
@@ -2421,23 +2421,104 @@ let bobinaAlertCloudReady = false;
           return true;
         });
       }
+      function reportCategoryKey(row = {}) {
+        return normalizedCategoryKey(row.categoriaKey || row.categoryKey || row.categoria || row.category || "");
+      }
+      function reportCategoryLabel(row = {}) {
+        const key = reportCategoryKey(row);
+        return key ? coilCategoryLabel(key) : "Sem categoria";
+      }
+      function reportBuildCategorySummary(rows = []) {
+        const map = new Map();
+        (rows || []).forEach((row) => {
+          const label = reportCategoryLabel(row);
+          if (!map.has(label)) map.set(label, { categoria: label, total: 0, conferidos: 0, pendentes: 0, naoPrevistas: 0 });
+          const item = map.get(label); item.total++;
+          const st = String(row.status || "");
+          if (st.includes("Pendente")) item.pendentes++;
+          else if (st.includes("Não Prevista") || st.includes("Não prevista")) item.naoPrevistas++;
+          else if (st.includes("Conferid") || st.includes("Manual")) item.conferidos++;
+        });
+        const order = { "Películas": 1, "Extrusão": 2, "Sem categoria": 3 };
+        return Array.from(map.values()).sort((a, b) => (order[a.categoria] || 99) - (order[b.categoria] || 99) || a.categoria.localeCompare(b.categoria, "pt-BR"));
+      }
+      function reportCategorySummaryCsv(rows = []) {
+        const summary = reportBuildCategorySummary(rows);
+        if (!summary.length) return "";
+        return `\nRESUMO POR CATEGORIA\nCategoria;Total;Conferidos;Pendentes;Não Previstas\n` + summary.map((i) => `${i.categoria};${i.total};${i.conferidos};${i.pendentes};${i.naoPrevistas}`).join("\n") + "\n";
+      }
+      function reportCategorySummaryTxt(rows = []) {
+        const summary = reportBuildCategorySummary(rows);
+        if (!summary.length) return "";
+        return `\n${"=".repeat(95)}\nRESUMO POR CATEGORIA\n${"=".repeat(95)}\n` + summary.map((i) => `${String(i.categoria).padEnd(14)} | Total: ${String(i.total).padEnd(5)} | Conferidos: ${String(i.conferidos).padEnd(5)} | Pendentes: ${String(i.pendentes).padEnd(5)} | Não Previstas: ${i.naoPrevistas}`).join("\n") + "\n";
+      }
       function cloudBuildCsvReport(data, opt) {
         const date = new Date(); const r = data.resumo || {};
-        let csv = `${data.title}\nData;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente;${data.operador}\nTipo;${data.tipo}\nID;${data.id}\nStatus;${data.status}\n`;
-        if (opt.summary) csv += `\nRESUMO\nTotal;${r.total ?? 0}\nConferidos;${r.conferidos ?? 0}\nPendentes;${r.pendentes ?? 0}\nNão Previstas;${r.naoPrevistas ?? 0}\nPercentual;${r.percentual ?? 0}%\n`;
-        if (opt.ops) { csv += `\nRESUMO POR OP\nOP;Encontradas;Percentual\n`; csv += (data.opSummary || []).map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`).join("\n") + "\n"; }
-        const cols = ["Código", "OP", "Peso", "Status", "Hora", "Localização"]; if (opt.obs) cols.push("Observação"); if (opt.photoLinks) cols.push("Foto");
-        csv += `\nBOBINAS\n${cols.join(";")}\n`;
-        csv += cloudFilterRowsForExport(data.rows, opt).map((i) => { const row = [i.code, i.op, i.peso, i.status, i.time || "", i.location || ""]; if (opt.obs) row.push(i.observation || ""); if (opt.photoLinks) row.push(i.fotoUrl || (i.hasPhoto ? "Sim" : "Não")); return row.join(";"); }).join("\n");
+        const exportRows = cloudFilterRowsForExport(data.rows, opt);
+        let csv = `${data.title}
+Data;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}
+Conferente;${data.operador}
+Tipo;${data.tipo}
+ID;${data.id}
+Status;${data.status}
+`;
+        if (opt.summary) {
+          csv += `
+RESUMO
+Total;${r.total ?? 0}
+Conferidos;${r.conferidos ?? 0}
+Pendentes;${r.pendentes ?? 0}
+Não Previstas;${r.naoPrevistas ?? 0}
+Percentual;${r.percentual ?? 0}%
+`;
+          csv += reportCategorySummaryCsv(exportRows);
+        }
+        if (opt.ops) { csv += `
+RESUMO POR OP
+OP;Encontradas;Percentual
+`; csv += (data.opSummary || []).map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`).join("\n") + "\n"; }
+        const cols = ["Código", "Categoria", "OP", "Peso", "Status", "Hora", "Localização"]; if (opt.obs) cols.push("Observação"); if (opt.photoLinks) cols.push("Foto");
+        csv += `
+BOBINAS
+${cols.join(";")}
+`;
+        csv += exportRows.map((i) => { const row = [i.code, reportCategoryLabel(i), i.op, i.peso, i.status, i.time || "", i.location || ""]; if (opt.obs) row.push(i.observation || ""); if (opt.photoLinks) row.push(i.fotoUrl || (i.hasPhoto ? "Sim" : "Não")); return row.join(";"); }).join("\n");
         return csv;
       }
       function cloudBuildTxtReport(data, opt) {
         const date = new Date(); const r = data.resumo || {};
-        let txt = `${data.title}\nData: ${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente: ${data.operador}\nTipo: ${data.tipo}\nID: ${data.id}\nStatus: ${data.status}\n${"=".repeat(95)}\n`;
-        if (opt.summary) txt += `\nTotal: ${r.total ?? 0}\nConferidos: ${r.conferidos ?? 0}\nPendentes: ${r.pendentes ?? 0}\nNão Previstas: ${r.naoPrevistas ?? 0}\nPercentual: ${r.percentual ?? 0}%\n`;
-        if (opt.ops) { txt += `\n${"=".repeat(95)}\nRESUMO POR OP\n${"=".repeat(95)}\n`; txt += (data.opSummary || []).map((op) => `OP: ${String(op.op || "-").padEnd(15)} | Encontradas: ${String(op.checked + "/" + op.total).padEnd(8)} | ${op.pct}%`).join("\n"); }
-        txt += `\n\n${"=".repeat(95)}\nBOBINAS\n${"=".repeat(95)}\n\n`;
-        txt += cloudFilterRowsForExport(data.rows, opt).map((i) => { let line = `${String(i.code).padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${String(i.status).padEnd(16)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)}`; if (opt.obs) line += `| Obs: ${(i.observation || "—").padEnd(20)}`; if (opt.photoLinks) line += `| ${i.fotoUrl ? "📸 " + i.fotoUrl : (i.hasPhoto ? "📸 Sim" : "—")}`; return line; }).join("\n");
+        const exportRows = cloudFilterRowsForExport(data.rows, opt);
+        let txt = `${data.title}
+Data: ${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}
+Conferente: ${data.operador}
+Tipo: ${data.tipo}
+ID: ${data.id}
+Status: ${data.status}
+${"=".repeat(95)}
+`;
+        if (opt.summary) {
+          txt += `
+Total: ${r.total ?? 0}
+Conferidos: ${r.conferidos ?? 0}
+Pendentes: ${r.pendentes ?? 0}
+Não Previstas: ${r.naoPrevistas ?? 0}
+Percentual: ${r.percentual ?? 0}%
+`;
+          txt += reportCategorySummaryTxt(exportRows);
+        }
+        if (opt.ops) { txt += `
+${"=".repeat(95)}
+RESUMO POR OP
+${"=".repeat(95)}
+`; txt += (data.opSummary || []).map((op) => `OP: ${String(op.op || "-").padEnd(15)} | Encontradas: ${String(op.checked + "/" + op.total).padEnd(8)} | ${op.pct}%`).join("\n"); }
+        txt += `
+
+${"=".repeat(95)}
+BOBINAS
+${"=".repeat(95)}
+
+`;
+        txt += exportRows.map((i) => { let line = `${String(i.code).padEnd(25)} | Cat: ${String(reportCategoryLabel(i)).padEnd(13)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${String(i.status).padEnd(16)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)}`; if (opt.obs) line += `| Obs: ${(i.observation || "—").padEnd(20)}`; if (opt.photoLinks) line += `| ${i.fotoUrl ? "📸 " + i.fotoUrl : (i.hasPhoto ? "📸 Sim" : "—")}`; return line; }).join("\n");
         return txt;
       }
       function cloudCloseExportModal() { document.getElementById("cloudExportModal")?.classList.remove("show"); }
@@ -2591,7 +2672,7 @@ let bobinaAlertCloudReady = false;
           </div>
           <div class="search-wrap" style="margin-bottom: 8px"><span class="si">🔍</span><input class="search-input" id="cloudDetailSearch" placeholder="Buscar código, OP, status ou observação..." oninput="cloudDetailSearch=this.value; cloudRenderDetailRows(); cloudRenderDetailOpSummary()" /></div>
           ${data.missingBobinas ? `<div style="margin:8px 0 0; padding:10px 12px; border-radius:10px; border:1px solid rgba(245,158,11,.28); background: rgba(245,158,11,.08); color: var(--accent-yellow); font-size:.82em; font-weight:700;">⚠️ Conferência antiga sem base de bobinas.</div>` : ""}
-          <div class="cloud-detail-scroll" style="margin-top: 8px"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>`;
+          <div class="cloud-detail-scroll" style="margin-top: 8px"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>Categoria</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>`;
           const detailSearchInput = document.getElementById("cloudDetailSearch"); if (detailSearchInput) detailSearchInput.value = cloudDetailSearch || "";
           cloudApplyDetailFilterUI();
           cloudRenderDetailOpSummary();
@@ -2611,7 +2692,7 @@ let bobinaAlertCloudReady = false;
         if (cloudDetailFilter === "extra") rows = rows.filter((r) => String(r.status).includes("Não Prevista"));
         if (includeSearch) {
           const q = String(cloudDetailSearch || "").trim().toLowerCase();
-          if (q) rows = rows.filter((r) => [r.code, r.op, r.peso, r.status, r.time, r.location, r.observation].join(" ").toLowerCase().includes(q));
+          if (q) rows = rows.filter((r) => [r.code, reportCategoryLabel(r), r.op, r.peso, r.status, r.time, r.location, r.observation].join(" ").toLowerCase().includes(q));
         }
         return rows;
       }
@@ -2695,9 +2776,9 @@ let bobinaAlertCloudReady = false;
         const tbody = document.getElementById("cloudDetailRowsBody"); if (!tbody) return;
         const rows = cloudRowsByDetailFilter(true);
         const limited = rows.slice(0, 700);
-        if (!limited.length) { tbody.innerHTML = '<tr><td colspan="9">Nenhum item encontrado</td></tr>'; return; }
-        tbody.innerHTML = limited.map((r, i) => `<tr><td>${i + 1}</td><td class="cc">${esc(r.code)}</td><td>${esc(r.op)}</td><td>${esc(r.peso)}</td><td>${esc(r.status)}</td><td>${esc(r.time || "")}</td><td>${esc(r.location || "")}</td><td>${esc(r.observation || "")}</td><td>${r.fotoUrl ? `<a href="${esc(r.fotoUrl)}" target="_blank" rel="noopener">📸</a>` : (r.hasPhoto ? "📸" : "—")}</td></tr>`).join("");
-        if (rows.length > 700) tbody.innerHTML += `<tr><td colspan="9">Mostrando 700 de ${rows.length} itens</td></tr>`;
+        if (!limited.length) { tbody.innerHTML = '<tr><td colspan="10">Nenhum item encontrado</td></tr>'; return; }
+        tbody.innerHTML = limited.map((r, i) => `<tr><td>${i + 1}</td><td class="cc">${esc(r.code)}</td><td>${esc(reportCategoryLabel(r))}</td><td>${esc(r.op)}</td><td>${esc(r.peso)}</td><td>${esc(r.status)}</td><td>${esc(r.time || "")}</td><td>${esc(r.location || "")}</td><td>${esc(r.observation || "")}</td><td>${r.fotoUrl ? `<a href="${esc(r.fotoUrl)}" target="_blank" rel="noopener">📸</a>` : (r.hasPhoto ? "📸" : "—")}</td></tr>`).join("");
+        if (rows.length > 700) tbody.innerHTML += `<tr><td colspan="10">Mostrando 700 de ${rows.length} itens</td></tr>`;
       }
       function cloudCloseConferenceDetail() {
         cloudClearDetailLiveListeners();
@@ -2727,16 +2808,57 @@ let bobinaAlertCloudReady = false;
         const exportItems = (cloudMergedReport.rows || []).filter((i) => { if (scope === "pending") return String(i.status).includes("Pendente"); if (scope === "extra") return String(i.status).includes("Não Prevista"); if (scope === "checked") return String(i.status).includes("Conferid") || String(i.status).includes("Manual"); return true; });
         const scopeLabel = scopeLabelMap[scope] || "completo"; const scopeTitle = scopeTitleMap[scope] || "COMPLETO"; const id = cloudMergedReport.id || "consolidado";
         if (fmt === "csv") {
-          let csv = `RELATÓRIO CONSOLIDADO (${scopeTitle})\nData;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferências;${(cloudMergedReport.ids || []).join(", ")}\n\nRESUMO\nTotal;${r.total ?? 0}\nConferidos;${r.conferidos ?? 0}\nPendentes;${r.pendentes ?? 0}\nNão Previstas;${r.naoPrevistas ?? 0}\nPercentual;${r.percentual ?? 0}%\n\nRESUMO POR OP\nOP;Encontradas;Percentual\n`;
+          let csv = `RELATÓRIO CONSOLIDADO (${scopeTitle})
+Data;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}
+Conferências;${(cloudMergedReport.ids || []).join(", ")}
+
+RESUMO
+Total;${r.total ?? 0}
+Conferidos;${r.conferidos ?? 0}
+Pendentes;${r.pendentes ?? 0}
+Não Previstas;${r.naoPrevistas ?? 0}
+Percentual;${r.percentual ?? 0}%
+`;
+          csv += reportCategorySummaryCsv(exportItems);
+          csv += `
+RESUMO POR OP
+OP;Encontradas;Percentual
+`;
           csv += opSummary.map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`).join("\n");
-          csv += `\n\nBOBINAS\nCódigo;OP;Peso;Status;Hora;Localização;Observação;Fotos\n`;
-          csv += exportItems.map((i) => `${i.code};${i.op};${i.peso};${i.status};${i.time || ""};${i.location || ""};${i.observation || ""};${i.hasPhoto ? "Sim" : "Não"}`).join("\n");
+          csv += `
+
+BOBINAS
+Código;Categoria;OP;Peso;Status;Hora;Localização;Observação;Fotos
+`;
+          csv += exportItems.map((i) => `${i.code};${reportCategoryLabel(i)};${i.op};${i.peso};${i.status};${i.time || ""};${i.location || ""};${i.observation || ""};${i.hasPhoto ? "Sim" : "Não"}`).join("\n");
           download(csv, `${scopeLabel}_${id}_${dateStr}.csv`, "text/csv");
         } else {
-          let txt = `RELATÓRIO CONSOLIDADO (${scopeTitle})\nData: ${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferências: ${(cloudMergedReport.ids || []).join(", ")}\n${"=".repeat(95)}\n\nTotal: ${r.total ?? 0}\nConferidos: ${r.conferidos ?? 0}\nPendentes: ${r.pendentes ?? 0}\nNão Previstas: ${r.naoPrevistas ?? 0}\nPercentual: ${r.percentual ?? 0}%\n\n${"=".repeat(95)}\nRESUMO POR OP\n${"=".repeat(95)}\n`;
+          let txt = `RELATÓRIO CONSOLIDADO (${scopeTitle})
+Data: ${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}
+Conferências: ${(cloudMergedReport.ids || []).join(", ")}
+${"=".repeat(95)}
+
+Total: ${r.total ?? 0}
+Conferidos: ${r.conferidos ?? 0}
+Pendentes: ${r.pendentes ?? 0}
+Não Previstas: ${r.naoPrevistas ?? 0}
+Percentual: ${r.percentual ?? 0}%
+`;
+          txt += reportCategorySummaryTxt(exportItems);
+          txt += `
+${"=".repeat(95)}
+RESUMO POR OP
+${"=".repeat(95)}
+`;
           txt += opSummary.map((op) => `OP: ${String(op.op || "-").padEnd(15)} | Encontradas: ${String(op.checked + "/" + op.total).padEnd(8)} | ${op.pct}%`).join("\n");
-          txt += `\n\n${"=".repeat(95)}\nBOBINAS\n${"=".repeat(95)}\n\n`;
-          txt += exportItems.map((i) => `${String(i.code).padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${String(i.status).padEnd(16)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.hasPhoto ? "📸 Sim" : "—"}`).join("\n");
+          txt += `
+
+${"=".repeat(95)}
+BOBINAS
+${"=".repeat(95)}
+
+`;
+          txt += exportItems.map((i) => `${String(i.code).padEnd(25)} | Cat: ${String(reportCategoryLabel(i)).padEnd(13)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${String(i.status).padEnd(16)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.hasPhoto ? "📸 Sim" : "—"}`).join("\n");
           download(txt, `${scopeLabel}_${id}_${dateStr}.txt`, "text/plain");
         }
         notify("Relatório consolidado exportado!");
@@ -2758,15 +2880,15 @@ let bobinaAlertCloudReady = false;
             if (st.includes("Não Prevista")) {
               if (!extraMap.has(code)) extraMap.set(code, r);
             } else {
-              if (!bobinaMap.has(code)) bobinaMap.set(code, { codigo: code, op: r.op || "-", peso: r.peso || "-" });
+              if (!bobinaMap.has(code)) bobinaMap.set(code, { codigo: code, op: r.op || "-", peso: r.peso || "-", categoriaKey: r.categoriaKey || "", categoria: r.categoria || "", categoriaInformada: !!r.categoriaInformada });
               if (st.includes("Conferid") || st.includes("Manual")) {
-                if (!checkedMap.has(code)) checkedMap.set(code, { codigo: code, manual: st.includes("Manual"), horaLocal: r.time || "", location: r.location || "", observation: r.observation || "", hasPhoto: !!r.hasPhoto, fotoUrl: r.fotoUrl || "" });
+                if (!checkedMap.has(code)) checkedMap.set(code, { codigo: code, manual: st.includes("Manual"), horaLocal: r.time || "", location: r.location || "", observation: r.observation || "", hasPhoto: !!r.hasPhoto, fotoUrl: r.fotoUrl || "", categoriaKey: r.categoriaKey || "", categoria: r.categoria || "", categoriaInformada: !!r.categoriaInformada });
               }
             }
           });
           const opSummary = cloudBuildOpSummaryFromMaps(bobinaMap, checkedMap); const rows = [];
-          Array.from(extraMap.keys()).sort().forEach((code) => { const x = extraMap.get(code) || {}; rows.push({ code, op: "-", peso: "-", status: "⚠️ Não prevista", time: x.time || x.horaLocal || "", location: x.location || "", observation: x.observation || "", hasPhoto: !!x.hasPhoto, fotoUrl: x.fotoUrl || "" }); });
-          Array.from(bobinaMap.keys()).sort((a, b) => String(a).localeCompare(String(b), "pt-BR", { numeric: true })).forEach((code) => { const b = bobinaMap.get(code) || {}; const l = checkedMap.get(code); rows.push({ code, op: b.op || "-", peso: b.peso || "-", status: l ? (l.manual ? "📸 Manual" : "✅ Conferida") : "⏳ Pendente", time: l?.horaLocal || "", location: l?.location || "", observation: l?.observation || "", hasPhoto: !!l?.hasPhoto, fotoUrl: l?.fotoUrl || "" }); });
+          Array.from(extraMap.keys()).sort().forEach((code) => { const x = extraMap.get(code) || {}; rows.push({ code, op: "-", peso: "-", categoriaKey: x.categoriaKey || "", categoria: x.categoria || "", categoriaInformada: !!x.categoriaInformada, status: "⚠️ Não prevista", time: x.time || x.horaLocal || "", location: x.location || "", observation: x.observation || "", hasPhoto: !!x.hasPhoto, fotoUrl: x.fotoUrl || "" }); });
+          Array.from(bobinaMap.keys()).sort((a, b) => String(a).localeCompare(String(b), "pt-BR", { numeric: true })).forEach((code) => { const b = bobinaMap.get(code) || {}; const l = checkedMap.get(code); const catSource = l || b; rows.push({ code, op: b.op || "-", peso: b.peso || "-", categoriaKey: catSource.categoriaKey || "", categoria: catSource.categoria || "", categoriaInformada: !!catSource.categoriaInformada, status: l ? (l.manual ? "📸 Manual" : "✅ Conferida") : "⏳ Pendente", time: l?.horaLocal || "", location: l?.location || "", observation: l?.observation || "", hasPhoto: !!l?.hasPhoto, fotoUrl: l?.fotoUrl || "" }); });
           const total = bobinaMap.size, conferidos = checkedMap.size, naoPrev = extraMap.size, pendentes = Math.max(0, total - conferidos), pct = total > 0 ? ((conferidos / total) * 100).toFixed(1) : "0.0";
           cloudMergedReport = { id: `consolidado_${new Date().toISOString().slice(0, 10)}_${ids.length}_conferencias`, title: `Consolidado de ${ids.length} conferências`, subtitle: confs.map((c) => `${c.operador || "-"} • ${c.tipo || "-"}`).join(" | "), ids, rows, opSummary, resumo: { total, conferidos, pendentes, naoPrevistas: naoPrev, percentual: pct } };
           cloudRenderMergedReport(); cloudSetStatus("ok", "☁️ Conferências juntadas"); notify("Conferências juntadas para visualização/exportação.");
@@ -2787,7 +2909,7 @@ let bobinaAlertCloudReady = false;
         <div class="op-summary-list" id="cloudDetailOpSummary" style="max-height:220px;overflow:auto;padding-right:4px"></div>
         <div class="cloud-detail-toolbar"><div class="cloud-detail-section-title" style="margin:0">📋 Bobinas e leituras</div><button class="cloud-report-btn" onclick="cloudShowMergedExportModal()">Exportar consolidado</button></div>
         <div class="search-wrap" style="margin-bottom: 8px"><span class="si">🔍</span><input class="search-input" id="cloudDetailSearch" placeholder="Buscar código, OP, status ou observação..." oninput="cloudDetailSearch=this.value; cloudRenderDetailRows(); cloudRenderDetailOpSummary()" /></div>
-        <div class="cloud-detail-scroll" style="margin-top: 8px"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>`;
+        <div class="cloud-detail-scroll" style="margin-top: 8px"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>Categoria</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>`;
         cloudApplyDetailFilterUI();
         cloudRenderDetailOpSummary();
         cloudRenderDetailRows();
@@ -4363,17 +4485,17 @@ if (S.collectorMode) {
         let items = getReportItems(); if (S.filter !== "all") items = items.filter((i) => i.status === S.filter);
         if (S.rptSearch) {
           const q = S.rptSearch.toLowerCase();
-          items = items.filter((i) => [i.code, i.op, i.peso, reportStatusText(i), i.time, i.location, i.observation].some((v) => String(v || "").toLowerCase().includes(q)));
+          items = items.filter((i) => [i.code, reportCategoryLabel(i), i.op, i.peso, reportStatusText(i), i.time, i.location, i.observation].some((v) => String(v || "").toLowerCase().includes(q)));
         }
         const counter = document.getElementById("reportDetailResultCount"); if (counter) counter.textContent = `${items.length} ${items.length === 1 ? "item" : "itens"}`;
         const d = items.slice(0, 500);
         tbody.innerHTML = d.map((it, i) => {
           const loc = it.status === "extra" ? ("📌 " + esc(it.location || "-")) : (it.location ? esc(it.location) : "—");
           const photoCode = esc(it.code).replace(/'/g, "&#39;");
-          return `<tr><td>${i + 1}</td><td class="cc">${esc(it.code)}</td><td>${esc(it.op || "-")}</td><td>${esc(it.peso || "-")}</td><td>${reportStatusBadge(it)}</td><td>${esc(it.time)}</td><td>${loc}</td><td>${it.observation ? esc(it.observation) : "—"}</td><td>${it.hasPhoto ? `<button class="icon-btn" onclick="showPhotoModal('${photoCode}')">📸</button>` : "—"}</td></tr>`;
+          return `<tr><td>${i + 1}</td><td class="cc">${esc(it.code)}</td><td>${esc(reportCategoryLabel(it))}</td><td>${esc(it.op || "-")}</td><td>${esc(it.peso || "-")}</td><td>${reportStatusBadge(it)}</td><td>${esc(it.time)}</td><td>${loc}</td><td>${it.observation ? esc(it.observation) : "—"}</td><td>${it.hasPhoto ? `<button class="icon-btn" onclick="showPhotoModal('${photoCode}')">📸</button>` : "—"}</td></tr>`;
         }).join("");
-        if (items.length > 500) tbody.innerHTML += `<tr><td colspan="9">... +${items.length - 500}</td></tr>`;
-        if (!items.length) tbody.innerHTML = '<tr><td colspan="9">Nenhum item</td></tr>';
+        if (items.length > 500) tbody.innerHTML += `<tr><td colspan="10">... +${items.length - 500}</td></tr>`;
+        if (!items.length) tbody.innerHTML = '<tr><td colspan="10">Nenhum item</td></tr>';
       }
       function filterRpt(f, btn) {
         S.filter = f;
@@ -4411,19 +4533,59 @@ if (S.collectorMode) {
         else rptSearch(v);
       }
       function exportRpt(fmt) {
-        const items = getReportItems().map((i) => ({ code: i.code, op: i.op || "-", peso: i.peso || "-", status: i.status === "checked" ? (i.manual ? "Conferido Manual" : "Conferido") : i.status === "pending" ? "Pendente" : "Não Prevista", time: i.time === "-" ? "" : i.time, location: i.location === "-" ? "" : i.location, observation: i.observation || "", hasPhoto: i.hasPhoto }));
+        const items = getReportItems().map((i) => ({ code: i.code, categoriaKey: i.categoriaKey || "", categoria: reportCategoryLabel(i), op: i.op || "-", peso: i.peso || "-", status: i.status === "checked" ? (i.manual ? "Conferido Manual" : "Conferido") : i.status === "pending" ? "Pendente" : "Não Prevista", time: i.time === "-" ? "" : i.time, location: i.location === "-" ? "" : i.location, observation: i.observation || "", hasPhoto: i.hasPhoto }));
         const total = S.db.length, chk = S.checked.size, pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0, date = new Date(), tipo = S.confType || "-", conferente = S.checkerName || "-", extras = [...new Set(S.extras)].length, opSummary = getOpSummaryItems();
         if (fmt === "csv") {
-          let csv = `RELATÓRIO DE CONFERÊNCIA\nData;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente;${conferente}\nTipo de Conferência;${tipo}\n\nRESUMO\nTotal;${total}\nConferidos;${chk}\nPendentes;${total - chk}\nNão Previstas;${extras}\nPercentual;${pct}%\n\nRESUMO POR OP\nOP;Encontradas;Percentual\n`;
+          let csv = `RELATÓRIO DE CONFERÊNCIA
+Data;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}
+Conferente;${conferente}
+Tipo de Conferência;${tipo}
+
+RESUMO
+Total;${total}
+Conferidos;${chk}
+Pendentes;${total - chk}
+Não Previstas;${extras}
+Percentual;${pct}%
+`;
+          csv += reportCategorySummaryCsv(items);
+          csv += `
+RESUMO POR OP
+OP;Encontradas;Percentual
+`;
           csv += opSummary.map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`).join("\n");
-          csv += `\n\nBOBINAS\nCódigo;OP;Peso;Status;Hora;Localização;Observação;Fotos\n`;
-          csv += items.map((i) => `${i.code};${i.op};${i.peso};${i.status};${i.time};${i.location};${i.observation};${i.hasPhoto ? "Combinada etiqueta+bobina" : "Não"}`).join("\n");
+          csv += `
+
+BOBINAS
+Código;Categoria;OP;Peso;Status;Hora;Localização;Observação;Fotos
+`;
+          csv += items.map((i) => `${i.code};${i.categoria};${i.op};${i.peso};${i.status};${i.time};${i.location};${i.observation};${i.hasPhoto ? "Combinada etiqueta+bobina" : "Não"}`).join("\n");
           download(csv, `conferencia_${date.toISOString().slice(0, 10)}.csv`, "text/csv");
         } else {
-          let txt = `RELATÓRIO DE CONFERÊNCIA\nData: ${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}\nConferente: ${conferente}\nTipo de Conferência: ${tipo}\n${"=".repeat(95)}\nTotal: ${total}\nConferidos: ${chk}\nPendentes: ${total - chk}\nNão Previstas: ${extras}\nPercentual: ${pct}%\n${"=".repeat(95)}\nRESUMO POR OP\n${"=".repeat(95)}\n`;
+          let txt = `RELATÓRIO DE CONFERÊNCIA
+Data: ${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}
+Conferente: ${conferente}
+Tipo de Conferência: ${tipo}
+${"=".repeat(95)}
+Total: ${total}
+Conferidos: ${chk}
+Pendentes: ${total - chk}
+Não Previstas: ${extras}
+Percentual: ${pct}%
+`;
+          txt += reportCategorySummaryTxt(items);
+          txt += `
+${"=".repeat(95)}
+RESUMO POR OP
+${"=".repeat(95)}
+`;
           txt += opSummary.map((op) => `OP: ${String(op.op || "-").padEnd(15)} | Encontradas: ${String(op.checked + "/" + op.total).padEnd(8)} | ${op.pct}%`).join("\n");
-          txt += `\n${"=".repeat(95)}\nBOBINAS\n${"=".repeat(95)}\n`;
-          txt += items.map((i) => `${i.code.padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${i.status.padEnd(15)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.hasPhoto ? "📸 Combinada" : "—"}`).join("\n");
+          txt += `
+${"=".repeat(95)}
+BOBINAS
+${"=".repeat(95)}
+`;
+          txt += items.map((i) => `${i.code.padEnd(25)} | Cat: ${String(i.categoria || "-").padEnd(13)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${i.status.padEnd(15)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.hasPhoto ? "📸 Combinada" : "—"}`).join("\n");
           download(txt, `conferencia_${date.toISOString().slice(0, 10)}.txt`, "text/plain");
         }
         notify("Relatório exportado!");
