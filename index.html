@@ -2162,6 +2162,7 @@ let bobinaAlertCloudReady = false;
             status,
             situacao: reportSituacao(i),
             lote: i.lote || "",
+            tipo: i.tipo || "",
             manual: !!i.manual,
             time: i.time === "-" ? "" : (i.time || ""),
             location: i.location === "-" ? "" : (i.location || ""),
@@ -2422,23 +2423,29 @@ let bobinaAlertCloudReady = false;
         });
         bobinasSource.slice().sort((a, b) => String(a.codigo || a.id).localeCompare(String(b.codigo || b.id), "pt-BR", { numeric: true })).forEach((b) => {
           const code = String(b.codigo || b.id); const l = leiturasMap.get(code); const checked = !!(l && l.status !== "not-found");
-          rows.push({ code, op: b.op || "-", peso: b.peso || "-", situacao: normalizeSituacaoValue(b.situacao), lote: String(b.lote || b.referenciaLote || ""), status: checked ? (l.manual ? "Conferido Manual" : "Conferido") : "Pendente", time: checked ? (l.horaLocal || "") : "", location: l?.location || "", observation: l?.observation || "", hasPhoto: !!(l?.hasPhoto || fotoMap.get(code)), fotoUrl: l?.fotoUrl || fotoMap.get(code)?.url || "" });
+          rows.push({ code, op: b.op || "-", peso: b.peso || "-", situacao: normalizeSituacaoValue(b.situacao), lote: String(b.lote || b.referenciaLote || ""), tipo: String(b.tipo || b.tipoBobina || ""), status: checked ? (l.manual ? "Conferido Manual" : "Conferido") : "Pendente", time: checked ? (l.horaLocal || "") : "", location: l?.location || "", observation: l?.observation || "", hasPhoto: !!(l?.hasPhoto || fotoMap.get(code)), fotoUrl: l?.fotoUrl || fotoMap.get(code)?.url || "" });
         });
         return { id: conf.id, title: "RELATÓRIO DE CONFERÊNCIA - NUVEM", operador: conf.operador || "-", tipo: conf.tipo || "-", data: conf.data || cloudParseSessionId(conf.id)?.date || "", status: conf.status || "-", resumo: { total, conferidos: chk, pendentes: total - chk, naoPrevistas: extras, naoAprovadas: rows.filter(reportIsNaoAprovada).length, percentual: pct }, opSummary, rows, confIds: [conf.id], missingBobinas: !bobinasSource.length && total > 0 };
       }
       function cloudFilterRowsForExport(rows, opt) {
         return (rows || []).filter((i) => {
           const st = String(i.status || "");
-          if (st === "Pendente") return opt.pending;
-          if (st === "Não Prevista" || st.includes("Não prevista")) return opt.extra;
-          if (st.startsWith("Conferido") || st.includes("Conferid") || st.includes("Manual")) return opt.checked;
-          return true;
+          let base = true;
+          if (st === "Pendente") base = !!opt.pending;
+          else if (st === "Não Prevista" || st.includes("Não prevista")) base = !!opt.extra;
+          else if (st.startsWith("Conferido") || st.includes("Conferid") || st.includes("Manual")) base = !!opt.checked;
+          if (reportIsNaoAprovada(i)) return !!opt.naoAprov || base;
+          return base;
         });
       }
       function reportCategoryKey(row = {}) {
         return normalizedCategoryKey(row.categoriaKey || row.categoryKey || row.categoria || row.category || "");
       }
       function reportCategoryLabel(row = {}) {
+        if (reportIsNaoAprovada(row)) return "Não Aprovada";
+        const tipo = normalizeCategoryText(row.tipo || row.tipoBobina || "");
+        if (tipo.startsWith("IMPRESS")) return "Impressa";
+        if (tipo.startsWith("LAMINAD")) return "Laminada";
         const key = reportCategoryKey(row);
         return key ? coilCategoryLabel(key) : "Sem categoria";
       }
@@ -2453,7 +2460,7 @@ let bobinaAlertCloudReady = false;
           else if (st.includes("Não Prevista") || st.includes("Não prevista")) item.naoPrevistas++;
           else if (st.includes("Conferid") || st.includes("Manual")) item.conferidos++;
         });
-        const order = { "Películas": 1, "Extrusão": 2, "Sem categoria": 3 };
+        const order = { "Não Aprovada": 0, "Películas": 1, "Extrusão": 2, "Impressa": 3, "Laminada": 4, "Sem categoria": 5 };
         return Array.from(map.values()).sort((a, b) => (order[a.categoria] || 99) - (order[b.categoria] || 99) || a.categoria.localeCompare(b.categoria, "pt-BR"));
       }
       function reportCategorySummaryCsv(rows = []) {
@@ -2539,7 +2546,7 @@ ${"=".repeat(95)}
       }
       function cloudCloseExportModal() { document.getElementById("cloudExportModal")?.classList.remove("show"); }
       function cloudGetExportOptions() {
-        return { csv: !!document.getElementById("exFmtCsv")?.checked, txt: !!document.getElementById("exFmtTxt")?.checked, zip: !!document.getElementById("exFmtZip")?.checked, summary: !!document.getElementById("exSummary")?.checked, ops: !!document.getElementById("exOps")?.checked, checked: !!document.getElementById("exChecked")?.checked, pending: !!document.getElementById("exPending")?.checked, extra: !!document.getElementById("exExtra")?.checked, obs: !!document.getElementById("exObs")?.checked, photoLinks: !!document.getElementById("exPhotoLinks")?.checked, photosZip: !!document.getElementById("exPhotosZip")?.checked };
+        return { csv: !!document.getElementById("exFmtCsv")?.checked, txt: !!document.getElementById("exFmtTxt")?.checked, zip: !!document.getElementById("exFmtZip")?.checked, summary: !!document.getElementById("exSummary")?.checked, ops: !!document.getElementById("exOps")?.checked, checked: !!document.getElementById("exChecked")?.checked, pending: !!document.getElementById("exPending")?.checked, extra: !!document.getElementById("exExtra")?.checked, naoAprov: !!document.getElementById("exNaoAprov")?.checked, obs: !!document.getElementById("exObs")?.checked, photoLinks: !!document.getElementById("exPhotoLinks")?.checked, photosZip: !!document.getElementById("exPhotosZip")?.checked };
       }
       function cloudShowExportModal(confId) {
         let modal = document.getElementById("cloudExportModal");
@@ -2560,6 +2567,7 @@ ${"=".repeat(95)}
               <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px"><input type="checkbox" id="exChecked" checked style="width:18px;height:18px;accent-color:var(--accent-blue)"> Bobinas conferidas</label>
               <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px"><input type="checkbox" id="exPending" checked style="width:18px;height:18px;accent-color:var(--accent-blue)"> Bobinas pendentes</label>
               <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px"><input type="checkbox" id="exExtra" checked style="width:18px;height:18px;accent-color:var(--accent-blue)"> Bobinas não previstas</label>
+              <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px"><input type="checkbox" id="exNaoAprov" checked style="width:18px;height:18px;accent-color:var(--accent-blue)"> Bobinas não aprovadas</label>
               <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px"><input type="checkbox" id="exObs" checked style="width:18px;height:18px;accent-color:var(--accent-blue)"> Observações</label>
               <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px"><input type="checkbox" id="exPhotoLinks" checked style="width:18px;height:18px;accent-color:var(--accent-blue)"> Links das fotos</label>
               <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px"><input type="checkbox" id="exPhotosZip" onchange="document.getElementById('exFmtZip').checked = this.checked || document.getElementById('exFmtZip').checked" style="width:18px;height:18px;accent-color:var(--accent-blue)"> Fotos no ZIP</label>
@@ -2615,9 +2623,10 @@ ${"=".repeat(95)}
           cloudSetStatus("sync", "Gerando relatório...");
           const data = await cloudBuildExportData(confId);
           const dateStr = new Date().toISOString().slice(0, 10);
-          const scopeLabelMap = { all: "completo", pending: "pendentes", extra: "nao_previstas", checked: "conferidas" };
-          const scopeTitleMap = { all: "COMPLETO", pending: "PENDENTES", extra: "NÃO PREVISTAS", checked: "CONFERIDAS" };
+          const scopeLabelMap = { all: "completo", pending: "pendentes", extra: "nao_previstas", checked: "conferidas", naoaprov: "nao_aprovadas" };
+          const scopeTitleMap = { all: "COMPLETO", pending: "PENDENTES", extra: "NÃO PREVISTAS", checked: "CONFERIDAS", naoaprov: "NÃO APROVADAS" };
           const exportItems = (data.rows || []).filter((i) => {
+            if (scope === "naoaprov") return reportIsNaoAprovada(i);
             if (scope === "pending") return i.status === "Pendente";
             if (scope === "extra") return i.status === "Não Prevista";
             if (scope === "checked") return i.status.startsWith("Conferido");
@@ -2824,9 +2833,9 @@ ${"=".repeat(95)}
       function cloudExportMergedReport(fmt, scope = "all") {
         if (!cloudMergedReport) { notify("Nenhum consolidado aberto para exportar.", "warning"); return; }
         const date = new Date(); const dateStr = date.toISOString().slice(0, 10); const r = cloudMergedReport.resumo || {}; const opSummary = cloudMergedReport.opSummary || [];
-        const scopeLabelMap = { all: "completo", pending: "pendentes", extra: "nao_previstas", checked: "conferidas" };
-        const scopeTitleMap = { all: "COMPLETO", pending: "PENDENTES", extra: "NÃO PREVISTAS", checked: "CONFERIDAS" };
-        const exportItems = (cloudMergedReport.rows || []).filter((i) => { if (scope === "pending") return String(i.status).includes("Pendente"); if (scope === "extra") return String(i.status).includes("Não Prevista"); if (scope === "checked") return String(i.status).includes("Conferid") || String(i.status).includes("Manual"); return true; });
+        const scopeLabelMap = { all: "completo", pending: "pendentes", extra: "nao_previstas", checked: "conferidas", naoaprov: "nao_aprovadas" };
+        const scopeTitleMap = { all: "COMPLETO", pending: "PENDENTES", extra: "NÃO PREVISTAS", checked: "CONFERIDAS", naoaprov: "NÃO APROVADAS" };
+        const exportItems = (cloudMergedReport.rows || []).filter((i) => { if (scope === "naoaprov") return reportIsNaoAprovada(i); if (scope === "pending") return String(i.status).includes("Pendente"); if (scope === "extra") return String(i.status).includes("Não Prevista"); if (scope === "checked") return String(i.status).includes("Conferid") || String(i.status).includes("Manual"); return true; });
         const scopeLabel = scopeLabelMap[scope] || "completo"; const scopeTitle = scopeTitleMap[scope] || "COMPLETO"; const id = cloudMergedReport.id || "consolidado";
         if (fmt === "csv") {
           let csv = `RELATÓRIO CONSOLIDADO (${scopeTitle})
@@ -2903,7 +2912,7 @@ ${"=".repeat(95)}
             if (st.includes("Não Prevista")) {
               if (!extraMap.has(code)) extraMap.set(code, r);
             } else {
-              if (!bobinaMap.has(code)) bobinaMap.set(code, { codigo: code, op: r.op || "-", peso: r.peso || "-", situacao: reportSituacao(r), lote: r.lote || r.referenciaLote || "", categoriaKey: r.categoriaKey || "", categoria: r.categoria || "", categoriaInformada: !!r.categoriaInformada });
+              if (!bobinaMap.has(code)) bobinaMap.set(code, { codigo: code, op: r.op || "-", peso: r.peso || "-", situacao: reportSituacao(r), lote: r.lote || r.referenciaLote || "", tipo: r.tipo || "", categoriaKey: r.categoriaKey || "", categoria: r.categoria || "", categoriaInformada: !!r.categoriaInformada });
               if (st.includes("Conferid") || st.includes("Manual")) {
                 if (!checkedMap.has(code)) checkedMap.set(code, { codigo: code, manual: st.includes("Manual"), horaLocal: r.time || "", location: r.location || "", observation: r.observation || "", hasPhoto: !!r.hasPhoto, fotoUrl: r.fotoUrl || "", categoriaKey: r.categoriaKey || "", categoria: r.categoria || "", categoriaInformada: !!r.categoriaInformada });
               }
@@ -2911,7 +2920,7 @@ ${"=".repeat(95)}
           });
           const opSummary = cloudBuildOpSummaryFromMaps(bobinaMap, checkedMap); const rows = [];
           Array.from(extraMap.keys()).sort().forEach((code) => { const x = extraMap.get(code) || {}; rows.push({ code, op: "-", peso: "-", situacao: "", lote: x.lote || "", categoriaKey: x.categoriaKey || "", categoria: x.categoria || "", categoriaInformada: !!x.categoriaInformada, status: "⚠️ Não prevista", time: x.time || x.horaLocal || "", location: x.location || "", observation: x.observation || "", hasPhoto: !!x.hasPhoto, fotoUrl: x.fotoUrl || "" }); });
-          Array.from(bobinaMap.keys()).sort((a, b) => String(a).localeCompare(String(b), "pt-BR", { numeric: true })).forEach((code) => { const b = bobinaMap.get(code) || {}; const l = checkedMap.get(code); const catSource = l || b; rows.push({ code, op: b.op || "-", peso: b.peso || "-", situacao: reportSituacao(b), lote: b.lote || "", categoriaKey: catSource.categoriaKey || "", categoria: catSource.categoria || "", categoriaInformada: !!catSource.categoriaInformada, status: l ? (l.manual ? "📸 Manual" : "✅ Conferida") : "⏳ Pendente", time: l?.horaLocal || "", location: l?.location || "", observation: l?.observation || "", hasPhoto: !!l?.hasPhoto, fotoUrl: l?.fotoUrl || "" }); });
+          Array.from(bobinaMap.keys()).sort((a, b) => String(a).localeCompare(String(b), "pt-BR", { numeric: true })).forEach((code) => { const b = bobinaMap.get(code) || {}; const l = checkedMap.get(code); const catSource = l || b; rows.push({ code, op: b.op || "-", peso: b.peso || "-", situacao: reportSituacao(b), lote: b.lote || "", tipo: b.tipo || "", categoriaKey: catSource.categoriaKey || "", categoria: catSource.categoria || "", categoriaInformada: !!catSource.categoriaInformada, status: l ? (l.manual ? "📸 Manual" : "✅ Conferida") : "⏳ Pendente", time: l?.horaLocal || "", location: l?.location || "", observation: l?.observation || "", hasPhoto: !!l?.hasPhoto, fotoUrl: l?.fotoUrl || "" }); });
           const total = bobinaMap.size, conferidos = checkedMap.size, naoPrev = extraMap.size, pendentes = Math.max(0, total - conferidos), pct = total > 0 ? ((conferidos / total) * 100).toFixed(1) : "0.0";
           cloudMergedReport = { id: `consolidado_${new Date().toISOString().slice(0, 10)}_${ids.length}_conferencias`, title: `Consolidado de ${ids.length} conferências`, subtitle: confs.map((c) => `${c.operador || "-"} • ${c.tipo || "-"}`).join(" | "), ids, rows, opSummary, resumo: { total, conferidos, pendentes, naoPrevistas: naoPrev, naoAprovadas: rows.filter(reportIsNaoAprovada).length, percentual: pct } };
           cloudRenderMergedReport(); cloudSetStatus("ok", "☁️ Conferências juntadas"); notify("Conferências juntadas para visualização/exportação.");
@@ -4469,7 +4478,8 @@ if (S.collectorMode) {
           const categoriaKey = coilCategoryForCode(code, scan);
           const situacao = coilSituacaoForCode(code) || normalizeSituacaoValue(scan?.situacao);
           const lote = (S.meta && S.meta[code] && S.meta[code].referenciaLote) || "";
-          items.push({ code, op: getOP(code), peso: getPeso(code), status: chk ? "checked" : "pending", manual: !!scan?.manual, time: scan ? scan.time : "-", location: scan?.location || "", observation: scan?.observation || "", hasPhoto: !!scan?.hasPhoto, categoriaKey, categoria: coilCategoryLabel(categoriaKey), categoriaInformada: !!scan?.categoriaInformada, situacao, lote });
+          const tipo = (S.meta && S.meta[code] && S.meta[code].tipoBobina) || "";
+          items.push({ code, op: getOP(code), peso: getPeso(code), status: chk ? "checked" : "pending", manual: !!scan?.manual, time: scan ? scan.time : "-", location: scan?.location || "", observation: scan?.observation || "", hasPhoto: !!scan?.hasPhoto, categoriaKey, categoria: coilCategoryLabel(categoriaKey), categoriaInformada: !!scan?.categoriaInformada, situacao, lote, tipo });
         });
         return items;
       }
@@ -5257,5 +5267,5 @@ document.addEventListener("keydown", (e) => {
 
 init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a5139afdca5e1446',t:'MTc5MzEyNDA4MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a5145ff62c2e8039',t:'MTc5MzEzMjE0OA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
