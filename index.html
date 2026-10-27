@@ -312,6 +312,10 @@
       .bobina-alert-found { color: var(--accent-green); font-weight: 900; margin-top: 7px; font-size: .8em; }
       .bobina-alert-flash { position: fixed; inset: 0; z-index: 9000; display: none; align-items: center; justify-content: center; background: rgba(220, 38, 38, 0.96); color: #fff; text-align: center; padding: 20px; animation: alertBlink .45s linear infinite; }
       .bobina-alert-flash.show { display: flex; }
+      #naoAprovadaModal { z-index: 6200; }
+      .sit-n { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; padding: 2px 9px; border-radius: 999px; background: var(--accent-red); color: #fff; font-weight: 900; font-size: 0.95em; box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4); }
+      .dtbl tbody tr.row-n td { background: #fff1f2; }
+      .stats.stats-auto { grid-template-columns: repeat(auto-fit, minmax(108px, 1fr)); }
       .bobina-alert-flash-main { font-size: clamp(2rem, 12vw, 5rem); font-weight: 1000; line-height: 1; text-shadow: 0 8px 24px rgba(0,0,0,.28); }
       .bobina-alert-flash-sub { margin-top: 14px; font-family: "SF Mono", Consolas, monospace; font-size: clamp(1rem, 5vw, 2rem); font-weight: 900; word-break: break-all; }
       @keyframes alertBlink { 0%,100% { filter: brightness(1); } 50% { filter: brightness(.55); } }
@@ -522,7 +526,7 @@
       .report-panel-content { flex: 1 1 auto; overflow: auto; padding: 12px 12px calc(14px + env(safe-area-inset-bottom, 0px)); -webkit-overflow-scrolling: touch; }
       .report-panel-view { display: none; }
       .report-panel-view.active { display: block; }
-      .report-panel-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+      .report-panel-metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 12px; }
       .report-mini-stat { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 9px 8px; text-align: center; box-shadow: var(--shadow); }
       .report-mini-stat strong { display: block; color: var(--text-primary); font-size: 1.05em; }
       .report-mini-stat span { display: block; color: var(--text-secondary); font-size: 0.68em; font-weight: 800; margin-top: 2px; }
@@ -653,7 +657,7 @@
         overflow-wrap: anywhere;
         vertical-align: top;
       }
-      @media (min-width: 769px) { .cloud-detail-stats { grid-template-columns: repeat(4, 1fr); } }
+      @media (min-width: 769px) { .cloud-detail-stats { grid-template-columns: repeat(5, 1fr); } }
       @media (max-width: 640px) {
         #cloudDetailBox .dtbl thead th,
         #cloudDetailBox .dtbl tbody td,
@@ -823,11 +827,12 @@
             <div>👤 Conferente: <strong id="rCheckerName" style="color: var(--text-primary)">—</strong></div>
             <div>📋 Tipo de conferência: <strong id="rConferenceType" style="color: var(--text-primary)">—</strong></div>
           </div>
-          <div class="stats" style="margin-top: 10px">
+          <div class="stats stats-auto" style="margin-top: 10px">
             <div class="stat blue"><div class="s-val" id="rTotal">0</div><div class="s-lbl">Total</div></div>
             <div class="stat green"><div class="s-val" id="rChecked">0</div><div class="s-lbl">Conferidos ✅</div></div>
             <div class="stat yellow"><div class="s-val" id="rPending">0</div><div class="s-lbl">Pendentes ⏳</div></div>
             <div class="stat red"><div class="s-val" id="rExtra">0</div><div class="s-lbl">Não Previstas ⚠️</div></div>
+            <div class="stat red"><div class="s-val" id="rNaoAprov">0</div><div class="s-lbl">Não Aprovadas 🔴</div></div>
           </div>
           <div class="prog-wrap" style="margin-top: 10px"><div class="prog-head"><span>Conferência Geral</span><span class="pct" id="rPct">0%</span></div><div class="prog-bar"><div class="prog-fill" id="rFill" style="width: 0%"></div></div></div>
         </div>
@@ -890,6 +895,7 @@
               <button class="fbtn" data-filter="checked" onclick="filterRpt('checked', this)">✅ Conferidos</button>
               <button class="fbtn" data-filter="pending" onclick="filterRpt('pending', this)">⏳ Pendentes</button>
               <button class="fbtn" data-filter="extra" onclick="filterRpt('extra', this)">⚠️ Extras</button>
+              <button class="fbtn" data-filter="naoaprov" onclick="filterRpt('naoaprov', this)">🔴 Não Aprovadas</button>
             </div>
           </div>
           <div class="report-panel-content">
@@ -899,6 +905,7 @@
                 <div class="report-mini-stat"><strong id="reportPanelOpsFound">0</strong><span>Encontradas</span></div>
                 <div class="report-mini-stat"><strong id="reportPanelOpsPending">0</strong><span>Pendentes</span></div>
                 <div class="report-mini-stat"><strong id="reportPanelOpsPct">0%</strong><span>Geral</span></div>
+                <div class="report-mini-stat"><strong id="reportPanelNaoAprov" style="color: var(--accent-red)">0</strong><span>Não Aprovadas</span></div>
               </div>
               <div class="op-summary-scroll report-op-summary-scroll"><div id="opSummaryBody"></div></div>
             </div>
@@ -906,7 +913,7 @@
               <div class="report-result-count" id="reportDetailResultCount">0 itens</div>
               <div class="tbl-wrap report-table-wrap">
                 <table class="dtbl report-detail-table">
-                  <thead><tr><th>#</th><th>Código</th><th>Categoria</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Observação</th><th>📸</th></tr></thead>
+                  <thead><tr><th>#</th><th>Código</th><th>Categoria</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Situação</th><th>Observação</th><th>📸</th></tr></thead>
                   <tbody id="rptBody"></tbody>
                 </table>
               </div>
@@ -1048,9 +1055,11 @@
     <div class="modal-bg" id="confTypeModal"><div class="modal" style="max-height: calc(100dvh - 32px); overflow: auto"><h2>📋 Tipo de Conferência</h2><p style="margin-bottom: 10px">Marque o que deve aparecer na conferência:</p><div style="display: grid; grid-template-columns: 1fr; gap: 8px">
       <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="bases_todas" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">Bases - Todas</span><small style="color: var(--text-muted)">Etapa 20</small></label>
       <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="bases_peliculas" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">Bases - Películas</span><small style="color: var(--text-muted)">BOPP/PP/PET</small></label>
-      <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="capas" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">Capas</span><small style="color: var(--text-muted)">30/31</small></label>
-      <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="refiladeira" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">Refiladeira</span><small style="color: var(--text-muted)">40-47</small></label>
-      <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="cs" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">C&S</span><small style="color: var(--text-muted)">50-55</small></label>
+      <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="capas_todas" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">Capas - Todas</span><small style="color: var(--text-muted)">Etapa 30-39</small></label>
+      <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="capas_peliculas" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">Capas - Películas</span><small style="color: var(--text-muted)">Capa BOPP/PP</small></label>
+      <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="refiladeira" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">Refiladeira - Todos</span><small style="color: var(--text-muted)">Etapa 40-49</small></label>
+      <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="refiladeira_fundo" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">Refiladeira - Fundo</span><small style="color: var(--text-muted)">40-49 · sem tipo/lote</small></label>
+      <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="cs" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">C&S</span><small style="color: var(--text-muted)">Etapa 50-59</small></label>
       <div class="btn-group" style="margin-top: 4px"><button class="btn btn-outline" onclick="setAllConferenceChecks(true)">Marcar todos</button><button class="btn btn-outline" onclick="setAllConferenceChecks(false)">Limpar</button></div>
       <button class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px 14px" onclick="importSelectedConferenceTypes()">📥 Importar selecionados</button>
       <button class="btn btn-outline" style="width: 100%; justify-content: center; padding: 12px 14px" onclick="closeConferenceTypeModal()">Cancelar</button>
@@ -1081,6 +1090,8 @@
 
     <div class="modal-bg" id="locModal"><div class="modal" style="border-color: var(--accent-red)"><h2 style="color: var(--accent-red)">⚠️ Bobina Não Prevista</h2><div class="loc-code-display" id="locCodeMain"></div><p id="locModalDesc">Informe a localização desta bobina:</p><div class="extra-category-box" id="locExtraCategoryBox"><div class="extra-category-label">🏷️ Tipo da base da bobina não prevista:</div><div class="extra-category-buttons"><button type="button" class="extra-category-btn" data-cat="peliculas" onclick="setExtraCategory('loc','peliculas')">🎞️ Películas</button><button type="button" class="extra-category-btn" data-cat="extrusao" onclick="setExtraCategory('loc','extrusao')">🏭 Extrusão</button></div><div class="extra-category-error" id="locExtraCategoryError">⚠️ Selecione Películas ou Extrusão.</div></div><input type="text" id="locInputMain" class="loc-input-main" placeholder="Ex: Galpão A, Corredor 3..." onkeydown="if (event.key === 'Enter') confirmLocMain();" autocomplete="off" /><textarea id="locObsMain" class="loc-input-main" placeholder="Observação (opcional)" style="min-height: 76px; resize: vertical; font-family: inherit;"></textarea><div class="loc-photo-section" id="locPhotoSection"><div class="loc-photo-grid"><div><div class="loc-photo-label">🏷️ Foto da etiqueta <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnEtiqueta" onclick="document.getElementById('locPhotoInputEtiqueta').click()">📷 Tirar foto da etiqueta<input type="file" id="locPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'etiqueta')" /></div><div class="loc-photo-preview" id="locPhotoPreviewEtiqueta"><img id="locPhotoImgEtiqueta" src="" /><button class="loc-photo-remove" onclick="locRemovePhoto('etiqueta')">✕</button></div><div class="loc-photo-error" id="locPhotoErrorEtiqueta">⚠️ Foto da etiqueta obrigatória!</div></div><div><div class="loc-photo-label">📦 Foto da bobina <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnBobina" onclick="document.getElementById('locPhotoInputBobina').click()">📷 Tirar foto da bobina<input type="file" id="locPhotoInputBobina" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'bobina')" /></div><div class="loc-photo-preview" id="locPhotoPreviewBobina"><img id="locPhotoImgBobina" src="" /><button class="loc-photo-remove" onclick="locRemovePhoto('bobina')">✕</button></div><div class="loc-photo-error" id="locPhotoErrorBobina">⚠️ Foto da bobina obrigatória!</div></div></div></div><div id="locErrorMain" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Localização obrigatória!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmLocMain()">✅ Confirmar</button><button class="btn btn-outline" onclick="cancelLocMain()">Cancelar</button></div></div></div>
     <div class="photo-modal" id="photoModal"><div style="text-align: center; color: #fff; font-weight: 700; max-width: 100%; max-height: 82vh; overflow: auto;">🏷️ Etiqueta + 📦 Bobina<br /><img id="photoModalImg" src="" /></div><button class="photo-modal-close" onclick="closePhotoModal()">✕ Fechar</button></div>
+    <div class="bobina-alert-flash" id="naoAprovadaFlash"><div><div class="bobina-alert-flash-main">⚠️ BOBINA<br/>NÃO APROVADA ⚠️</div><div class="bobina-alert-flash-sub" id="naoAprovadaFlashCode"></div></div></div>
+    <div class="modal-bg" id="naoAprovadaModal"><div class="modal" style="border-color: var(--accent-red); border-width: 2px;"><h2 style="color: var(--accent-red)">🔴 Bobina Não Aprovada</h2><div class="loc-code-display" id="naoAprovadaCode"></div><p>Esta bobina está marcada como <strong>não aprovada (N)</strong>. Informe o endereço onde ela está:</p><label style="display:block;font-size:.78em;font-weight:700;color:var(--text-secondary);margin-bottom:5px">📍 Endereço / localização <span style="color:var(--accent-red);font-weight:800">*obrigatório</span></label><input type="text" id="naoAprovadaLocInput" class="loc-input-main" placeholder="Ex: Galpão A, Corredor 3..." onkeydown="if (event.key === 'Enter') confirmNaoAprovada();" autocomplete="off" /><label style="display:block;font-size:.78em;font-weight:700;color:var(--text-secondary);margin-bottom:5px">📝 Observação <span style="color:var(--text-muted);font-weight:600">(opcional)</span></label><textarea id="naoAprovadaObsInput" class="loc-input-main" placeholder="Observação (opcional)" style="min-height: 64px; resize: vertical; font-family: inherit;"></textarea><div id="naoAprovadaLocError" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Endereço obrigatório!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmNaoAprovada()">✅ Confirmar</button><button class="btn btn-outline" onclick="cancelNaoAprovada()">Cancelar</button></div></div></div>
     <div class="bobina-alert-flash" id="bobinaAlertFlash"><div><div class="bobina-alert-flash-main">⚠️ ALERTA ⚠️</div><div class="bobina-alert-flash-sub" id="bobinaAlertFlashCode"></div></div></div>
     <div class="modal-bg alert-found-modal" id="alertFoundModal"><div class="modal">
       <h2 class="alert-found-title">⚠️ BOBINA PROCURADA ENCONTRADA</h2>
@@ -1663,7 +1674,7 @@ let bobinaAlertCloudReady = false;
       function cloudConferenceRef() { if (!cloudReady || !S.cloudSessionId) return null; return cloudDb.collection("conferencias").doc(S.cloudSessionId); }
       function cloudSummary() {
         const total = S.db.length, checked = S.checked.size;
-        return { total, conferidos: checked, pendentes: Math.max(0, total - checked), naoPrevistas: [...new Set(S.extras)].length, percentual: total > 0 ? Number(((checked / total) * 100).toFixed(1)) : 0 };
+        return { total, conferidos: checked, pendentes: Math.max(0, total - checked), naoPrevistas: [...new Set(S.extras)].length, naoAprovadas: S.db.filter((code) => isNaoAprovadaCode(code)).length, percentual: total > 0 ? Number(((checked / total) * 100).toFixed(1)) : 0 };
       }
       async function cloudSaveConferenceHeader(force = false) {
         // Desativado no modo econômico: o Firestore só recebe 1 documento na finalização.
@@ -2149,6 +2160,8 @@ let bobinaAlertCloudReady = false;
             categoria: categoriaKey ? coilCategoryLabel(categoriaKey) : "",
             categoriaInformada,
             status,
+            situacao: reportSituacao(i),
+            lote: i.lote || "",
             manual: !!i.manual,
             time: i.time === "-" ? "" : (i.time || ""),
             location: i.location === "-" ? "" : (i.location || ""),
@@ -2375,6 +2388,7 @@ let bobinaAlertCloudReady = false;
               conferidos: resumo.conferidos ?? rows.filter((r) => String(r.status || "").includes("Conferid") || String(r.status || "").includes("Manual")).length,
               pendentes: resumo.pendentes ?? rows.filter((r) => String(r.status || "").includes("Pendente")).length,
               naoPrevistas: resumo.naoPrevistas ?? rows.filter((r) => String(r.status || "").includes("Não Prevista")).length,
+              naoAprovadas: resumo.naoAprovadas ?? rows.filter(reportIsNaoAprovada).length,
               percentual: resumo.percentual ?? 0,
             },
             opSummary: Array.isArray(report.opSummary) ? report.opSummary : [],
@@ -2404,13 +2418,13 @@ let bobinaAlertCloudReady = false;
         Array.from(extraCodes).sort().forEach((code) => {
           const n = naoPrevistas.find((x) => String(x.codigo || x.id) === code) || {};
           const l = leiturasMap.get(code) || {};
-          rows.push({ code, op: "-", peso: "-", status: "Não Prevista", time: l.horaLocal || n.horaLocal || "", location: l.location || n.location || "", observation: l.observation || n.observation || "", hasPhoto: !!(l.hasPhoto || n.hasPhoto || fotoMap.get(code)), fotoUrl: l.fotoUrl || n.fotoUrl || fotoMap.get(code)?.url || "" });
+          rows.push({ code, op: "-", peso: "-", situacao: "", lote: "", status: "Não Prevista", time: l.horaLocal || n.horaLocal || "", location: l.location || n.location || "", observation: l.observation || n.observation || "", hasPhoto: !!(l.hasPhoto || n.hasPhoto || fotoMap.get(code)), fotoUrl: l.fotoUrl || n.fotoUrl || fotoMap.get(code)?.url || "" });
         });
         bobinasSource.slice().sort((a, b) => String(a.codigo || a.id).localeCompare(String(b.codigo || b.id), "pt-BR", { numeric: true })).forEach((b) => {
           const code = String(b.codigo || b.id); const l = leiturasMap.get(code); const checked = !!(l && l.status !== "not-found");
-          rows.push({ code, op: b.op || "-", peso: b.peso || "-", status: checked ? (l.manual ? "Conferido Manual" : "Conferido") : "Pendente", time: checked ? (l.horaLocal || "") : "", location: l?.location || "", observation: l?.observation || "", hasPhoto: !!(l?.hasPhoto || fotoMap.get(code)), fotoUrl: l?.fotoUrl || fotoMap.get(code)?.url || "" });
+          rows.push({ code, op: b.op || "-", peso: b.peso || "-", situacao: normalizeSituacaoValue(b.situacao), lote: String(b.lote || b.referenciaLote || ""), status: checked ? (l.manual ? "Conferido Manual" : "Conferido") : "Pendente", time: checked ? (l.horaLocal || "") : "", location: l?.location || "", observation: l?.observation || "", hasPhoto: !!(l?.hasPhoto || fotoMap.get(code)), fotoUrl: l?.fotoUrl || fotoMap.get(code)?.url || "" });
         });
-        return { id: conf.id, title: "RELATÓRIO DE CONFERÊNCIA - NUVEM", operador: conf.operador || "-", tipo: conf.tipo || "-", data: conf.data || cloudParseSessionId(conf.id)?.date || "", status: conf.status || "-", resumo: { total, conferidos: chk, pendentes: total - chk, naoPrevistas: extras, percentual: pct }, opSummary, rows, confIds: [conf.id], missingBobinas: !bobinasSource.length && total > 0 };
+        return { id: conf.id, title: "RELATÓRIO DE CONFERÊNCIA - NUVEM", operador: conf.operador || "-", tipo: conf.tipo || "-", data: conf.data || cloudParseSessionId(conf.id)?.date || "", status: conf.status || "-", resumo: { total, conferidos: chk, pendentes: total - chk, naoPrevistas: extras, naoAprovadas: rows.filter(reportIsNaoAprovada).length, percentual: pct }, opSummary, rows, confIds: [conf.id], missingBobinas: !bobinasSource.length && total > 0 };
       }
       function cloudFilterRowsForExport(rows, opt) {
         return (rows || []).filter((i) => {
@@ -2469,6 +2483,7 @@ Total;${r.total ?? 0}
 Conferidos;${r.conferidos ?? 0}
 Pendentes;${r.pendentes ?? 0}
 Não Previstas;${r.naoPrevistas ?? 0}
+Não Aprovadas;${r.naoAprovadas ?? data.rows.filter(reportIsNaoAprovada).length}
 Percentual;${r.percentual ?? 0}%
 `;
           csv += reportCategorySummaryCsv(exportRows);
@@ -2477,12 +2492,12 @@ Percentual;${r.percentual ?? 0}%
 RESUMO POR OP
 OP;Encontradas;Percentual
 `; csv += (data.opSummary || []).map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`).join("\n") + "\n"; }
-        const cols = ["Código", "Categoria", "OP", "Peso", "Status", "Hora", "Localização"]; if (opt.obs) cols.push("Observação"); if (opt.photoLinks) cols.push("Foto");
+        const cols = ["Código", "Lote", "Categoria", "OP", "Peso", "Status", "Situação", "Hora", "Localização"]; if (opt.obs) cols.push("Observação"); if (opt.photoLinks) cols.push("Foto");
         csv += `
 BOBINAS
 ${cols.join(";")}
 `;
-        csv += exportRows.map((i) => { const row = [i.code, reportCategoryLabel(i), i.op, i.peso, i.status, i.time || "", i.location || ""]; if (opt.obs) row.push(i.observation || ""); if (opt.photoLinks) row.push(i.fotoUrl || (i.hasPhoto ? "Sim" : "Não")); return row.join(";"); }).join("\n");
+        csv += exportRows.map((i) => { const row = [i.code, i.lote || "", reportCategoryLabel(i), i.op, i.peso, i.status, reportSitValue(i), i.time || "", i.location || ""]; if (opt.obs) row.push(i.observation || ""); if (opt.photoLinks) row.push(i.fotoUrl || (i.hasPhoto ? "Sim" : "Não")); return row.join(";"); }).join("\n");
         return csv;
       }
       function cloudBuildTxtReport(data, opt) {
@@ -2502,6 +2517,7 @@ Total: ${r.total ?? 0}
 Conferidos: ${r.conferidos ?? 0}
 Pendentes: ${r.pendentes ?? 0}
 Não Previstas: ${r.naoPrevistas ?? 0}
+Não Aprovadas: ${r.naoAprovadas ?? data.rows.filter(reportIsNaoAprovada).length}
 Percentual: ${r.percentual ?? 0}%
 `;
           txt += reportCategorySummaryTxt(exportRows);
@@ -2518,7 +2534,7 @@ BOBINAS
 ${"=".repeat(95)}
 
 `;
-        txt += exportRows.map((i) => { let line = `${String(i.code).padEnd(25)} | Cat: ${String(reportCategoryLabel(i)).padEnd(13)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${String(i.status).padEnd(16)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)}`; if (opt.obs) line += `| Obs: ${(i.observation || "—").padEnd(20)}`; if (opt.photoLinks) line += `| ${i.fotoUrl ? "📸 " + i.fotoUrl : (i.hasPhoto ? "📸 Sim" : "—")}`; return line; }).join("\n");
+        txt += exportRows.map((i) => { let line = `${String(i.code).padEnd(25)} | Lote: ${String(i.lote || "—").padEnd(11)} | Cat: ${String(reportCategoryLabel(i)).padEnd(13)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${String(i.status).padEnd(16)} | Sit: ${String(reportSitValue(i) || "—").padEnd(3)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)}`; if (opt.obs) line += `| Obs: ${(i.observation || "—").padEnd(20)}`; if (opt.photoLinks) line += `| ${i.fotoUrl ? "📸 " + i.fotoUrl : (i.hasPhoto ? "📸 Sim" : "—")}`; return line; }).join("\n");
         return txt;
       }
       function cloudCloseExportModal() { document.getElementById("cloudExportModal")?.classList.remove("show"); }
@@ -2609,16 +2625,16 @@ ${"=".repeat(95)}
           });
           const scopeLabel = scopeLabelMap[scope] || "completo"; const scopeTitle = scopeTitleMap[scope] || "COMPLETO";
           if (fmt === "csv") {
-            let csv = `RELATÓRIO DE CONFERÊNCIA - NUVEM (${scopeTitle})\nData;${new Date().toLocaleDateString("pt-BR")} ${new Date().toLocaleTimeString("pt-BR")}\nConferente;${data.operador}\nTipo de Conferência;${data.tipo}\nID;${data.id}\nStatus;${data.status}\n\nRESUMO\nTotal;${data.resumo.total}\nConferidos;${data.resumo.conferidos}\nPendentes;${data.resumo.pendentes}\nNão Previstas;${data.resumo.naoPrevistas}\nPercentual;${data.resumo.percentual}%\n\nRESUMO POR OP\nOP;Encontradas;Percentual\n`;
+            let csv = `RELATÓRIO DE CONFERÊNCIA - NUVEM (${scopeTitle})\nData;${new Date().toLocaleDateString("pt-BR")} ${new Date().toLocaleTimeString("pt-BR")}\nConferente;${data.operador}\nTipo de Conferência;${data.tipo}\nID;${data.id}\nStatus;${data.status}\n\nRESUMO\nTotal;${data.resumo.total}\nConferidos;${data.resumo.conferidos}\nPendentes;${data.resumo.pendentes}\nNão Previstas;${data.resumo.naoPrevistas}\nNão Aprovadas;${data.resumo.naoAprovadas ?? data.rows.filter(reportIsNaoAprovada).length}\nPercentual;${data.resumo.percentual}%\n\nRESUMO POR OP\nOP;Encontradas;Percentual\n`;
             csv += (data.opSummary || []).map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`).join("\n");
-            csv += `\n\nBOBINAS\nCódigo;OP;Peso;Status;Hora;Localização;Observação;Foto\n`;
-            csv += exportItems.map((i) => `${i.code};${i.op};${i.peso};${i.status};${i.time};${i.location};${i.observation};${i.fotoUrl || (i.hasPhoto ? "Sim" : "Não")}`).join("\n");
+            csv += `\n\nBOBINAS\nCódigo;Lote;OP;Peso;Status;Situação;Hora;Localização;Observação;Foto\n`;
+            csv += exportItems.map((i) => `${i.code};${i.lote || ""};${i.op};${i.peso};${i.status};${reportSitValue(i)};${i.time};${i.location};${i.observation};${i.fotoUrl || (i.hasPhoto ? "Sim" : "Não")}`).join("\n");
             download(csv, `${scopeLabel}_conferencia_${data.id}_${dateStr}.csv`, "text/csv");
           } else {
-            let txt = `RELATÓRIO DE CONFERÊNCIA - NUVEM (${scopeTitle})\nData: ${new Date().toLocaleDateString("pt-BR")} ${new Date().toLocaleTimeString("pt-BR")}\nConferente: ${data.operador}\nTipo de Conferência: ${data.tipo}\nID: ${data.id}\nStatus: ${data.status}\n${"=".repeat(95)}\n\nTotal: ${data.resumo.total}\nConferidos: ${data.resumo.conferidos}\nPendentes: ${data.resumo.pendentes}\nNão Previstas: ${data.resumo.naoPrevistas}\nPercentual: ${data.resumo.percentual}%\n\n${"=".repeat(95)}\nRESUMO POR OP\n${"=".repeat(95)}\n`;
+            let txt = `RELATÓRIO DE CONFERÊNCIA - NUVEM (${scopeTitle})\nData: ${new Date().toLocaleDateString("pt-BR")} ${new Date().toLocaleTimeString("pt-BR")}\nConferente: ${data.operador}\nTipo de Conferência: ${data.tipo}\nID: ${data.id}\nStatus: ${data.status}\n${"=".repeat(95)}\n\nTotal: ${data.resumo.total}\nConferidos: ${data.resumo.conferidos}\nPendentes: ${data.resumo.pendentes}\nNão Previstas: ${data.resumo.naoPrevistas}\nNão Aprovadas: ${data.resumo.naoAprovadas ?? data.rows.filter(reportIsNaoAprovada).length}\nPercentual: ${data.resumo.percentual}%\n\n${"=".repeat(95)}\nRESUMO POR OP\n${"=".repeat(95)}\n`;
             txt += (data.opSummary || []).map((op) => `OP: ${String(op.op || "-").padEnd(15)} | Encontradas: ${String(op.checked + "/" + op.total).padEnd(8)} | ${op.pct}%`).join("\n");
             txt += `\n\n${"=".repeat(95)}\nBOBINAS\n${"=".repeat(95)}\n\n`;
-            txt += exportItems.map((i) => `${String(i.code).padEnd(25)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${String(i.status).padEnd(16)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.fotoUrl ? "📸 " + i.fotoUrl : (i.hasPhoto ? "📸 Sim" : "—")}`).join("\n");
+            txt += exportItems.map((i) => `${String(i.code).padEnd(25)} | Lote: ${String(i.lote || "—").padEnd(11)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${String(i.status).padEnd(16)} | Sit: ${String(reportSitValue(i) || "—").padEnd(3)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.fotoUrl ? "📸 " + i.fotoUrl : (i.hasPhoto ? "📸 Sim" : "—")}`).join("\n");
             download(txt, `${scopeLabel}_conferencia_${data.id}_${dateStr}.txt`, "text/plain");
           }
           cloudSetStatus("ok", "☁️ Relatório da nuvem gerado"); notify("Relatório exportado!");
@@ -2663,6 +2679,7 @@ ${"=".repeat(95)}
             <div class="cloud-detail-stat clickable" id="cloudDetailStatChecked" onclick="cloudSetDetailFilter('checked')">Conferidas<strong>${data.resumo.conferidos}</strong></div>
             <div class="cloud-detail-stat clickable" id="cloudDetailStatPending" onclick="cloudSetDetailFilter('pending')">Pendentes<strong>${data.resumo.pendentes}</strong></div>
             <div class="cloud-detail-stat clickable" id="cloudDetailStatExtra" onclick="cloudSetDetailFilter('extra')">Não previstas<strong>${data.resumo.naoPrevistas}</strong></div>
+          <div class="cloud-detail-stat clickable" id="cloudDetailStatNaoAprov" onclick="cloudSetDetailFilter('naoaprov')">Não aprovadas<strong>${data.resumo.naoAprovadas ?? data.rows.filter(reportIsNaoAprovada).length}</strong></div>
           </div>
           <div class="cloud-detail-section-title">📦 Resumo por OP</div>
           <div class="op-summary-list" id="cloudDetailOpSummary" style="max-height:220px;overflow:auto;padding-right:4px"></div>
@@ -2672,7 +2689,7 @@ ${"=".repeat(95)}
           </div>
           <div class="search-wrap" style="margin-bottom: 8px"><span class="si">🔍</span><input class="search-input" id="cloudDetailSearch" placeholder="Buscar código, OP, status ou observação..." oninput="cloudDetailSearch=this.value; cloudRenderDetailRows(); cloudRenderDetailOpSummary()" /></div>
           ${data.missingBobinas ? `<div style="margin:8px 0 0; padding:10px 12px; border-radius:10px; border:1px solid rgba(245,158,11,.28); background: rgba(245,158,11,.08); color: var(--accent-yellow); font-size:.82em; font-weight:700;">⚠️ Conferência antiga sem base de bobinas.</div>` : ""}
-          <div class="cloud-detail-scroll" style="margin-top: 8px"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>Categoria</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>`;
+          <div class="cloud-detail-scroll" style="margin-top: 8px"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>Categoria</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Situação</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>`;
           const detailSearchInput = document.getElementById("cloudDetailSearch"); if (detailSearchInput) detailSearchInput.value = cloudDetailSearch || "";
           cloudApplyDetailFilterUI();
           cloudRenderDetailOpSummary();
@@ -2690,9 +2707,10 @@ ${"=".repeat(95)}
         if (cloudDetailFilter === "checked") rows = rows.filter((r) => String(r.status).includes("Conferid") || String(r.status).includes("Manual"));
         if (cloudDetailFilter === "pending") rows = rows.filter((r) => String(r.status).includes("Pendente"));
         if (cloudDetailFilter === "extra") rows = rows.filter((r) => String(r.status).includes("Não Prevista"));
+        if (cloudDetailFilter === "naoaprov") rows = rows.filter((r) => reportIsNaoAprovada(r));
         if (includeSearch) {
           const q = String(cloudDetailSearch || "").trim().toLowerCase();
-          if (q) rows = rows.filter((r) => [r.code, reportCategoryLabel(r), r.op, r.peso, r.status, r.time, r.location, r.observation].join(" ").toLowerCase().includes(q));
+          if (q) rows = rows.filter((r) => [r.code, r.lote, reportCategoryLabel(r), r.op, r.peso, r.status, reportSituacao(r), r.time, r.location, r.observation].join(" ").toLowerCase().includes(q));
         }
         return rows;
       }
@@ -2702,6 +2720,7 @@ ${"=".repeat(95)}
           checked: "cloudDetailStatChecked",
           pending: "cloudDetailStatPending",
           extra: "cloudDetailStatExtra",
+          naoaprov: "cloudDetailStatNaoAprov",
         };
         Object.values(map).forEach((id) => document.getElementById(id)?.classList.remove("active"));
         document.getElementById(map[cloudDetailFilter] || map.all)?.classList.add("active");
@@ -2762,6 +2781,8 @@ ${"=".repeat(95)}
           } else if (cloudDetailFilter === "extra") {
             label = "⚠️ Não previstas";
             value = String(entry.extra || entry.count);
+          } else if (cloudDetailFilter === "naoaprov") {
+            label = "🔴 Não aprovadas";
           }
           return `<div class="op-summary-item"><div class="op-summary-op">OP ${esc(entry.op || "-")}</div><div class="op-summary-info"><span>${label}: <strong>${value}</strong></span>${extraInfo}</div></div>`;
         }).join("");
@@ -2776,9 +2797,9 @@ ${"=".repeat(95)}
         const tbody = document.getElementById("cloudDetailRowsBody"); if (!tbody) return;
         const rows = cloudRowsByDetailFilter(true);
         const limited = rows.slice(0, 700);
-        if (!limited.length) { tbody.innerHTML = '<tr><td colspan="10">Nenhum item encontrado</td></tr>'; return; }
-        tbody.innerHTML = limited.map((r, i) => `<tr><td>${i + 1}</td><td class="cc">${esc(r.code)}</td><td>${esc(reportCategoryLabel(r))}</td><td>${esc(r.op)}</td><td>${esc(r.peso)}</td><td>${esc(r.status)}</td><td>${esc(r.time || "")}</td><td>${esc(r.location || "")}</td><td>${esc(r.observation || "")}</td><td>${r.fotoUrl ? `<a href="${esc(r.fotoUrl)}" target="_blank" rel="noopener">📸</a>` : (r.hasPhoto ? "📸" : "—")}</td></tr>`).join("");
-        if (rows.length > 700) tbody.innerHTML += `<tr><td colspan="10">Mostrando 700 de ${rows.length} itens</td></tr>`;
+        if (!limited.length) { tbody.innerHTML = '<tr><td colspan="11">Nenhum item encontrado</td></tr>'; return; }
+        tbody.innerHTML = limited.map((r, i) => `<tr><td>${i + 1}</td><td class="cc">${esc(r.code)}${r.lote ? `<div style="font-size:.72em;color:var(--text-muted);font-weight:600">(${esc(r.lote)})</div>` : ""}</td><td>${esc(reportCategoryLabel(r))}</td><td>${esc(r.op)}</td><td>${esc(r.peso)}</td><td>${esc(r.status)}</td><td>${esc(r.time || "")}</td><td>${esc(r.location || "")}</td><td>${reportSitCell(r)}</td><td>${esc(r.observation || "")}</td><td>${r.fotoUrl ? `<a href="${esc(r.fotoUrl)}" target="_blank" rel="noopener">📸</a>` : (r.hasPhoto ? "📸" : "—")}</td></tr>`).join("");
+        if (rows.length > 700) tbody.innerHTML += `<tr><td colspan="11">Mostrando 700 de ${rows.length} itens</td></tr>`;
       }
       function cloudCloseConferenceDetail() {
         cloudClearDetailLiveListeners();
@@ -2817,6 +2838,7 @@ Total;${r.total ?? 0}
 Conferidos;${r.conferidos ?? 0}
 Pendentes;${r.pendentes ?? 0}
 Não Previstas;${r.naoPrevistas ?? 0}
+Não Aprovadas;${r.naoAprovadas ?? 0}
 Percentual;${r.percentual ?? 0}%
 `;
           csv += reportCategorySummaryCsv(exportItems);
@@ -2828,9 +2850,9 @@ OP;Encontradas;Percentual
           csv += `
 
 BOBINAS
-Código;Categoria;OP;Peso;Status;Hora;Localização;Observação;Fotos
+Código;Lote;Categoria;OP;Peso;Status;Situação;Hora;Localização;Observação;Fotos
 `;
-          csv += exportItems.map((i) => `${i.code};${reportCategoryLabel(i)};${i.op};${i.peso};${i.status};${i.time || ""};${i.location || ""};${i.observation || ""};${i.hasPhoto ? "Sim" : "Não"}`).join("\n");
+          csv += exportItems.map((i) => `${i.code};${i.lote || ""};${reportCategoryLabel(i)};${i.op};${i.peso};${i.status};${reportSitValue(i)};${i.time || ""};${i.location || ""};${i.observation || ""};${i.hasPhoto ? "Sim" : "Não"}`).join("\n");
           download(csv, `${scopeLabel}_${id}_${dateStr}.csv`, "text/csv");
         } else {
           let txt = `RELATÓRIO CONSOLIDADO (${scopeTitle})
@@ -2842,6 +2864,7 @@ Total: ${r.total ?? 0}
 Conferidos: ${r.conferidos ?? 0}
 Pendentes: ${r.pendentes ?? 0}
 Não Previstas: ${r.naoPrevistas ?? 0}
+Não Aprovadas: ${r.naoAprovadas ?? 0}
 Percentual: ${r.percentual ?? 0}%
 `;
           txt += reportCategorySummaryTxt(exportItems);
@@ -2858,7 +2881,7 @@ BOBINAS
 ${"=".repeat(95)}
 
 `;
-          txt += exportItems.map((i) => `${String(i.code).padEnd(25)} | Cat: ${String(reportCategoryLabel(i)).padEnd(13)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${String(i.status).padEnd(16)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.hasPhoto ? "📸 Sim" : "—"}`).join("\n");
+          txt += exportItems.map((i) => `${String(i.code).padEnd(25)} | Lote: ${String(i.lote || "—").padEnd(11)} | Cat: ${String(reportCategoryLabel(i)).padEnd(13)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${String(i.status).padEnd(16)} | Sit: ${String(reportSitValue(i) || "—").padEnd(3)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.hasPhoto ? "📸 Sim" : "—"}`).join("\n");
           download(txt, `${scopeLabel}_${id}_${dateStr}.txt`, "text/plain");
         }
         notify("Relatório consolidado exportado!");
@@ -2880,17 +2903,17 @@ ${"=".repeat(95)}
             if (st.includes("Não Prevista")) {
               if (!extraMap.has(code)) extraMap.set(code, r);
             } else {
-              if (!bobinaMap.has(code)) bobinaMap.set(code, { codigo: code, op: r.op || "-", peso: r.peso || "-", categoriaKey: r.categoriaKey || "", categoria: r.categoria || "", categoriaInformada: !!r.categoriaInformada });
+              if (!bobinaMap.has(code)) bobinaMap.set(code, { codigo: code, op: r.op || "-", peso: r.peso || "-", situacao: reportSituacao(r), lote: r.lote || r.referenciaLote || "", categoriaKey: r.categoriaKey || "", categoria: r.categoria || "", categoriaInformada: !!r.categoriaInformada });
               if (st.includes("Conferid") || st.includes("Manual")) {
                 if (!checkedMap.has(code)) checkedMap.set(code, { codigo: code, manual: st.includes("Manual"), horaLocal: r.time || "", location: r.location || "", observation: r.observation || "", hasPhoto: !!r.hasPhoto, fotoUrl: r.fotoUrl || "", categoriaKey: r.categoriaKey || "", categoria: r.categoria || "", categoriaInformada: !!r.categoriaInformada });
               }
             }
           });
           const opSummary = cloudBuildOpSummaryFromMaps(bobinaMap, checkedMap); const rows = [];
-          Array.from(extraMap.keys()).sort().forEach((code) => { const x = extraMap.get(code) || {}; rows.push({ code, op: "-", peso: "-", categoriaKey: x.categoriaKey || "", categoria: x.categoria || "", categoriaInformada: !!x.categoriaInformada, status: "⚠️ Não prevista", time: x.time || x.horaLocal || "", location: x.location || "", observation: x.observation || "", hasPhoto: !!x.hasPhoto, fotoUrl: x.fotoUrl || "" }); });
-          Array.from(bobinaMap.keys()).sort((a, b) => String(a).localeCompare(String(b), "pt-BR", { numeric: true })).forEach((code) => { const b = bobinaMap.get(code) || {}; const l = checkedMap.get(code); const catSource = l || b; rows.push({ code, op: b.op || "-", peso: b.peso || "-", categoriaKey: catSource.categoriaKey || "", categoria: catSource.categoria || "", categoriaInformada: !!catSource.categoriaInformada, status: l ? (l.manual ? "📸 Manual" : "✅ Conferida") : "⏳ Pendente", time: l?.horaLocal || "", location: l?.location || "", observation: l?.observation || "", hasPhoto: !!l?.hasPhoto, fotoUrl: l?.fotoUrl || "" }); });
+          Array.from(extraMap.keys()).sort().forEach((code) => { const x = extraMap.get(code) || {}; rows.push({ code, op: "-", peso: "-", situacao: "", lote: x.lote || "", categoriaKey: x.categoriaKey || "", categoria: x.categoria || "", categoriaInformada: !!x.categoriaInformada, status: "⚠️ Não prevista", time: x.time || x.horaLocal || "", location: x.location || "", observation: x.observation || "", hasPhoto: !!x.hasPhoto, fotoUrl: x.fotoUrl || "" }); });
+          Array.from(bobinaMap.keys()).sort((a, b) => String(a).localeCompare(String(b), "pt-BR", { numeric: true })).forEach((code) => { const b = bobinaMap.get(code) || {}; const l = checkedMap.get(code); const catSource = l || b; rows.push({ code, op: b.op || "-", peso: b.peso || "-", situacao: reportSituacao(b), lote: b.lote || "", categoriaKey: catSource.categoriaKey || "", categoria: catSource.categoria || "", categoriaInformada: !!catSource.categoriaInformada, status: l ? (l.manual ? "📸 Manual" : "✅ Conferida") : "⏳ Pendente", time: l?.horaLocal || "", location: l?.location || "", observation: l?.observation || "", hasPhoto: !!l?.hasPhoto, fotoUrl: l?.fotoUrl || "" }); });
           const total = bobinaMap.size, conferidos = checkedMap.size, naoPrev = extraMap.size, pendentes = Math.max(0, total - conferidos), pct = total > 0 ? ((conferidos / total) * 100).toFixed(1) : "0.0";
-          cloudMergedReport = { id: `consolidado_${new Date().toISOString().slice(0, 10)}_${ids.length}_conferencias`, title: `Consolidado de ${ids.length} conferências`, subtitle: confs.map((c) => `${c.operador || "-"} • ${c.tipo || "-"}`).join(" | "), ids, rows, opSummary, resumo: { total, conferidos, pendentes, naoPrevistas: naoPrev, percentual: pct } };
+          cloudMergedReport = { id: `consolidado_${new Date().toISOString().slice(0, 10)}_${ids.length}_conferencias`, title: `Consolidado de ${ids.length} conferências`, subtitle: confs.map((c) => `${c.operador || "-"} • ${c.tipo || "-"}`).join(" | "), ids, rows, opSummary, resumo: { total, conferidos, pendentes, naoPrevistas: naoPrev, naoAprovadas: rows.filter(reportIsNaoAprovada).length, percentual: pct } };
           cloudRenderMergedReport(); cloudSetStatus("ok", "☁️ Conferências juntadas"); notify("Conferências juntadas para visualização/exportação.");
         } catch (e) { console.error(e); if (box) box.innerHTML = '<div class="empty">Erro ao juntar conferências. Veja o console.</div>'; cloudSetStatus("error", "☁️ Erro ao juntar"); notify("Erro ao juntar: " + (e.message || e), "error"); }
       }
@@ -2904,12 +2927,13 @@ ${"=".repeat(95)}
           <div class="cloud-detail-stat clickable" id="cloudDetailStatChecked" onclick="cloudSetDetailFilter('checked')">Conferidas<strong>${r.conferidos ?? 0}</strong></div>
           <div class="cloud-detail-stat clickable" id="cloudDetailStatPending" onclick="cloudSetDetailFilter('pending')">Pendentes<strong>${r.pendentes ?? 0}</strong></div>
           <div class="cloud-detail-stat clickable" id="cloudDetailStatExtra" onclick="cloudSetDetailFilter('extra')">Não previstas<strong>${r.naoPrevistas ?? 0}</strong></div>
+          <div class="cloud-detail-stat clickable" id="cloudDetailStatNaoAprov" onclick="cloudSetDetailFilter('naoaprov')">Não aprovadas<strong>${r.naoAprovadas ?? 0}</strong></div>
         </div>
         <div class="cloud-detail-section-title">📦 Resumo por OP</div>
         <div class="op-summary-list" id="cloudDetailOpSummary" style="max-height:220px;overflow:auto;padding-right:4px"></div>
         <div class="cloud-detail-toolbar"><div class="cloud-detail-section-title" style="margin:0">📋 Bobinas e leituras</div><button class="cloud-report-btn" onclick="cloudShowMergedExportModal()">Exportar consolidado</button></div>
         <div class="search-wrap" style="margin-bottom: 8px"><span class="si">🔍</span><input class="search-input" id="cloudDetailSearch" placeholder="Buscar código, OP, status ou observação..." oninput="cloudDetailSearch=this.value; cloudRenderDetailRows(); cloudRenderDetailOpSummary()" /></div>
-        <div class="cloud-detail-scroll" style="margin-top: 8px"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>Categoria</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>`;
+        <div class="cloud-detail-scroll" style="margin-top: 8px"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>Categoria</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Situação</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>`;
         cloudApplyDetailFilterUI();
         cloudRenderDetailOpSummary();
         cloudRenderDetailRows();
@@ -3131,7 +3155,7 @@ ${"=".repeat(95)}
         if (!rows || !rows.length) return null;
         const hdr = rows[0].map(normalizeHeader);
         const expected = ["BARRAS_ORIGEM", "OP", "TIPO_BOBINA", "ETAPA", "MATERIAL", "DESCRICAO", "SITUACAO_OP", "SITUACAO_RECURSO"];
-        const idx = {}; expected.forEach((col) => (idx[col] = hdr.indexOf(col))); idx.PESO = hdr.findIndex((h) => h.includes("PESO")); if (idx.PESO < 0) idx.PESO = 8;
+        const idx = {}; expected.forEach((col) => (idx[col] = hdr.indexOf(col))); idx.REFERENCIA_LOTE = hdr.indexOf("REFERENCIA_LOTE"); idx.PESO = hdr.indexOf("PESO_ORIGINAL"); if (idx.PESO < 0) idx.PESO = hdr.findIndex((h) => h.includes("PESO")); if (idx.PESO < 0) idx.PESO = 8;
         const hasMain = idx.BARRAS_ORIGEM >= 0 && idx.ETAPA >= 0; const hasAll = expected.every((col) => idx[col] >= 0);
         return hasMain ? { idx, hasAll } : null;
       }
@@ -3151,12 +3175,12 @@ ${"=".repeat(95)}
         const nextMeta = {};
         const codes = [];
         if (special) {
-          const bIdx = special.idx.BARRAS_ORIGEM, opIdx = special.idx.OP, eIdx = special.idx.ETAPA, mIdx = special.idx.MATERIAL, tIdx = special.idx.TIPO_BOBINA, dIdx = special.idx.DESCRICAO, pIdx = special.idx.PESO;
+          const bIdx = special.idx.BARRAS_ORIGEM, opIdx = special.idx.OP, eIdx = special.idx.ETAPA, mIdx = special.idx.MATERIAL, tIdx = special.idx.TIPO_BOBINA, dIdx = special.idx.DESCRICAO, pIdx = special.idx.PESO, sIdx = special.idx.SITUACAO_OP >= 0 ? special.idx.SITUACAO_OP : -1, rlIdx = special.idx.REFERENCIA_LOTE >= 0 ? special.idx.REFERENCIA_LOTE : -1;
           rows.slice(1).forEach((r) => {
-            const code = String(r[bIdx] || "").trim();
+            const code = rowHeaderCode(r, special);
             if (!code) return;
             codes.push(code);
-            nextMeta[code] = { op: String(r[opIdx] || "").trim(), etapa: String(r[eIdx] || "").trim(), material: String(r[mIdx] || "").trim(), tipoBobina: tIdx >= 0 ? String(r[tIdx] || "").trim() : "", descricao: dIdx >= 0 ? String(r[dIdx] || "").trim() : "", peso: String(r[pIdx] || "").trim() };
+            nextMeta[code] = { op: String(r[opIdx] || "").trim(), etapa: String(r[eIdx] || "").trim(), material: String(r[mIdx] || "").trim(), tipoBobina: tIdx >= 0 ? String(r[tIdx] || "").trim() : "", descricao: dIdx >= 0 ? String(r[dIdx] || "").trim() : "", peso: String(r[pIdx] || "").trim(), situacao: sIdx >= 0 ? String(r[sIdx] || "").trim() : "", referenciaLote: rlIdx >= 0 ? String(r[rlIdx] || "").trim() : "" };
           });
         } else if (maxC <= 1) {
           rows.forEach((r) => { const code = String(r[0] || "").trim(); if (code) codes.push(code); });
@@ -3258,7 +3282,7 @@ ${"=".repeat(95)}
         showConferenceTypeModal(S.fileLayout, "change");
       }
       function conferenceTypeConfigs() {
-        return { bases_todas: { label: "Bases - Todas", etapas: [20] }, bases_peliculas: { label: "Bases - Películas", etapas: [20], materialTerms: ["BOPP", "PP", "PET"] }, capas: { label: "Capas", etapas: [30, 31] }, refiladeira: { label: "Refiladeira", etapas: [40, 41, 42, 43, 44, 45, 46, 47] }, cs: { label: "C&S", etapas: [50, 51, 52, 53, 54, 55] } };
+        return { bases_todas: { label: "Bases - Todas", etapas: [20] }, bases_peliculas: { label: "Bases - Películas", etapas: [20], materialTerms: ["BOPP", "PP", "PET"] }, capas_todas: { label: "Capas - Todas", etapaMin: 30, etapaMax: 39 }, capas_peliculas: { label: "Capas - Películas", etapaMin: 30, etapaMax: 39, capaPeliculaOnly: true }, refiladeira: { label: "Refiladeira - Todos", etapaMin: 40, etapaMax: 49 }, refiladeira_fundo: { label: "Refiladeira - Fundo", etapaMin: 40, etapaMax: 49, fundoOnly: true }, cs: { label: "C&S", etapaMin: 50, etapaMax: 59 } };
       }
       function setAllConferenceChecks(v) { document.querySelectorAll(".conf-check").forEach((c) => (c.checked = v)); }
       function importSelectedConferenceTypes() {
@@ -3288,13 +3312,23 @@ ${"=".repeat(95)}
           resetConferenceData({ keepImportedFile: true });
         }
         const nextMeta = {};
-        const bIdx = S.fileLayout.idx.BARRAS_ORIGEM, eIdx = S.fileLayout.idx.ETAPA, mIdx = S.fileLayout.idx.MATERIAL, tIdx = S.fileLayout.idx.TIPO_BOBINA, dIdx = S.fileLayout.idx.DESCRICAO, opIdx = S.fileLayout.idx.OP, pIdx = S.fileLayout.idx.PESO;
+        const bIdx = S.fileLayout.idx.BARRAS_ORIGEM, eIdx = S.fileLayout.idx.ETAPA, mIdx = S.fileLayout.idx.MATERIAL, tIdx = S.fileLayout.idx.TIPO_BOBINA, dIdx = S.fileLayout.idx.DESCRICAO, opIdx = S.fileLayout.idx.OP, pIdx = S.fileLayout.idx.PESO, sIdx = S.fileLayout.idx.SITUACAO_OP >= 0 ? S.fileLayout.idx.SITUACAO_OP : -1, rlIdx = S.fileLayout.idx.REFERENCIA_LOTE >= 0 ? S.fileLayout.idx.REFERENCIA_LOTE : -1;
         S.coilCategories = buildCoilCategoryMapFromRows(S.fileData, S.fileLayout);
         const rows = S.fileData.slice(1); const codes = []; let matched = 0;
         rows.forEach((r) => {
           const etapaTxt = String(r[eIdx] || "").trim(); const m = etapaTxt.match(/\d+/); const etapa = m ? parseInt(m[0], 10) : NaN; const material = String(r[mIdx] || "").toUpperCase();
-          const ok = cfgList.some((cfg) => { const etapas = new Set(cfg.etapas.map(Number)); if (!etapas.has(etapa)) return false; const terms = (cfg.materialTerms || []).map((t) => String(t).toUpperCase()); return !terms.length || terms.some((t) => material.includes(t)); });
-          if (!ok) return; matched++; const code = String(r[bIdx] || "").trim(); if (code) { codes.push(code); nextMeta[code] = { op: String(r[opIdx] || "").trim(), etapa: String(r[eIdx] || "").trim(), material: String(r[mIdx] || "").trim(), tipoBobina: tIdx >= 0 ? String(r[tIdx] || "").trim() : "", descricao: dIdx >= 0 ? String(r[dIdx] || "").trim() : "", peso: String(r[pIdx] || "").trim() }; }
+          const tipoBobinaTxt = tIdx >= 0 ? String(r[tIdx] || "").trim() : "";
+          const refLoteTxt = rlIdx >= 0 ? String(r[rlIdx] || "").trim() : "";
+          const ok = cfgList.some((cfg) => {
+            const etapaOk = cfg.etapaMin != null ? (etapa >= cfg.etapaMin && etapa <= cfg.etapaMax) : new Set((cfg.etapas || []).map(Number)).has(etapa);
+            if (!etapaOk) return false;
+            const terms = (cfg.materialTerms || []).map((t) => String(t).toUpperCase());
+            if (terms.length && !terms.some((t) => material.includes(t))) return false;
+            if (cfg.fundoOnly && (tipoBobinaTxt || refLoteTxt)) return false;
+            if (cfg.capaPeliculaOnly && !isCapaPeliculaMaterial(material)) return false;
+            return true;
+          });
+          if (!ok) return; matched++; const code = String(r[bIdx] || "").trim() || loteRefToLabelCode(refLoteTxt); if (code) { codes.push(code); nextMeta[code] = { op: String(r[opIdx] || "").trim(), etapa: String(r[eIdx] || "").trim(), material: String(r[mIdx] || "").trim(), tipoBobina: tIdx >= 0 ? String(r[tIdx] || "").trim() : "", descricao: dIdx >= 0 ? String(r[dIdx] || "").trim() : "", peso: String(r[pIdx] || "").trim(), situacao: sIdx >= 0 ? String(r[sIdx] || "").trim() : "", referenciaLote: refLoteTxt }; }
         });
         const uniq = [...new Set(codes)]; const labels = cfgList.map((c) => c.label).join(", "); if (!uniq.length) { notify(`Nenhum código encontrado para: ${labels}.`, "warning"); return; }
         S.meta = replaceExisting ? nextMeta : { ...S.meta, ...nextMeta };
@@ -3862,7 +3896,7 @@ if (S.collectorMode) {
         const text = String(raw || "").replace(/[\r\n\t]+/g, "").trim();
         if (!text) return "";
         const digits = text.replace(/\D/g, "");
-        if (/^(500|700)\d{8,9}$/.test(digits)) return digits;
+        if (/^(500|700)\d{8,10}$/.test(digits)) return digits;
         return text;
       }
       function startCollectorConference() {
@@ -3906,7 +3940,7 @@ if (S.collectorMode) {
 
   // Código fora do padrão do coletor: ignora silenciosamente.
   // O operador só recebe feedback visual quando a leitura é válida/conferida.
-  if (!/^(500|700)\d{8,9}$/.test(code)) {
+  if (!/^(500|700)\d{8,10}$/.test(code)) {
     collectorProcessing = false;
     setTimeout(focusCollectorInput, 80);
     return;
@@ -3937,6 +3971,13 @@ if (S.collectorMode) {
   }
 
   if (S.db.includes(code)) {
+    if (isNaoAprovadaCode(code)) {
+      collectorShowBigStatus("red", "⚠️ NÃO APROVADA", code, 1200);
+      setCollectorLastRead(`⚠️ ${code} é bobina NÃO APROVADA. Informe o endereço.`, "warn");
+      updateCollectorOverlayCenter("Bobina não aprovada", "Informe o endereço onde a bobina está.", code);
+      showNaoAprovadaFlow(code, time, "collector");
+      return;
+    }
     const scanItem = { code, time, status: "found", source: "collector" };
     S.checked.add(code);
     S.scanned.unshift(scanItem);
@@ -4273,7 +4314,7 @@ if (S.collectorMode) {
         const bIdx = layout.idx.BARRAS_ORIGEM, mIdx = layout.idx.MATERIAL, tIdx = layout.idx.TIPO_BOBINA, dIdx = layout.idx.DESCRICAO;
         if (bIdx < 0) return map;
         rows.slice(1).forEach((r) => {
-          const code = String(r[bIdx] || "").trim();
+          const code = rowHeaderCode(r, layout);
           if (!code) return;
           map[code] = coilCategoryFromMeta({
             material: mIdx >= 0 ? String(r[mIdx] || "").trim() : "",
@@ -4426,7 +4467,9 @@ if (S.collectorMode) {
         S.db.forEach((code) => {
           const chk = S.checked.has(code), scan = S.scanned.find((s) => s.code === code && s.status === "found");
           const categoriaKey = coilCategoryForCode(code, scan);
-          items.push({ code, op: getOP(code), peso: getPeso(code), status: chk ? "checked" : "pending", manual: !!scan?.manual, time: scan ? scan.time : "-", location: scan?.location || "", observation: scan?.observation || "", hasPhoto: !!scan?.hasPhoto, categoriaKey, categoria: coilCategoryLabel(categoriaKey), categoriaInformada: !!scan?.categoriaInformada });
+          const situacao = coilSituacaoForCode(code) || normalizeSituacaoValue(scan?.situacao);
+          const lote = (S.meta && S.meta[code] && S.meta[code].referenciaLote) || "";
+          items.push({ code, op: getOP(code), peso: getPeso(code), status: chk ? "checked" : "pending", manual: !!scan?.manual, time: scan ? scan.time : "-", location: scan?.location || "", observation: scan?.observation || "", hasPhoto: !!scan?.hasPhoto, categoriaKey, categoria: coilCategoryLabel(categoriaKey), categoriaInformada: !!scan?.categoriaInformada, situacao, lote });
         });
         return items;
       }
@@ -4449,7 +4492,9 @@ if (S.collectorMode) {
         const extras = [...new Set(S.extras)].length;
         const ops = getOpSummaryItems();
         const pct = reportPct(total, checked) + "%";
-        const detailTotal = getReportItems().length;
+        const allItems = getReportItems();
+        const detailTotal = allItems.length;
+        const naoAprov = allItems.filter((i) => reportIsNaoAprovada(i)).length;
         setText("rOpCount", ops.length);
         setText("rOpFound", checked);
         setText("rOpTotal", total);
@@ -4458,10 +4503,12 @@ if (S.collectorMode) {
         setText("rDetailCheckedCard", checked);
         setText("rDetailPendingCard", pending);
         setText("rDetailExtraCard", extras);
+        setText("rNaoAprov", naoAprov);
         setText("reportPanelOpsCount", ops.length);
         setText("reportPanelOpsFound", checked);
         setText("reportPanelOpsPending", pending);
         setText("reportPanelOpsPct", pct);
+        setText("reportPanelNaoAprov", naoAprov);
       }
       function renderOpSummary(search = "") {
         const box = document.getElementById("opSummaryBody"); if (!box) return;
@@ -4482,20 +4529,22 @@ if (S.collectorMode) {
       }
       function renderRpt() {
         const tbody = document.getElementById("rptBody"); if (!tbody) return;
-        let items = getReportItems(); if (S.filter !== "all") items = items.filter((i) => i.status === S.filter);
+        let items = getReportItems();
+        if (S.filter === "naoaprov") items = items.filter((i) => reportIsNaoAprovada(i));
+        else if (S.filter !== "all") items = items.filter((i) => i.status === S.filter);
         if (S.rptSearch) {
           const q = S.rptSearch.toLowerCase();
-          items = items.filter((i) => [i.code, reportCategoryLabel(i), i.op, i.peso, reportStatusText(i), i.time, i.location, i.observation].some((v) => String(v || "").toLowerCase().includes(q)));
+          items = items.filter((i) => [i.code, i.lote, reportCategoryLabel(i), i.op, i.peso, reportStatusText(i), reportSituacao(i), i.time, i.location, i.observation].some((v) => String(v || "").toLowerCase().includes(q)));
         }
         const counter = document.getElementById("reportDetailResultCount"); if (counter) counter.textContent = `${items.length} ${items.length === 1 ? "item" : "itens"}`;
         const d = items.slice(0, 500);
         tbody.innerHTML = d.map((it, i) => {
           const loc = it.status === "extra" ? ("📌 " + esc(it.location || "-")) : (it.location ? esc(it.location) : "—");
           const photoCode = esc(it.code).replace(/'/g, "&#39;");
-          return `<tr><td>${i + 1}</td><td class="cc">${esc(it.code)}</td><td>${esc(reportCategoryLabel(it))}</td><td>${esc(it.op || "-")}</td><td>${esc(it.peso || "-")}</td><td>${reportStatusBadge(it)}</td><td>${esc(it.time)}</td><td>${loc}</td><td>${it.observation ? esc(it.observation) : "—"}</td><td>${it.hasPhoto ? `<button class="icon-btn" onclick="showPhotoModal('${photoCode}')">📸</button>` : "—"}</td></tr>`;
+          return `<tr${reportIsNaoAprovada(it) ? ' class="row-n"' : ""}><td>${i + 1}</td><td class="cc">${esc(it.code)}${it.lote ? `<div style="font-size:.72em;color:var(--text-muted);font-weight:600">(${esc(it.lote)})</div>` : ""}</td><td>${esc(reportCategoryLabel(it))}</td><td>${esc(it.op || "-")}</td><td>${esc(it.peso || "-")}</td><td>${reportStatusBadge(it)}</td><td>${esc(it.time)}</td><td>${loc}</td><td>${reportSitCell(it)}</td><td>${it.observation ? esc(it.observation) : "—"}</td><td>${it.hasPhoto ? `<button class="icon-btn" onclick="showPhotoModal('${photoCode}')">📸</button>` : "—"}</td></tr>`;
         }).join("");
-        if (items.length > 500) tbody.innerHTML += `<tr><td colspan="10">... +${items.length - 500}</td></tr>`;
-        if (!items.length) tbody.innerHTML = '<tr><td colspan="10">Nenhum item</td></tr>';
+        if (items.length > 500) tbody.innerHTML += `<tr><td colspan="11">... +${items.length - 500}</td></tr>`;
+        if (!items.length) tbody.innerHTML = '<tr><td colspan="11">Nenhum item</td></tr>';
       }
       function filterRpt(f, btn) {
         S.filter = f;
@@ -4533,8 +4582,8 @@ if (S.collectorMode) {
         else rptSearch(v);
       }
       function exportRpt(fmt) {
-        const items = getReportItems().map((i) => ({ code: i.code, categoriaKey: i.categoriaKey || "", categoria: reportCategoryLabel(i), op: i.op || "-", peso: i.peso || "-", status: i.status === "checked" ? (i.manual ? "Conferido Manual" : "Conferido") : i.status === "pending" ? "Pendente" : "Não Prevista", time: i.time === "-" ? "" : i.time, location: i.location === "-" ? "" : i.location, observation: i.observation || "", hasPhoto: i.hasPhoto }));
-        const total = S.db.length, chk = S.checked.size, pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0, date = new Date(), tipo = S.confType || "-", conferente = S.checkerName || "-", extras = [...new Set(S.extras)].length, opSummary = getOpSummaryItems();
+        const items = getReportItems().map((i) => ({ code: i.code, categoriaKey: i.categoriaKey || "", categoria: reportCategoryLabel(i), op: i.op || "-", peso: i.peso || "-", status: i.status === "checked" ? (i.manual ? "Conferido Manual" : "Conferido") : i.status === "pending" ? "Pendente" : "Não Prevista", situacao: reportSituacao(i), lote: i.lote || "", time: i.time === "-" ? "" : i.time, location: i.location === "-" ? "" : i.location, observation: i.observation || "", hasPhoto: i.hasPhoto }));
+        const total = S.db.length, chk = S.checked.size, pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0, date = new Date(), tipo = S.confType || "-", conferente = S.checkerName || "-", extras = [...new Set(S.extras)].length, opSummary = getOpSummaryItems(), naoAprov = items.filter((i) => i.situacao === "N").length;
         if (fmt === "csv") {
           let csv = `RELATÓRIO DE CONFERÊNCIA
 Data;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}
@@ -4546,6 +4595,7 @@ Total;${total}
 Conferidos;${chk}
 Pendentes;${total - chk}
 Não Previstas;${extras}
+Não Aprovadas;${naoAprov}
 Percentual;${pct}%
 `;
           csv += reportCategorySummaryCsv(items);
@@ -4557,9 +4607,9 @@ OP;Encontradas;Percentual
           csv += `
 
 BOBINAS
-Código;Categoria;OP;Peso;Status;Hora;Localização;Observação;Fotos
+Código;Lote;Categoria;OP;Peso;Status;Situação;Hora;Localização;Observação;Fotos
 `;
-          csv += items.map((i) => `${i.code};${i.categoria};${i.op};${i.peso};${i.status};${i.time};${i.location};${i.observation};${i.hasPhoto ? "Combinada etiqueta+bobina" : "Não"}`).join("\n");
+          csv += items.map((i) => `${i.code};${i.lote || ""};${i.categoria};${i.op};${i.peso};${i.status};${i.situacao};${i.time};${i.location};${i.observation};${i.hasPhoto ? "Combinada etiqueta+bobina" : "Não"}`).join("\n");
           download(csv, `conferencia_${date.toISOString().slice(0, 10)}.csv`, "text/csv");
         } else {
           let txt = `RELATÓRIO DE CONFERÊNCIA
@@ -4571,6 +4621,7 @@ Total: ${total}
 Conferidos: ${chk}
 Pendentes: ${total - chk}
 Não Previstas: ${extras}
+Não Aprovadas: ${naoAprov}
 Percentual: ${pct}%
 `;
           txt += reportCategorySummaryTxt(items);
@@ -4585,7 +4636,7 @@ ${"=".repeat(95)}
 BOBINAS
 ${"=".repeat(95)}
 `;
-          txt += items.map((i) => `${i.code.padEnd(25)} | Cat: ${String(i.categoria || "-").padEnd(13)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${i.status.padEnd(15)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.hasPhoto ? "📸 Combinada" : "—"}`).join("\n");
+          txt += items.map((i) => `${i.code.padEnd(25)} | Lote: ${String(i.lote || "—").padEnd(11)} | Cat: ${String(i.categoria || "-").padEnd(13)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${i.status.padEnd(15)} | Sit: ${String(i.situacao || "—").padEnd(3)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.hasPhoto ? "📸 Combinada" : "—"}`).join("\n");
           download(txt, `conferencia_${date.toISOString().slice(0, 10)}.txt`, "text/plain");
         }
         notify("Relatório exportado!");
@@ -4758,7 +4809,7 @@ ${"=".repeat(95)}
         if (typeof Html5Qrcode === "undefined") { notify("Biblioteca da câmera não carregou.", "error"); return; }
         document.getElementById("scannerOverlay").classList.add("show"); document.body.style.overflow = "hidden"; camUpdateCounters(); camUpdateHistory(); camCooldown = false; camEnableVolumeZoom();
         const scanW = Math.min(Math.floor(window.innerWidth * 0.94), 720), scanH = Math.min(Math.floor(window.innerHeight * 0.24), 240);
-        const onSuccess = (text) => { if (camCooldown) return; camCooldown = true; camProcessScan(String(text).trim()); if (!camPendingExtra) setTimeout(() => (camCooldown = false), CAM_SCAN_DELAY_MS); };
+        const onSuccess = (text) => { if (camCooldown) return; camCooldown = true; camProcessScan(String(text).trim()); if (!camPendingExtra && !pendingNaoAprovada) setTimeout(() => (camCooldown = false), CAM_SCAN_DELAY_MS); };
         const onError = () => {};
         async function cleanupScannerInstance() { if (camScanner) { try { await camScanner.stop(); } catch (e) {} try { camScanner.clear(); } catch (e) {} camScanner = null; } }
         async function tryStart(cameraConfig) {
@@ -4855,11 +4906,18 @@ ${"=".repeat(95)}
       }
       function camProcessScan(code) {
         const time = new Date().toLocaleTimeString("pt-BR"), err = document.getElementById("camErrorOverlay"), warn = document.getElementById("camWarnOverlay");
-        if (!/^(500|700)\d{8,9}$/.test(code)) return;
+        if (!/^(500|700)\d{8,10}$/.test(code)) return;
+        if (pendingNaoAprovada) return;
         if (handleBobinaAlertScan(code, time, "camera")) { camFlash("red"); camShowBigStatus("red", "🚨 ALERTA", code, 1700); camShowResult("red", `🚨 ALERTA — bobina procurada "${code}" encontrada`, 2400); camVibrate("notfound"); camBeep("notfound"); return; }
         if (S.checked.has(code)) { camFlash("yellow"); camShowBigStatus("yellow", "⚠️ JÁ LIDA", code, 1500); camShowResult("yellow", `⚠️ "${code}" — já conferido`, 1500); camVibrate("already"); camBeep("warning"); return; }
         if (S.extras.includes(code)) { camFlash("yellow"); camShowBigStatus("yellow", "⚠️ JÁ REGISTRADA", code, 1700); warn.classList.add("show"); setTimeout(() => warn.classList.remove("show"), 2000); camShowResult("yellow", `⚠️ "${code}" — já registrado como não prevista`, 2500); camVibrate("already"); camBeep("warning"); return; }
         if (S.db.includes(code)) {
+          if (isNaoAprovadaCode(code)) {
+            camFlash("red"); camShowBigStatus("red", "⚠️ NÃO APROVADA", code, 1600); camShowResult("red", `⚠️ NÃO APROVADA — "${code}" — informe o endereço`, 2400); camVibrate("notfound"); camBeep("notfound");
+            camCooldown = true;
+            showNaoAprovadaFlow(code, time, "camera");
+            return;
+          }
           S.checked.add(code); const scanItem = { code, time, status: "found" }; S.scanned.unshift(scanItem); camFlash("green"); camShowBigStatus("green", "✅ LIDA", code, 1450); camShowResult("green", `✅ CONFERIDO — "${code}"`, 1800); camVibrate("found"); camBeep("found"); save(); cloudSyncReading(scanItem); camUpdateCounters(); camUpdateHistory(); updateStats(); updateHistory(); updateDBUI();
         } else {
           camFlash("red"); camShowBigStatus("red", "⚠️ NÃO PREVISTA", code, 1200); camVibrate("notfound"); camBeep("notfound"); camPendingExtra = { code, time }; camCooldown = true; camShowLocationModal(code);
@@ -4881,6 +4939,12 @@ ${"=".repeat(95)}
       function camSelectManualBobina(code) { camCloseManualModal(); camManualSelectedCode = null; camPendingExtra = null; camMarkManualFound(code); }
       function camMarkManualFound(code) {
         const time = new Date().toLocaleTimeString("pt-BR");
+        if (isNaoAprovadaCode(code) && !S.checked.has(code)) {
+          camCooldown = true;
+          camShowResult("red", `⚠️ NÃO APROVADA — "${code}" — informe o endereço`, 2200);
+          showNaoAprovadaFlow(code, time, "camera", { manual: true });
+          return;
+        }
         S.checked.add(code);
         S.scanned.unshift({ code, time, status: "found", manual: true });
         camShowResult("green", `📸 MANUAL — "${code}" — encontrada`);
@@ -5055,6 +5119,110 @@ ${"=".repeat(95)}
   // BUG 3 CORRIGIDO: delay maior
   setTimeout(() => { if (collectorCanFocus()) focusCollectorInput(); }, 400);
 }
+      function normalizeSituacaoValue(v) {
+        const s = String(v || "").trim().toUpperCase();
+        if (!s) return "";
+        if (s === "N" || s.includes("NAO APROV") || s.includes("NÃO APROV")) return "N";
+        if (s === "A" || s.includes("APROV")) return "A";
+        if (s === "P" || s.includes("PRODU")) return "P";
+        return "";
+      }
+      function coilSituacaoForCode(code) {
+        const m = (S.meta && S.meta[String(code)]) || {};
+        return normalizeSituacaoValue(m.situacao);
+      }
+      function isNaoAprovadaCode(code) { return coilSituacaoForCode(code) === "N"; }
+      function reportSituacao(row = {}) { return normalizeSituacaoValue(row.situacao || row.SITUACAO_OP || row.situacaoOp || ""); }
+      function reportIsNaoAprovada(row = {}) { return reportSituacao(row) === "N"; }
+      function reportSitCell(row = {}) { return reportIsNaoAprovada(row) ? '<span class="sit-n">N</span>' : "—"; }
+      function reportSitValue(row = {}) { return reportIsNaoAprovada(row) ? "N" : ""; }
+      function loteRefToLabelCode(ref) {
+        const s = String(ref || "").trim();
+        if (!s) return "";
+        const parts = s.split(".");
+        const lote = String(parts[0] || "").replace(/\D/g, "");
+        const num = parts.slice(1).map((p) => String(p || "").replace(/\D/g, "")).join("");
+        if (!lote || !num) return "";
+        return "700" + lote + num;
+      }
+      function rowHeaderCode(row, layout) {
+        if (!layout || !layout.idx) return "";
+        const bIdx = layout.idx.BARRAS_ORIGEM;
+        const direct = bIdx >= 0 ? String(row[bIdx] || "").trim() : "";
+        if (direct) return direct;
+        const rlIdx = layout.idx.REFERENCIA_LOTE >= 0 ? layout.idx.REFERENCIA_LOTE : -1;
+        return rlIdx >= 0 ? loteRefToLabelCode(row[rlIdx]) : "";
+      }
+      function capaSideMaterial(materialRaw) {
+        const s = String(materialRaw || "");
+        const i = s.indexOf("+");
+        return (i >= 0 ? s.slice(i + 1) : s).trim();
+      }
+      const CAPA_PELICULA_TERMS = ["BOPP", "BOPP METAL", "BOPP PEROLA", "PP", "PP TERPOLIMERO"];
+      function isCapaPeliculaMaterial(materialRaw) {
+        const capa = normalizeCategoryText(capaSideMaterial(materialRaw)).replace(/\s+/g, " ").trim();
+        return CAPA_PELICULA_TERMS.includes(capa);
+      }
+      let pendingNaoAprovada = null;
+      function showNaoAprovadaFlow(code, time, source, opts = {}) {
+        pendingNaoAprovada = { code, time, source: source || "", manual: !!opts.manual };
+        const flash = document.getElementById("naoAprovadaFlash");
+        const codeEl = document.getElementById("naoAprovadaFlashCode");
+        if (codeEl) codeEl.textContent = code;
+        if (flash) { flash.classList.add("show"); setTimeout(() => flash.classList.remove("show"), 2000); }
+        try { if (navigator.vibrate) navigator.vibrate([350, 140, 350]); } catch (e) {}
+        setTimeout(() => showNaoAprovadaModal(code), 2050);
+      }
+      function showNaoAprovadaModal(code) {
+        const codeEl = document.getElementById("naoAprovadaCode"); if (codeEl) codeEl.textContent = code;
+        const loc = document.getElementById("naoAprovadaLocInput"); if (loc) loc.value = "";
+        const obs = document.getElementById("naoAprovadaObsInput"); if (obs) obs.value = "";
+        const err = document.getElementById("naoAprovadaLocError"); if (err) err.style.display = "none";
+        document.getElementById("naoAprovadaModal").classList.add("show");
+        setTimeout(() => { if (loc) loc.focus(); }, 250);
+      }
+      function releaseNaoAprovadaFlow() {
+        const source = (pendingNaoAprovada && pendingNaoAprovada.source) || "";
+        pendingNaoAprovada = null;
+        if (source === "collector") { collectorProcessing = false; setTimeout(() => { if (collectorCanFocus()) focusCollectorInput(); }, 150); }
+        if (source === "camera") { setTimeout(() => { camCooldown = false; }, 700); }
+      }
+      function confirmNaoAprovada() {
+        if (!pendingNaoAprovada) return;
+        const locInput = document.getElementById("naoAprovadaLocInput");
+        const loc = locInput ? locInput.value.trim() : "";
+        const obsEl = document.getElementById("naoAprovadaObsInput");
+        const obs = obsEl ? obsEl.value.trim() : "";
+        if (!loc) {
+          const err = document.getElementById("naoAprovadaLocError"); if (err) err.style.display = "block";
+          if (locInput) locInput.focus();
+          return;
+        }
+        const info = pendingNaoAprovada;
+        const scanItem = { code: info.code, time: info.time, status: "found", location: loc, observation: obs, situacao: "N", manual: !!info.manual };
+        if (info.source) scanItem.source = info.source;
+        S.checked.add(info.code);
+        S.scanned.unshift(scanItem);
+        const undoBtn = document.getElementById("btnUndo"); if (undoBtn) undoBtn.disabled = false;
+        save(); cloudSyncReading(scanItem);
+        updateStats(); updateHistory(); updateDBUI(); updateReport();
+        if (info.source === "collector") {
+          collectorShowBigStatus("green", "✅ LIDA", info.code, 1400);
+          setCollectorLastRead(`✅ ${info.code} conferido (N) com endereço.`, "ok");
+          updateCollectorOverlayCenter("Lida com sucesso", "Bobina não aprovada conferida com endereço.", info.code);
+        } else if (info.source === "camera") {
+          camShowResult("green", `✅ CONFERIDO (N) — "${info.code}" — 📌 ${loc}`, 2200);
+        }
+        document.getElementById("naoAprovadaModal").classList.remove("show");
+        notify(`✅ ${info.code} conferida como N — endereço salvo.`);
+        releaseNaoAprovadaFlow();
+      }
+      function cancelNaoAprovada() {
+        const code = (pendingNaoAprovada && pendingNaoAprovada.code) || "";
+        document.getElementById("naoAprovadaModal").classList.remove("show");
+        notify(`⚠️ ${code} não conferida. Leia novamente se necessário.`, "warning");
+        releaseNaoAprovadaFlow();
+      }
       function init() {
   setupMobileCopyProtection();
   load();
@@ -5089,5 +5257,5 @@ document.addEventListener("keydown", (e) => {
 
 init();
     </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a5139afdca5e1446',t:'MTc5MzEyNDA4MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
