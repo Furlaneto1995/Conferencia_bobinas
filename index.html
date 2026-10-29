@@ -504,7 +504,6 @@
       .report-back-btn:active { transform: scale(0.97); }
       .report-panel-title-wrap { min-width: 0; flex: 1; }
       .report-panel-title { font-size: 1.03em; font-weight: 900; color: var(--text-primary); line-height: 1.2; }
-      .report-panel-sub { color: var(--text-secondary); font-size: 0.78em; margin-top: 3px; line-height: 1.25; }
       .report-mode-switch { display: flex; gap: 6px; margin-top: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 4px; }
       .report-mode-switch button { flex: 1; border: none; border-radius: 9px; background: transparent; color: var(--text-secondary); padding: 9px 6px; font-size: 0.78em; font-weight: 900; cursor: pointer; -webkit-tap-highlight-color: transparent; }
       .report-mode-switch button.active { background: var(--accent-blue); color: #fff; box-shadow: 0 2px 10px rgba(59, 130, 246, 0.25); }
@@ -813,7 +812,7 @@
       </div>
       <div class="header">
         <!-- A cada atualização, manter a versão abaixo igual à de sw.js. -->
-        <h1><span class="header-title-icon" aria-hidden="true">📦</span> <span class="header-title-text">Conferência de Bobinas</span> <span class="app-version" aria-label="Versão do aplicativo 17">v17</span></h1>
+        <h1><span class="header-title-icon" aria-hidden="true">📦</span> <span class="header-title-text">Conferência de Bobinas</span> <span class="app-version" aria-label="Versão do aplicativo 18">v18</span></h1>
         <p>Sistema de conferência por código de barras</p>
         <div class="collector-topbar">
           <div class="collector-toggle-wrap">
@@ -980,7 +979,6 @@
               <button type="button" class="report-back-btn" onclick="closeReportPanel()">← Voltar</button>
               <div class="report-panel-title-wrap">
                 <div class="report-panel-title" id="reportPanelTitle">📦 Resumo por OP's</div>
-                <div class="report-panel-sub" id="reportPanelSub">Progresso por OP em tela cheia.</div>
               </div>
             </div>
             <div class="report-mode-switch" aria-label="Alternar visualização do relatório">
@@ -2828,7 +2826,6 @@ ${"=".repeat(95)}
         document.getElementById("cloudSavedModeDetail")?.classList.toggle("active", !isOps);
         const filters = document.getElementById("cloudSavedFilters"); if (filters) filters.style.display = isOps ? "none" : "flex";
         const title = document.getElementById("cloudSavedPanelTitle"); if (title) title.textContent = isOps ? "📦 Resumo por OP's" : "📋 Lista detalhada";
-        const sub = document.getElementById("cloudSavedPanelSub"); if (sub) sub.textContent = isOps ? "Progresso por OP em tela cheia, com busca e rolagem própria." : "Bobina a bobina em tela cheia, com filtros, busca, local, observação e fotos.";
         const search = document.getElementById("cloudSavedSearch");
         if (search) { search.placeholder = isOps ? "Buscar OP..." : "Buscar código, OP, status, local..."; search.value = isOps ? cloudSavedOpsSearch : cloudDetailSearch; }
         const content = document.getElementById("cloudSavedPanelContent"); if (content) content.scrollTop = 0;
@@ -2884,7 +2881,6 @@ ${"=".repeat(95)}
               <button type="button" class="cloud-back-btn" id="cloudSavedBackToList" onclick="cloudCloseConferenceDetail()">← Voltar para a lista</button>
               <div class="report-panel-title-wrap">
                 <div class="report-panel-title" id="cloudSavedPanelTitle">📦 Resumo por OP's</div>
-                <div class="report-panel-sub" id="cloudSavedPanelSub">Progresso por OP em tela cheia, com busca e rolagem própria.</div>
                 <div class="cloud-saved-context">${esc(context)}</div>
               </div>
               <button type="button" class="cloud-report-btn" onclick="cloudShowExportModal(cloudDetailConfId)">📤 Exportar</button>
@@ -4819,7 +4815,6 @@ if (S.collectorMode) {
         document.getElementById("reportModeDetail")?.classList.toggle("active", !isOps);
         const filters = document.getElementById("reportDetailFilters"); if (filters) filters.style.display = isOps ? "none" : "flex";
         const title = document.getElementById("reportPanelTitle"); if (title) title.textContent = isOps ? "📦 Resumo por OP's" : "📋 Lista detalhada";
-        const sub = document.getElementById("reportPanelSub"); if (sub) sub.textContent = isOps ? "Progresso por OP em tela cheia, com busca e rolagem própria." : "Bobina a bobina em tela cheia, com filtros, busca, local, observação e fotos.";
         const search = document.getElementById("reportFullscreenSearch");
         if (search) { search.placeholder = isOps ? "Buscar OP..." : "Buscar código, OP, status, local..."; search.value = isOps ? reportOpSummarySearch : S.rptSearch; }
         updateReportPanelMetrics(); renderOpSummary(reportOpSummarySearch); renderRpt();
@@ -5504,5 +5499,5 @@ document.addEventListener("keydown", (e) => {
 
 init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a524d8079d07cd4e',t:'MTc5MzMwNDgzOA=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a524d8079d07cd4e',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a524df538919cd4e',t:'MTc5MzMwNTEzNw=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a524df538919cd4e',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
