@@ -601,7 +601,6 @@
       .cloud-detail-head > div { min-width: 0; flex: 1 1 220px; }
       .cloud-detail-title { font-weight: 900; color: var(--text-primary); font-size: 0.98em; }
       .cloud-detail-sub { color: var(--text-secondary); font-size: 0.8em; margin-top: 3px; word-break: break-word; overflow-wrap: anywhere; }
-      .cloud-detail-close { border: 1px solid rgba(100, 116, 139, 0.25); background: rgba(100, 116, 139, 0.12); color: var(--text-secondary); border-radius: 10px; padding: 7px 10px; font-weight: 900; cursor: pointer; flex: 0 0 auto; }
       .cloud-detail-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
       .cloud-detail-stat { background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 9px 10px; font-size: 0.82em; color: var(--text-secondary); min-width: 0; }
       .cloud-detail-stat strong { display: block; color: var(--text-primary); font-size: 1.15em; margin-top: 2px; }
@@ -657,7 +656,6 @@
         .cloud-detail-head { gap: 8px; }
         .cloud-detail-title { font-size: 0.9em; }
         .cloud-detail-sub { font-size: 0.74em; }
-        .cloud-detail-close { width: 100%; }
       }
       @media (max-width: 520px) {
         #cloudDetailBox .dtbl thead th:nth-child(6),
@@ -724,6 +722,14 @@
         border-radius: 12px; box-shadow: var(--shadow);
       }
       .cloud-menu-title { color: var(--text-secondary); font-size: .9em; font-weight: 700; }
+      .cloud-back-btn {
+        display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+        min-height: 40px; padding: 10px 16px; border-radius: 10px;
+        border: 1px solid rgba(100, 116, 139, .25); background: rgba(100, 116, 139, .12);
+        color: var(--text-secondary); font-family: inherit; font-size: .82rem; line-height: 1.2;
+        font-weight: 900; cursor: pointer; -webkit-tap-highlight-color: transparent;
+      }
+      .cloud-back-btn:active { transform: scale(.97); }
       /* A conferência selecionada ocupa a tela em computadores e celulares. */
       body.cloud-detail-panel-open { overflow: hidden; }
       #cloudDetailBox.cloud-detail-fullscreen.show {
@@ -740,7 +746,6 @@
         box-shadow: 0 4px 18px rgba(15, 23, 42, .07);
       }
       #cloudDetailBox.cloud-detail-fullscreen .cloud-detail-title { font-size: 1.15em; }
-      #cloudDetailBox.cloud-detail-fullscreen .cloud-detail-close { padding: 10px 16px; }
       #cloudDetailBox.cloud-detail-fullscreen .cloud-saved-context {
         color: var(--text-muted); font-size: .72em; margin-top: 2px;
         overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -767,14 +772,20 @@
       }
       @media (max-width: 640px) {
         .cloud-menu-head { gap: 8px; margin-bottom: 10px; padding: 8px; }
-        .cloud-menu-head .btn { font-size: .82em; padding: 9px 10px; }
         .cloud-menu-title { font-size: .8em; }
+        .cloud-back-btn { padding: 9px 12px; font-size: .78rem; }
+        #cloudDetailBox.cloud-detail-fullscreen .cloud-saved-header-row {
+          display: grid; grid-template-columns: minmax(0, 1fr) auto;
+          grid-template-areas: "back export" "title title"; gap: 8px;
+        }
+        #cloudDetailBox.cloud-detail-fullscreen .cloud-saved-header-row > .cloud-back-btn { grid-area: back; justify-self: start; }
+        #cloudDetailBox.cloud-detail-fullscreen .cloud-saved-header-row > .report-panel-title-wrap { grid-area: title; }
+        #cloudDetailBox.cloud-detail-fullscreen .cloud-saved-header-row > .cloud-report-btn { grid-area: export; align-self: center; }
         #cloudDetailBox.cloud-detail-fullscreen.show { padding: 0; }
         #cloudDetailBox.cloud-detail-fullscreen .cloud-detail-head {
           margin: 0; padding: 12px; gap: 8px;
         }
         #cloudDetailBox.cloud-detail-fullscreen .cloud-detail-head > div { flex: 1 1 180px; }
-        #cloudDetailBox.cloud-detail-fullscreen .cloud-detail-close { width: auto; padding: 9px 12px; }
         #cloudDetailBox.cloud-detail-fullscreen .dtbl thead th,
         #cloudDetailBox.cloud-detail-fullscreen .dtbl tbody td { padding: 8px; font-size: .8em; }
         #cloudDetailBox.cloud-detail-fullscreen .dtbl thead th:nth-child(6),
@@ -782,7 +793,6 @@
       }
       @media (max-width: 420px) {
         .cloud-menu-head { gap: 5px 8px; }
-        .cloud-menu-head .btn { min-height: 40px; padding: 8px; font-size: .76em; }
         .cloud-menu-title { display: inline; font-size: .74em; }
         .header h1 { font-size: clamp(1rem, calc(6.5vw - 5px), 1.4rem); }
       }
@@ -803,7 +813,7 @@
       </div>
       <div class="header">
         <!-- A cada atualização, manter a versão abaixo igual à de sw.js. -->
-        <h1><span class="header-title-icon" aria-hidden="true">📦</span> <span class="header-title-text">Conferência de Bobinas</span> <span class="app-version" aria-label="Versão do aplicativo 16">v16</span></h1>
+        <h1><span class="header-title-icon" aria-hidden="true">📦</span> <span class="header-title-text">Conferência de Bobinas</span> <span class="app-version" aria-label="Versão do aplicativo 17">v17</span></h1>
         <p>Sistema de conferência por código de barras</p>
         <div class="collector-topbar">
           <div class="collector-toggle-wrap">
@@ -1011,7 +1021,7 @@
       </div>
       <div class="section" id="sectionCloud">
         <div class="cloud-menu-head">
-          <button type="button" class="btn btn-outline" id="cloudBackToConference" onclick="switchTab('scan')">← Voltar para a conferência</button>
+          <button type="button" class="cloud-back-btn" id="cloudBackToConference" onclick="switchTab('scan')">← Voltar para a conferência</button>
           <span class="cloud-menu-title">⚙️ Arquivos e conferências</span>
         </div>
         <div class="card">
@@ -2851,7 +2861,7 @@ ${"=".repeat(95)}
         box.setAttribute("aria-label", "Detalhes da conferência selecionada");
         document.body.classList.add("cloud-detail-panel-open");
         box.scrollTop = 0;
-        if (!silent) box.innerHTML = '<div class="cloud-detail-head"><div class="cloud-detail-title">📋 Conferência selecionada</div><button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">← Voltar para a lista</button></div><div class="empty">Abrindo conferência...</div>';
+        if (!silent) box.innerHTML = '<div class="cloud-detail-head"><button type="button" class="cloud-back-btn" onclick="cloudCloseConferenceDetail()">← Voltar para a lista</button><div class="cloud-detail-title">📋 Conferência selecionada</div></div><div class="empty">Abrindo conferência...</div>';
         try {
           const data = await cloudBuildExportData(confId);
           if (openToken !== cloudDetailOpenToken) return;
@@ -2870,8 +2880,8 @@ ${"=".repeat(95)}
           const pct = cloudSummaryNumber(resumo.percentual, total ? (checked / total) * 100 : 0).toFixed(1);
           const context = `${data.operador || "-"} • ${cloudFormatSessionMeta(data.id, data.data || "")} • ${data.tipo || "-"}`;
           box.innerHTML = `<div class="report-fullscreen-head">
-            <div class="report-panel-row">
-              <button type="button" class="report-back-btn" onclick="cloudCloseConferenceDetail()">← Voltar</button>
+            <div class="report-panel-row cloud-saved-header-row">
+              <button type="button" class="cloud-back-btn" id="cloudSavedBackToList" onclick="cloudCloseConferenceDetail()">← Voltar para a lista</button>
               <div class="report-panel-title-wrap">
                 <div class="report-panel-title" id="cloudSavedPanelTitle">📦 Resumo por OP's</div>
                 <div class="report-panel-sub" id="cloudSavedPanelSub">Progresso por OP em tela cheia, com busca e rolagem própria.</div>
@@ -2915,7 +2925,7 @@ ${"=".repeat(95)}
         } catch (e) {
           if (openToken !== cloudDetailOpenToken) return;
           console.error(e);
-          box.innerHTML = '<div class="cloud-detail-head"><div class="cloud-detail-title">📋 Conferência selecionada</div><button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">← Voltar para a lista</button></div><div class="empty">Não foi possível abrir esta conferência. Verifique a conexão e tente novamente.</div>';
+          box.innerHTML = '<div class="cloud-detail-head"><button type="button" class="cloud-back-btn" onclick="cloudCloseConferenceDetail()">← Voltar para a lista</button><div class="cloud-detail-title">📋 Conferência selecionada</div></div><div class="empty">Não foi possível abrir esta conferência. Verifique a conexão e tente novamente.</div>';
           cloudSetStatus("error", "☁️ Erro ao abrir");
         }
       }
@@ -3154,7 +3164,7 @@ ${"=".repeat(95)}
         const box = document.getElementById("cloudDetailBox"); if (!box || !cloudMergedReport) return;
         const r = cloudMergedReport.resumo || {}; cloudDetailRows = cloudMergedReport.rows || []; cloudDetailFilter = "all"; cloudDetailSearch = ""; cloudDetailConfId = "__merged__";
         box.className = "cloud-detail show";
-        box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(cloudMergedReport.title)}</div><div class="cloud-detail-sub">${esc(cloudMergedReport.subtitle || "")}</div></div><button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">✕ Fechar</button></div>
+        box.innerHTML = `<div class="cloud-detail-head"><button type="button" class="cloud-back-btn" onclick="cloudCloseConferenceDetail()">← Voltar para a lista</button><div><div class="cloud-detail-title">${esc(cloudMergedReport.title)}</div><div class="cloud-detail-sub">${esc(cloudMergedReport.subtitle || "")}</div></div></div>
         <div class="cloud-detail-stats">
           <div class="cloud-detail-stat clickable active" id="cloudDetailStatAll" onclick="cloudSetDetailFilter('all')">Total<strong>${r.total ?? 0}</strong></div>
           <div class="cloud-detail-stat clickable" id="cloudDetailStatChecked" onclick="cloudSetDetailFilter('checked')">Conferidas<strong>${r.conferidos ?? 0}</strong></div>
@@ -5494,5 +5504,5 @@ document.addEventListener("keydown", (e) => {
 
 init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a524cadd5c1e1aaf',t:'MTc5MzMwNDI5OQ=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a524cadd5c1e1aaf',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a524d8079d07cd4e',t:'MTc5MzMwNDgzOA=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a524d8079d07cd4e',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
