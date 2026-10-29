@@ -106,11 +106,14 @@
         width: 120px; height: 2px;
         background: linear-gradient(90deg, transparent, var(--accent-blue), transparent);
       }
-      .header h1 {
-        font-size: 1.5em; font-weight: 700;
+      .header h1 { font-size: 1.5em; font-weight: 700; margin-bottom: 4px; }
+      .header h1 .header-title-text {
         background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
         -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-        margin-bottom: 4px;
+      }
+      .header h1 .header-title-icon {
+        font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+        -webkit-text-fill-color: initial;
       }
       .header p { color: var(--text-secondary); font-size: 0.85em; }
       .tabs {
@@ -700,9 +703,93 @@
       .cloud-item button, .cloud-item input { cursor: pointer; }
       .cloud-inline-detail { margin-top: -2px; margin-bottom: 8px; }
     </style>
+    <style>
+      /* Layout adaptado para computadores e celulares. */
+      @media (min-width: 769px) {
+        .app { max-width: 100%; padding: 18px 26px 26px; }
+        .header h1 { font-size: 2em; }
+        .card { padding: 20px 22px; }
+        .card-title { font-size: 1.08em; }
+        .collector-overlay-center, .collector-overlay-history-card { width: min(100%, 1200px); }
+        .report-detail-table { min-width: 1100px; }
+      }
+      @media (min-width: 1280px) {
+        .app { padding: 22px 34px 30px; }
+        .stats { grid-template-columns: repeat(4, 1fr); }
+        .import-grid { grid-template-columns: 1fr 1fr; }
+      }
+      /* A lista acompanha a rolagem da página em qualquer aparelho. */
+      #cloudConsultBox.cloud-list { max-height: none; overflow: visible; padding-right: 0; }
+      /* Título só em Importar; controles e engrenagem só em Conferir. */
+      .app[data-screen="import"] > .header .collector-topbar { display: none; }
+      .app[data-screen="scan"] > .header > h1,
+      .app[data-screen="scan"] > .header > p,
+      .app[data-screen="scan"] > .header::after { display: none; }
+      .app[data-screen="scan"] > .header { padding: 2px 0 8px; margin-bottom: 6px; }
+      .app[data-screen="scan"] > .header .collector-topbar { margin-top: 0; }
+      .app[data-screen="report"] > .header,
+      .app[data-screen="cloud"] > .header,
+      .app[data-screen="cloud"] > .tabs { display: none; }
+      .cloud-menu-head {
+        display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+        position: sticky; top: 0; z-index: 600;
+        margin-bottom: 14px; padding: 10px 14px;
+        background: rgba(255, 255, 255, .97); border: 1px solid var(--border);
+        border-radius: 12px; box-shadow: var(--shadow);
+      }
+      .cloud-menu-title { color: var(--text-secondary); font-size: .9em; font-weight: 700; }
+      /* A conferência selecionada ocupa a tela em computadores e celulares. */
+      body.cloud-detail-panel-open { overflow: hidden; }
+      #cloudDetailBox.cloud-detail-fullscreen.show {
+        position: fixed; inset: 0; z-index: 800;
+        width: 100%; max-width: none; height: 100vh; height: 100dvh;
+        margin: 0; padding: 0 24px 32px; border: 0; border-radius: 0;
+        background: var(--bg-primary); box-shadow: none;
+        overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
+      }
+      #cloudDetailBox.cloud-detail-fullscreen .cloud-detail-head {
+        position: sticky; top: 0; z-index: 10;
+        margin: 0 -24px 16px; padding: 18px 24px;
+        background: #fff; border-bottom: 1px solid var(--border);
+        box-shadow: 0 4px 18px rgba(15, 23, 42, .07);
+      }
+      #cloudDetailBox.cloud-detail-fullscreen .cloud-detail-title { font-size: 1.15em; }
+      #cloudDetailBox.cloud-detail-fullscreen .cloud-detail-close { padding: 10px 16px; }
+      #cloudDetailBox.cloud-detail-fullscreen #cloudDetailOpSummary {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        align-items: start;
+      }
+      #cloudDetailBox.cloud-detail-fullscreen .cloud-detail-scroll {
+        max-height: none; overflow-x: auto; overflow-y: visible;
+      }
+      #cloudDetailBox.cloud-detail-fullscreen .dtbl { min-width: 900px; table-layout: auto; }
+      .cloud-detail-swipe-hint { display: none; }
+      @media (max-width: 900px) {
+        #cloudDetailBox.cloud-detail-fullscreen .cloud-detail-swipe-hint {
+          display: block; margin: 2px 0 6px; color: var(--text-secondary);
+          font-size: .75em; font-weight: 700;
+        }
+      }
+      @media (max-width: 640px) {
+        .cloud-menu-head { gap: 8px; margin-bottom: 10px; padding: 8px; }
+        .cloud-menu-head .btn { font-size: .82em; padding: 9px 10px; }
+        .cloud-menu-title { font-size: .8em; }
+        #cloudDetailBox.cloud-detail-fullscreen.show { padding: 0 12px 20px; }
+        #cloudDetailBox.cloud-detail-fullscreen .cloud-detail-head {
+          margin: 0 -12px 12px; padding: 12px; gap: 8px;
+        }
+        #cloudDetailBox.cloud-detail-fullscreen .cloud-detail-head > div { flex: 1 1 180px; }
+        #cloudDetailBox.cloud-detail-fullscreen .cloud-detail-close { width: auto; padding: 9px 12px; }
+        #cloudDetailBox.cloud-detail-fullscreen .dtbl thead th,
+        #cloudDetailBox.cloud-detail-fullscreen .dtbl tbody td { padding: 8px; font-size: .8em; }
+        #cloudDetailBox.cloud-detail-fullscreen .dtbl thead th:nth-child(6),
+        #cloudDetailBox.cloud-detail-fullscreen .dtbl tbody td:nth-child(6) { display: table-cell; }
+      }
+      @media (max-width: 420px) { .cloud-menu-title { display: none; } }
+    </style>
   </head>
   <body>
-    <div class="app">
+    <div class="app" data-screen="import">
       <div class="tabs">
         <button class="tab active" onclick="switchTab('import')" id="tabImport">
           <span class="t-icon">📥</span><span class="t-text">Importar</span>
@@ -715,7 +802,7 @@
         </button>
       </div>
       <div class="header">
-        <h1>📦 Conferência de Bobinas</h1>
+        <h1><span class="header-title-icon" aria-hidden="true">📦</span> <span class="header-title-text">Conferência de Bobinas</span></h1>
         <p>Sistema de conferência por código de barras</p>
         <div class="collector-topbar">
           <div class="collector-toggle-wrap">
@@ -832,7 +919,7 @@
             <div class="stat green"><div class="s-val" id="rChecked">0</div><div class="s-lbl">Conferidos ✅</div></div>
             <div class="stat yellow"><div class="s-val" id="rPending">0</div><div class="s-lbl">Pendentes ⏳</div></div>
             <div class="stat red"><div class="s-val" id="rExtra">0</div><div class="s-lbl">Não Previstas ⚠️</div></div>
-            <div class="stat red"><div class="s-val" id="rNaoAprov">0</div><div class="s-lbl">Não Aprovadas 🔴</div></div>
+            <div class="stat red"><div class="s-val" id="rNaoAprov">0</div><div class="s-lbl">Não Aprovadas ❌</div></div>
           </div>
           <div class="prog-wrap" style="margin-top: 10px"><div class="prog-head"><span>Conferência Geral</span><span class="pct" id="rPct">0%</span></div><div class="prog-bar"><div class="prog-fill" id="rFill" style="width: 0%"></div></div></div>
         </div>
@@ -895,7 +982,7 @@
               <button class="fbtn" data-filter="checked" onclick="filterRpt('checked', this)">✅ Conferidos</button>
               <button class="fbtn" data-filter="pending" onclick="filterRpt('pending', this)">⏳ Pendentes</button>
               <button class="fbtn" data-filter="extra" onclick="filterRpt('extra', this)">⚠️ Extras</button>
-              <button class="fbtn" data-filter="naoaprov" onclick="filterRpt('naoaprov', this)">🔴 Não Aprovadas</button>
+              <button class="fbtn" data-filter="naoaprov" onclick="filterRpt('naoaprov', this)">❌ Não Aprovadas</button>
             </div>
           </div>
           <div class="report-panel-content">
@@ -922,6 +1009,10 @@
         </div>
       </div>
       <div class="section" id="sectionCloud">
+        <div class="cloud-menu-head">
+          <button type="button" class="btn btn-outline" id="cloudBackToConference" onclick="switchTab('scan')">← Voltar para a conferência</button>
+          <span class="cloud-menu-title">⚙️ Arquivos e conferências</span>
+        </div>
         <div class="card">
           <div class="card-title">📤 Arquivo-base</div>
           <div class="card-sub">Importe a planilha completa, dê um nome e defina como a única base ativa para os outros dispositivos baixarem.</div>
@@ -1091,7 +1182,7 @@
     <div class="modal-bg" id="locModal"><div class="modal" style="border-color: var(--accent-red)"><h2 style="color: var(--accent-red)">⚠️ Bobina Não Prevista</h2><div class="loc-code-display" id="locCodeMain"></div><p id="locModalDesc">Informe a localização desta bobina:</p><div class="extra-category-box" id="locExtraCategoryBox"><div class="extra-category-label">🏷️ Tipo da base da bobina não prevista:</div><div class="extra-category-buttons"><button type="button" class="extra-category-btn" data-cat="peliculas" onclick="setExtraCategory('loc','peliculas')">🎞️ Películas</button><button type="button" class="extra-category-btn" data-cat="extrusao" onclick="setExtraCategory('loc','extrusao')">🏭 Extrusão</button></div><div class="extra-category-error" id="locExtraCategoryError">⚠️ Selecione Películas ou Extrusão.</div></div><input type="text" id="locInputMain" class="loc-input-main" placeholder="Ex: Galpão A, Corredor 3..." onkeydown="if (event.key === 'Enter') confirmLocMain();" autocomplete="off" /><textarea id="locObsMain" class="loc-input-main" placeholder="Observação (opcional)" style="min-height: 76px; resize: vertical; font-family: inherit;"></textarea><div class="loc-photo-section" id="locPhotoSection"><div class="loc-photo-grid"><div><div class="loc-photo-label">🏷️ Foto da etiqueta <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnEtiqueta" onclick="document.getElementById('locPhotoInputEtiqueta').click()">📷 Tirar foto da etiqueta<input type="file" id="locPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'etiqueta')" /></div><div class="loc-photo-preview" id="locPhotoPreviewEtiqueta"><img id="locPhotoImgEtiqueta" src="" /><button class="loc-photo-remove" onclick="locRemovePhoto('etiqueta')">✕</button></div><div class="loc-photo-error" id="locPhotoErrorEtiqueta">⚠️ Foto da etiqueta obrigatória!</div></div><div><div class="loc-photo-label">📦 Foto da bobina <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnBobina" onclick="document.getElementById('locPhotoInputBobina').click()">📷 Tirar foto da bobina<input type="file" id="locPhotoInputBobina" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'bobina')" /></div><div class="loc-photo-preview" id="locPhotoPreviewBobina"><img id="locPhotoImgBobina" src="" /><button class="loc-photo-remove" onclick="locRemovePhoto('bobina')">✕</button></div><div class="loc-photo-error" id="locPhotoErrorBobina">⚠️ Foto da bobina obrigatória!</div></div></div></div><div id="locErrorMain" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Localização obrigatória!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmLocMain()">✅ Confirmar</button><button class="btn btn-outline" onclick="cancelLocMain()">Cancelar</button></div></div></div>
     <div class="photo-modal" id="photoModal"><div style="text-align: center; color: #fff; font-weight: 700; max-width: 100%; max-height: 82vh; overflow: auto;">🏷️ Etiqueta + 📦 Bobina<br /><img id="photoModalImg" src="" /></div><button class="photo-modal-close" onclick="closePhotoModal()">✕ Fechar</button></div>
     <div class="bobina-alert-flash" id="naoAprovadaFlash"><div><div class="bobina-alert-flash-main">⚠️ BOBINA<br/>NÃO APROVADA ⚠️</div><div class="bobina-alert-flash-sub" id="naoAprovadaFlashCode"></div></div></div>
-    <div class="modal-bg" id="naoAprovadaModal"><div class="modal" style="border-color: var(--accent-red); border-width: 2px;"><h2 style="color: var(--accent-red)">🔴 Bobina Não Aprovada</h2><div class="loc-code-display" id="naoAprovadaCode"></div><p>Esta bobina está marcada como <strong>não aprovada (N)</strong>. Informe o endereço onde ela está:</p><label style="display:block;font-size:.78em;font-weight:700;color:var(--text-secondary);margin-bottom:5px">📍 Endereço / localização <span style="color:var(--accent-red);font-weight:800">*obrigatório</span></label><input type="text" id="naoAprovadaLocInput" class="loc-input-main" placeholder="Ex: Galpão A, Corredor 3..." onkeydown="if (event.key === 'Enter') confirmNaoAprovada();" autocomplete="off" /><label style="display:block;font-size:.78em;font-weight:700;color:var(--text-secondary);margin-bottom:5px">📝 Observação <span style="color:var(--text-muted);font-weight:600">(opcional)</span></label><textarea id="naoAprovadaObsInput" class="loc-input-main" placeholder="Observação (opcional)" style="min-height: 64px; resize: vertical; font-family: inherit;"></textarea><div id="naoAprovadaLocError" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Endereço obrigatório!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmNaoAprovada()">✅ Confirmar</button><button class="btn btn-outline" onclick="cancelNaoAprovada()">Cancelar</button></div></div></div>
+    <div class="modal-bg" id="naoAprovadaModal"><div class="modal" style="border-color: var(--accent-red); border-width: 2px;"><h2 style="color: var(--accent-red)">❌ Bobina Não Aprovada</h2><div class="loc-code-display" id="naoAprovadaCode"></div><p>Esta bobina está marcada como <strong>não aprovada (N)</strong>. Informe o endereço onde ela está:</p><label style="display:block;font-size:.78em;font-weight:700;color:var(--text-secondary);margin-bottom:5px">📍 Endereço / localização <span style="color:var(--accent-red);font-weight:800">*obrigatório</span></label><input type="text" id="naoAprovadaLocInput" class="loc-input-main" placeholder="Ex: Galpão A, Corredor 3..." onkeydown="if (event.key === 'Enter') confirmNaoAprovada();" autocomplete="off" /><label style="display:block;font-size:.78em;font-weight:700;color:var(--text-secondary);margin-bottom:5px">📝 Observação <span style="color:var(--text-muted);font-weight:600">(opcional)</span></label><textarea id="naoAprovadaObsInput" class="loc-input-main" placeholder="Observação (opcional)" style="min-height: 64px; resize: vertical; font-family: inherit;"></textarea><div id="naoAprovadaLocError" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Endereço obrigatório!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmNaoAprovada()">✅ Confirmar</button><button class="btn btn-outline" onclick="cancelNaoAprovada()">Cancelar</button></div></div></div>
     <div class="bobina-alert-flash" id="bobinaAlertFlash"><div><div class="bobina-alert-flash-main">⚠️ ALERTA ⚠️</div><div class="bobina-alert-flash-sub" id="bobinaAlertFlashCode"></div></div></div>
     <div class="modal-bg alert-found-modal" id="alertFoundModal"><div class="modal">
       <h2 class="alert-found-title">⚠️ BOBINA PROCURADA ENCONTRADA</h2>
@@ -2659,12 +2750,13 @@ ${"=".repeat(95)}
         // Use o botão Atualizar na consulta para buscar novamente.
         cloudClearDetailLiveListeners();
       }
+      let cloudDetailOpenToken = 0;
       async function cloudOpenConference(confId, options = {}) {
         const silent = !!options.silent;
-        const anchor = options && options.anchor ? options.anchor : null;
         const prevFilter = silent ? cloudDetailFilter : "all";
         const prevSearch = silent ? cloudDetailSearch : "";
         if (!silent) cloudCloseConferenceDetail();
+        const openToken = ++cloudDetailOpenToken;
         if (!silent || cloudDetailConfId !== confId) cloudWatchOpenedConference(confId);
         let box = document.getElementById("cloudDetailBox");
         if (!box) {
@@ -2673,16 +2765,22 @@ ${"=".repeat(95)}
           box.className = "cloud-detail";
           (document.getElementById("cloudConsultBox") || document.getElementById("sectionCloud") || document.body).appendChild(box);
         }
-        if (anchor && anchor.parentElement) anchor.insertAdjacentElement("afterend", box);
-        box.className = "cloud-detail show";
-        if (!silent) box.innerHTML = '<div class="empty">Abrindo conferência...</div>';
+        document.body.appendChild(box);
+        box.className = "cloud-detail show cloud-detail-fullscreen";
+        box.setAttribute("role", "dialog");
+        box.setAttribute("aria-modal", "true");
+        box.setAttribute("aria-label", "Detalhes da conferência selecionada");
+        document.body.classList.add("cloud-detail-panel-open");
+        box.scrollTop = 0;
+        if (!silent) box.innerHTML = '<div class="cloud-detail-head"><div class="cloud-detail-title">📋 Conferência selecionada</div><button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">← Voltar para a lista</button></div><div class="empty">Abrindo conferência...</div>';
         try {
           const data = await cloudBuildExportData(confId);
+          if (openToken !== cloudDetailOpenToken) return;
           cloudDetailRows = data.rows;
           cloudDetailFilter = prevFilter;
           cloudDetailSearch = prevSearch;
           cloudDetailConfId = data.id;
-          box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(data.operador || "-")} • ${esc(cloudFormatSessionMeta(data.id, data.data || ""))}</div><div class="cloud-detail-sub">${esc(data.tipo || "-")}</div></div><button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">✕ Fechar</button></div>
+          box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(data.operador || "-")} • ${esc(cloudFormatSessionMeta(data.id, data.data || ""))}</div><div class="cloud-detail-sub">${esc(data.tipo || "-")}</div></div><button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">← Voltar para a lista</button></div>
           <div class="cloud-detail-stats">
             <div class="cloud-detail-stat clickable active" id="cloudDetailStatAll" onclick="cloudSetDetailFilter('all')">Total<strong>${data.resumo.total}</strong></div>
             <div class="cloud-detail-stat clickable" id="cloudDetailStatChecked" onclick="cloudSetDetailFilter('checked')">Conferidas<strong>${data.resumo.conferidos}</strong></div>
@@ -2698,16 +2796,17 @@ ${"=".repeat(95)}
           </div>
           <div class="search-wrap" style="margin-bottom: 8px"><span class="si">🔍</span><input class="search-input" id="cloudDetailSearch" placeholder="Buscar código, OP, status ou observação..." oninput="cloudDetailSearch=this.value; cloudRenderDetailRows(); cloudRenderDetailOpSummary()" /></div>
           ${data.missingBobinas ? `<div style="margin:8px 0 0; padding:10px 12px; border-radius:10px; border:1px solid rgba(245,158,11,.28); background: rgba(245,158,11,.08); color: var(--accent-yellow); font-size:.82em; font-weight:700;">⚠️ Conferência antiga sem base de bobinas.</div>` : ""}
+          <div class="cloud-detail-swipe-hint">↔️ Deslize a tabela para ver as outras colunas.</div>
           <div class="cloud-detail-scroll" style="margin-top: 8px"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>Categoria</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Situação</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>`;
           const detailSearchInput = document.getElementById("cloudDetailSearch"); if (detailSearchInput) detailSearchInput.value = cloudDetailSearch || "";
           cloudApplyDetailFilterUI();
           cloudRenderDetailOpSummary();
           cloudRenderDetailRows();
-          if (!silent) box.scrollIntoView({ behavior: "smooth", block: "start" });
           cloudSetStatus("ok", "☁️ Conferência aberta");
         } catch (e) {
+          if (openToken !== cloudDetailOpenToken) return;
           console.error(e);
-          box.innerHTML = '<div class="empty">Erro ao abrir conferência. Veja o console.</div>';
+          box.innerHTML = '<div class="cloud-detail-head"><div class="cloud-detail-title">📋 Conferência selecionada</div><button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">← Voltar para a lista</button></div><div class="empty">Não foi possível abrir esta conferência. Verifique a conexão e tente novamente.</div>';
           cloudSetStatus("error", "☁️ Erro ao abrir");
         }
       }
@@ -2791,7 +2890,7 @@ ${"=".repeat(95)}
             label = "⚠️ Não previstas";
             value = String(entry.extra || entry.count);
           } else if (cloudDetailFilter === "naoaprov") {
-            label = "🔴 Não aprovadas";
+            label = "❌ Não aprovadas";
           }
           return `<div class="op-summary-item"><div class="op-summary-op">OP ${esc(entry.op || "-")}</div><div class="op-summary-info"><span>${label}: <strong>${value}</strong></span>${extraInfo}</div></div>`;
         }).join("");
@@ -2811,9 +2910,23 @@ ${"=".repeat(95)}
         if (rows.length > 700) tbody.innerHTML += `<tr><td colspan="11">Mostrando 700 de ${rows.length} itens</td></tr>`;
       }
       function cloudCloseConferenceDetail() {
+        cloudDetailOpenToken++;
         cloudClearDetailLiveListeners();
         document.querySelectorAll(".cloud-inline-detail").forEach((box) => { box.className = "cloud-detail cloud-inline-detail"; box.innerHTML = ""; });
-        const box = document.getElementById("cloudDetailBox"); if (box) { box.className = "cloud-detail"; box.innerHTML = ""; }
+        const box = document.getElementById("cloudDetailBox");
+        if (box) {
+          const wasFullscreen = box.classList.contains("cloud-detail-fullscreen");
+          box.className = "cloud-detail";
+          box.innerHTML = "";
+          box.removeAttribute("role");
+          box.removeAttribute("aria-modal");
+          box.removeAttribute("aria-label");
+          if (wasFullscreen) {
+            const list = document.getElementById("cloudConsultBox");
+            if (list && list.parentElement) list.parentElement.insertBefore(box, list);
+          }
+        }
+        document.body.classList.remove("cloud-detail-panel-open");
       }
       async function cloudFinishConferenceById(confId) {
         if (!confirm(`Finalizar a conferência ${confId}?`)) return;
@@ -3050,6 +3163,7 @@ ${"=".repeat(95)}
       }
 
       function switchTab(t) {
+        const app = document.querySelector(".app"); if (app) app.dataset.screen = t;
         document.querySelectorAll(".tab").forEach((b) => b.classList.remove("active"));
         document.querySelectorAll(".section").forEach((s) => s.classList.remove("active"));
         const tabEl = document.getElementById("tab" + t.charAt(0).toUpperCase() + t.slice(1)); if (tabEl) tabEl.classList.add("active");
@@ -5267,5 +5381,5 @@ document.addEventListener("keydown", (e) => {
 
 init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a5145ff62c2e8039',t:'MTc5MzEzMjE0OA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a524a7e64c281aaf',t:'MTc5MzMwMjg2Ng=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a524a7e64c281aaf',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
