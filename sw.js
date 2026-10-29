@@ -1,7 +1,7 @@
 /* Conferência de Bobinas — atualização na próxima abertura.
  * Em cada versão, altere APP_VERSION e o selo no index.html juntos.
  */
-const APP_VERSION = "v16";
+const APP_VERSION = "v17";
 const SCOPE_PATH = new URL(self.registration.scope).pathname;
 const CACHE_PREFIX = `conferencia-bobinas-${encodeURIComponent(SCOPE_PATH)}-`;
 const CACHE_NAME = `${CACHE_PREFIX}${APP_VERSION}`;
