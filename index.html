@@ -25,41 +25,19 @@
     <script>
       if ("serviceWorker" in navigator && location.protocol !== "file:") {
         window.addEventListener("load", () => {
-          let refreshing = false;
-          navigator.serviceWorker.addEventListener("controllerchange", () => {
-            if (refreshing) return;
-            refreshing = true;
-            // Nova versão do SW assumiu o controle: recarrega para pegar o HTML novo
-            window.location.reload();
-          });
-          navigator.serviceWorker.addEventListener("message", (event) => {
-            if (event.data && event.data.type === "SW_ACTIVATED") {
-              console.log("SW ativado:", event.data.cache);
-            }
-          });
           navigator.serviceWorker
-            .register("./sw.js")
+            .register("./sw.js", { updateViaCache: "none" })
             .then((reg) => {
-              console.log("SW registrado:", reg);
-              // Procura atualização ao abrir e quando a aba volta ao foco
+              // Busca novas versões sem interromper a conferência em andamento.
               const check = () => reg.update().catch(() => {});
               check();
               document.addEventListener("visibilitychange", () => {
                 if (document.visibilityState === "visible") check();
               });
-              // Se já houver um SW esperando, ativa na hora
-              if (reg.waiting) {
-                reg.waiting.postMessage({ type: "SKIP_WAITING" });
-              }
-              reg.addEventListener("updatefound", () => {
-                const worker = reg.installing;
-                if (!worker) return;
-                worker.addEventListener("statechange", () => {
-                  if (worker.state === "installed" && navigator.serviceWorker.controller) {
-                    worker.postMessage({ type: "SKIP_WAITING" });
-                  }
-                });
-              });
+              window.addEventListener("online", check);
+              setInterval(() => {
+                if (document.visibilityState === "visible") check();
+              }, 30 * 60 * 1000);
             })
             .catch((err) => console.error("Erro SW:", err));
         });
@@ -114,6 +92,12 @@
       .header h1 .header-title-icon {
         font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
         -webkit-text-fill-color: initial;
+      }
+      .header h1 .app-version {
+        display: inline-block; vertical-align: middle; margin-left: 5px;
+        padding: 4px 7px; border-radius: 999px; border: 1px solid #bfdbfe;
+        background: #eff6ff; color: #1d4ed8; -webkit-text-fill-color: initial;
+        font-size: .48em; line-height: 1; font-weight: 800; white-space: nowrap;
       }
       .header p { color: var(--text-secondary); font-size: 0.85em; }
       .tabs {
@@ -730,6 +714,8 @@
       .app[data-screen="report"] > .header,
       .app[data-screen="cloud"] > .header,
       .app[data-screen="cloud"] > .tabs { display: none; }
+      /* Permite que a barra da nuvem fique fixa ao rolar a página. */
+      html.cloud-menu-page, body.cloud-menu-page { overflow-x: visible; overflow-x: clip; }
       .cloud-menu-head {
         display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
         position: sticky; top: 0; z-index: 600;
@@ -742,22 +728,31 @@
       body.cloud-detail-panel-open { overflow: hidden; }
       #cloudDetailBox.cloud-detail-fullscreen.show {
         position: fixed; inset: 0; z-index: 800;
+        display: flex; flex-direction: column;
         width: 100%; max-width: none; height: 100vh; height: 100dvh;
-        margin: 0; padding: 0 24px 32px; border: 0; border-radius: 0;
+        margin: 0; padding: 0; border: 0; border-radius: 0;
         background: var(--bg-primary); box-shadow: none;
-        overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
+        overflow: hidden; overscroll-behavior: contain;
       }
       #cloudDetailBox.cloud-detail-fullscreen .cloud-detail-head {
-        position: sticky; top: 0; z-index: 10;
-        margin: 0 -24px 16px; padding: 18px 24px;
+        flex: 0 0 auto; margin: 0; padding: 18px 24px;
         background: #fff; border-bottom: 1px solid var(--border);
         box-shadow: 0 4px 18px rgba(15, 23, 42, .07);
       }
       #cloudDetailBox.cloud-detail-fullscreen .cloud-detail-title { font-size: 1.15em; }
       #cloudDetailBox.cloud-detail-fullscreen .cloud-detail-close { padding: 10px 16px; }
+      #cloudDetailBox.cloud-detail-fullscreen .cloud-saved-context {
+        color: var(--text-muted); font-size: .72em; margin-top: 2px;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
       #cloudDetailBox.cloud-detail-fullscreen #cloudDetailOpSummary {
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        align-items: start;
+        display: grid; grid-template-columns: 1fr; gap: 9px; align-items: start;
+      }
+      #cloudDetailBox.cloud-detail-fullscreen #cloudDetailOpSummary .op-summary-item {
+        background: #fff; border-radius: 14px; padding: 12px; box-shadow: var(--shadow);
+      }
+      @media (min-width: 720px) {
+        #cloudDetailBox.cloud-detail-fullscreen #cloudDetailOpSummary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       }
       #cloudDetailBox.cloud-detail-fullscreen .cloud-detail-scroll {
         max-height: none; overflow-x: auto; overflow-y: visible;
@@ -774,9 +769,9 @@
         .cloud-menu-head { gap: 8px; margin-bottom: 10px; padding: 8px; }
         .cloud-menu-head .btn { font-size: .82em; padding: 9px 10px; }
         .cloud-menu-title { font-size: .8em; }
-        #cloudDetailBox.cloud-detail-fullscreen.show { padding: 0 12px 20px; }
+        #cloudDetailBox.cloud-detail-fullscreen.show { padding: 0; }
         #cloudDetailBox.cloud-detail-fullscreen .cloud-detail-head {
-          margin: 0 -12px 12px; padding: 12px; gap: 8px;
+          margin: 0; padding: 12px; gap: 8px;
         }
         #cloudDetailBox.cloud-detail-fullscreen .cloud-detail-head > div { flex: 1 1 180px; }
         #cloudDetailBox.cloud-detail-fullscreen .cloud-detail-close { width: auto; padding: 9px 12px; }
@@ -785,7 +780,12 @@
         #cloudDetailBox.cloud-detail-fullscreen .dtbl thead th:nth-child(6),
         #cloudDetailBox.cloud-detail-fullscreen .dtbl tbody td:nth-child(6) { display: table-cell; }
       }
-      @media (max-width: 420px) { .cloud-menu-title { display: none; } }
+      @media (max-width: 420px) {
+        .cloud-menu-head { gap: 5px 8px; }
+        .cloud-menu-head .btn { min-height: 40px; padding: 8px; font-size: .76em; }
+        .cloud-menu-title { display: inline; font-size: .74em; }
+        .header h1 { font-size: clamp(1rem, calc(6.5vw - 5px), 1.4rem); }
+      }
     </style>
   </head>
   <body>
@@ -802,7 +802,8 @@
         </button>
       </div>
       <div class="header">
-        <h1><span class="header-title-icon" aria-hidden="true">📦</span> <span class="header-title-text">Conferência de Bobinas</span></h1>
+        <!-- A cada atualização, manter a versão abaixo igual à de sw.js. -->
+        <h1><span class="header-title-icon" aria-hidden="true">📦</span> <span class="header-title-text">Conferência de Bobinas</span> <span class="app-version" aria-label="Versão do aplicativo 16">v16</span></h1>
         <p>Sistema de conferência por código de barras</p>
         <div class="collector-topbar">
           <div class="collector-toggle-wrap">
@@ -2751,10 +2752,88 @@ ${"=".repeat(95)}
         cloudClearDetailLiveListeners();
       }
       let cloudDetailOpenToken = 0;
+      let cloudSavedPanelMode = "ops";
+      let cloudSavedOpsSearch = "";
+      let cloudSavedOps = [];
+      function cloudIsExtraRow(row = {}) {
+        return normalizeCategoryText(row.status || "").includes("NAO PREVISTA");
+      }
+      function cloudIsCheckedRow(row = {}) {
+        const status = normalizeCategoryText(row.status || "");
+        return status.includes("CONFERID") || status.includes("MANUAL");
+      }
+      function cloudIsPendingRow(row = {}) {
+        return normalizeCategoryText(row.status || "").includes("PENDENTE");
+      }
+      function cloudSummaryNumber(value, fallback = 0) {
+        if (value === null || value === undefined || value === "") return fallback;
+        const number = Number(String(value).replace(",", ".").replace(/%$/, ""));
+        return Number.isFinite(number) && number >= 0 ? number : fallback;
+      }
+      function cloudBuildSavedOps(rows, fallback = []) {
+        const base = (rows || []).filter((row) => !cloudIsExtraRow(row));
+        const byOp = new Map();
+        base.forEach((row) => {
+          const op = String(row.op || "-");
+          if (!byOp.has(op)) byOp.set(op, { op, total: 0, checked: 0 });
+          const item = byOp.get(op); item.total++;
+          if (cloudIsCheckedRow(row)) item.checked++;
+        });
+        if (!base.length && Array.isArray(fallback)) {
+          fallback.forEach((item) => {
+            const op = String(item.op || "-");
+            const total = cloudSummaryNumber(item.total);
+            const checked = cloudSummaryNumber(item.checked);
+            byOp.set(op, { op, total, checked });
+          });
+        }
+        return Array.from(byOp.values()).map((item) => ({
+          ...item,
+          pending: Math.max(0, item.total - item.checked),
+          pct: item.total > 0 ? ((item.checked / item.total) * 100).toFixed(1) : "0.0",
+        })).sort((a, b) => String(a.op).localeCompare(String(b.op), "pt-BR", { numeric: true, sensitivity: "base" }));
+      }
+      function cloudRenderSavedOps() {
+        const box = document.getElementById("cloudDetailOpSummary");
+        if (!box || !document.getElementById("cloudSavedOpsView")) return;
+        const q = String(cloudSavedOpsSearch || "").trim().toLowerCase();
+        const items = cloudSavedOps.filter((item) => String(item.op || "").toLowerCase().includes(q));
+        if (!items.length) { box.innerHTML = '<div class="empty">Nenhuma OP encontrada.</div>'; return; }
+        box.innerHTML = items.map((item) => {
+          const pct = Math.max(0, Math.min(100, Number(item.pct) || 0));
+          return `<div class="op-summary-item"><div class="op-summary-head"><div class="op-summary-op">OP ${esc(item.op || "-")}</div><div class="op-summary-pct">${esc(item.pct)}%</div></div><div class="op-summary-info"><span>✅ Encontradas: <strong>${item.checked}/${item.total}</strong></span><span>⏳ Pendentes: <strong>${item.pending}</strong></span></div><div class="op-summary-progress"><span style="width:${pct}%"></span></div></div>`;
+        }).join("");
+      }
+      function cloudSetSavedFilter(filter) {
+        cloudDetailFilter = filter || "all";
+        document.querySelectorAll("#cloudSavedFilters .fbtn").forEach((btn) => btn.classList.toggle("active", btn.dataset.filter === cloudDetailFilter));
+        cloudRenderDetailRows();
+      }
+      function cloudSetSavedMode(mode) {
+        cloudSavedPanelMode = mode === "detail" ? "detail" : "ops";
+        const isOps = cloudSavedPanelMode === "ops";
+        document.getElementById("cloudSavedOpsView")?.classList.toggle("active", isOps);
+        document.getElementById("cloudSavedDetailView")?.classList.toggle("active", !isOps);
+        document.getElementById("cloudSavedModeOps")?.classList.toggle("active", isOps);
+        document.getElementById("cloudSavedModeDetail")?.classList.toggle("active", !isOps);
+        const filters = document.getElementById("cloudSavedFilters"); if (filters) filters.style.display = isOps ? "none" : "flex";
+        const title = document.getElementById("cloudSavedPanelTitle"); if (title) title.textContent = isOps ? "📦 Resumo por OP's" : "📋 Lista detalhada";
+        const sub = document.getElementById("cloudSavedPanelSub"); if (sub) sub.textContent = isOps ? "Progresso por OP em tela cheia, com busca e rolagem própria." : "Bobina a bobina em tela cheia, com filtros, busca, local, observação e fotos.";
+        const search = document.getElementById("cloudSavedSearch");
+        if (search) { search.placeholder = isOps ? "Buscar OP..." : "Buscar código, OP, status, local..."; search.value = isOps ? cloudSavedOpsSearch : cloudDetailSearch; }
+        const content = document.getElementById("cloudSavedPanelContent"); if (content) content.scrollTop = 0;
+        if (isOps) cloudRenderSavedOps(); else cloudSetSavedFilter(cloudDetailFilter);
+      }
+      function handleCloudSavedSearch(value) {
+        if (cloudSavedPanelMode === "ops") { cloudSavedOpsSearch = value; cloudRenderSavedOps(); }
+        else { cloudDetailSearch = value; cloudRenderDetailRows(); }
+      }
       async function cloudOpenConference(confId, options = {}) {
         const silent = !!options.silent;
         const prevFilter = silent ? cloudDetailFilter : "all";
         const prevSearch = silent ? cloudDetailSearch : "";
+        const prevOpsSearch = silent ? cloudSavedOpsSearch : "";
+        const prevMode = silent ? cloudSavedPanelMode : "ops";
         if (!silent) cloudCloseConferenceDetail();
         const openToken = ++cloudDetailOpenToken;
         if (!silent || cloudDetailConfId !== confId) cloudWatchOpenedConference(confId);
@@ -2776,32 +2855,62 @@ ${"=".repeat(95)}
         try {
           const data = await cloudBuildExportData(confId);
           if (openToken !== cloudDetailOpenToken) return;
-          cloudDetailRows = data.rows;
+          cloudDetailRows = Array.isArray(data.rows) ? data.rows : [];
           cloudDetailFilter = prevFilter;
           cloudDetailSearch = prevSearch;
+          cloudSavedOpsSearch = prevOpsSearch;
           cloudDetailConfId = data.id;
-          box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(data.operador || "-")} • ${esc(cloudFormatSessionMeta(data.id, data.data || ""))}</div><div class="cloud-detail-sub">${esc(data.tipo || "-")}</div></div><button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">← Voltar para a lista</button></div>
-          <div class="cloud-detail-stats">
-            <div class="cloud-detail-stat clickable active" id="cloudDetailStatAll" onclick="cloudSetDetailFilter('all')">Total<strong>${data.resumo.total}</strong></div>
-            <div class="cloud-detail-stat clickable" id="cloudDetailStatChecked" onclick="cloudSetDetailFilter('checked')">Conferidas<strong>${data.resumo.conferidos}</strong></div>
-            <div class="cloud-detail-stat clickable" id="cloudDetailStatPending" onclick="cloudSetDetailFilter('pending')">Pendentes<strong>${data.resumo.pendentes}</strong></div>
-            <div class="cloud-detail-stat clickable" id="cloudDetailStatExtra" onclick="cloudSetDetailFilter('extra')">Não previstas<strong>${data.resumo.naoPrevistas}</strong></div>
-          <div class="cloud-detail-stat clickable" id="cloudDetailStatNaoAprov" onclick="cloudSetDetailFilter('naoaprov')">Não aprovadas<strong>${data.resumo.naoAprovadas ?? data.rows.filter(reportIsNaoAprovada).length}</strong></div>
+          cloudSavedOps = cloudBuildSavedOps(cloudDetailRows, data.opSummary);
+          const resumo = data.resumo || {};
+          const baseRows = cloudDetailRows.filter((row) => !cloudIsExtraRow(row));
+          const total = cloudSummaryNumber(resumo.total, baseRows.length);
+          const checked = cloudSummaryNumber(resumo.conferidos, baseRows.filter(cloudIsCheckedRow).length);
+          const pending = cloudSummaryNumber(resumo.pendentes, Math.max(0, total - checked));
+          const naoAprovadas = cloudSummaryNumber(resumo.naoAprovadas, cloudDetailRows.filter(reportIsNaoAprovada).length);
+          const pct = cloudSummaryNumber(resumo.percentual, total ? (checked / total) * 100 : 0).toFixed(1);
+          const context = `${data.operador || "-"} • ${cloudFormatSessionMeta(data.id, data.data || "")} • ${data.tipo || "-"}`;
+          box.innerHTML = `<div class="report-fullscreen-head">
+            <div class="report-panel-row">
+              <button type="button" class="report-back-btn" onclick="cloudCloseConferenceDetail()">← Voltar</button>
+              <div class="report-panel-title-wrap">
+                <div class="report-panel-title" id="cloudSavedPanelTitle">📦 Resumo por OP's</div>
+                <div class="report-panel-sub" id="cloudSavedPanelSub">Progresso por OP em tela cheia, com busca e rolagem própria.</div>
+                <div class="cloud-saved-context">${esc(context)}</div>
+              </div>
+              <button type="button" class="cloud-report-btn" onclick="cloudShowExportModal(cloudDetailConfId)">📤 Exportar</button>
+            </div>
+            <div class="report-mode-switch" aria-label="Alternar visualização da conferência">
+              <button type="button" id="cloudSavedModeOps" onclick="cloudSetSavedMode('ops')">📦 OP's</button>
+              <button type="button" id="cloudSavedModeDetail" onclick="cloudSetSavedMode('detail')">📋 Lista</button>
+            </div>
+            <div class="search-wrap report-panel-search"><span class="si">🔍</span><input class="search-input" id="cloudSavedSearch" placeholder="Buscar OP..." oninput="handleCloudSavedSearch(this.value)" /></div>
+            <div class="filters report-detail-filters" id="cloudSavedFilters" style="display:none">
+              <button class="fbtn active" data-filter="all" onclick="cloudSetSavedFilter('all')">📋 Todos</button>
+              <button class="fbtn" data-filter="checked" onclick="cloudSetSavedFilter('checked')">✅ Conferidos</button>
+              <button class="fbtn" data-filter="pending" onclick="cloudSetSavedFilter('pending')">⏳ Pendentes</button>
+              <button class="fbtn" data-filter="extra" onclick="cloudSetSavedFilter('extra')">⚠️ Extras</button>
+              <button class="fbtn" data-filter="naoaprov" onclick="cloudSetSavedFilter('naoaprov')">❌ Não Aprovadas</button>
+            </div>
           </div>
-          <div class="cloud-detail-section-title">📦 Resumo por OP</div>
-          <div class="op-summary-list" id="cloudDetailOpSummary" style="max-height:220px;overflow:auto;padding-right:4px"></div>
-          <div class="cloud-detail-toolbar">
-            <div class="cloud-detail-section-title" style="margin:0">📋 Bobinas e leituras</div>
-            <button class="cloud-report-btn" onclick="cloudShowExportModal(cloudDetailConfId)">Exportar</button>
-          </div>
-          <div class="search-wrap" style="margin-bottom: 8px"><span class="si">🔍</span><input class="search-input" id="cloudDetailSearch" placeholder="Buscar código, OP, status ou observação..." oninput="cloudDetailSearch=this.value; cloudRenderDetailRows(); cloudRenderDetailOpSummary()" /></div>
-          ${data.missingBobinas ? `<div style="margin:8px 0 0; padding:10px 12px; border-radius:10px; border:1px solid rgba(245,158,11,.28); background: rgba(245,158,11,.08); color: var(--accent-yellow); font-size:.82em; font-weight:700;">⚠️ Conferência antiga sem base de bobinas.</div>` : ""}
-          <div class="cloud-detail-swipe-hint">↔️ Deslize a tabela para ver as outras colunas.</div>
-          <div class="cloud-detail-scroll" style="margin-top: 8px"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>Categoria</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Situação</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>`;
-          const detailSearchInput = document.getElementById("cloudDetailSearch"); if (detailSearchInput) detailSearchInput.value = cloudDetailSearch || "";
-          cloudApplyDetailFilterUI();
-          cloudRenderDetailOpSummary();
-          cloudRenderDetailRows();
+          <div class="report-panel-content" id="cloudSavedPanelContent">
+            ${data.missingBobinas ? '<div style="margin:8px 0 12px; padding:10px 12px; border-radius:10px; border:1px solid rgba(245,158,11,.28); background:rgba(245,158,11,.08); color:var(--accent-yellow); font-size:.82em; font-weight:700;">⚠️ Conferência antiga sem base de bobinas.</div>' : ""}
+            <div class="report-panel-view" id="cloudSavedOpsView">
+              <div class="report-panel-metrics">
+                <div class="report-mini-stat"><strong>${cloudSavedOps.length}</strong><span>OP's</span></div>
+                <div class="report-mini-stat"><strong>${checked}</strong><span>Encontradas</span></div>
+                <div class="report-mini-stat"><strong>${pending}</strong><span>Pendentes</span></div>
+                <div class="report-mini-stat"><strong>${pct}%</strong><span>Geral</span></div>
+                <div class="report-mini-stat"><strong style="color:var(--accent-red)">${naoAprovadas}</strong><span>Não Aprovadas</span></div>
+              </div>
+              <div class="op-summary-list" id="cloudDetailOpSummary"></div>
+            </div>
+            <div class="report-panel-view" id="cloudSavedDetailView">
+              <div class="report-result-count" id="cloudSavedResultCount">0 itens</div>
+              <div class="cloud-detail-swipe-hint">↔️ Deslize a tabela para ver as outras colunas.</div>
+              <div class="cloud-detail-scroll"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>Categoria</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Situação</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>
+            </div>
+          </div>`;
+          cloudSetSavedMode(prevMode);
           cloudSetStatus("ok", "☁️ Conferência aberta");
         } catch (e) {
           if (openToken !== cloudDetailOpenToken) return;
@@ -2812,9 +2921,9 @@ ${"=".repeat(95)}
       }
       function cloudRowsByDetailFilter(includeSearch = true) {
         let rows = [...(cloudDetailRows || [])];
-        if (cloudDetailFilter === "checked") rows = rows.filter((r) => String(r.status).includes("Conferid") || String(r.status).includes("Manual"));
-        if (cloudDetailFilter === "pending") rows = rows.filter((r) => String(r.status).includes("Pendente"));
-        if (cloudDetailFilter === "extra") rows = rows.filter((r) => String(r.status).includes("Não Prevista"));
+        if (cloudDetailFilter === "checked") rows = rows.filter(cloudIsCheckedRow);
+        if (cloudDetailFilter === "pending") rows = rows.filter(cloudIsPendingRow);
+        if (cloudDetailFilter === "extra") rows = rows.filter(cloudIsExtraRow);
         if (cloudDetailFilter === "naoaprov") rows = rows.filter((r) => reportIsNaoAprovada(r));
         if (includeSearch) {
           const q = String(cloudDetailSearch || "").trim().toLowerCase();
@@ -2904,6 +3013,8 @@ ${"=".repeat(95)}
       function cloudRenderDetailRows() {
         const tbody = document.getElementById("cloudDetailRowsBody"); if (!tbody) return;
         const rows = cloudRowsByDetailFilter(true);
+        const count = document.getElementById("cloudSavedResultCount");
+        if (count) count.textContent = `${rows.length} ${rows.length === 1 ? "item" : "itens"}`;
         const limited = rows.slice(0, 700);
         if (!limited.length) { tbody.innerHTML = '<tr><td colspan="11">Nenhum item encontrado</td></tr>'; return; }
         tbody.innerHTML = limited.map((r, i) => `<tr><td>${i + 1}</td><td class="cc">${esc(r.code)}${r.lote ? `<div style="font-size:.72em;color:var(--text-muted);font-weight:600">(${esc(r.lote)})</div>` : ""}</td><td>${esc(reportCategoryLabel(r))}</td><td>${esc(r.op)}</td><td>${esc(r.peso)}</td><td>${esc(r.status)}</td><td>${esc(r.time || "")}</td><td>${esc(r.location || "")}</td><td>${reportSitCell(r)}</td><td>${esc(r.observation || "")}</td><td>${r.fotoUrl ? `<a href="${esc(r.fotoUrl)}" target="_blank" rel="noopener">📸</a>` : (r.hasPhoto ? "📸" : "—")}</td></tr>`).join("");
@@ -3164,6 +3275,8 @@ ${"=".repeat(95)}
 
       function switchTab(t) {
         const app = document.querySelector(".app"); if (app) app.dataset.screen = t;
+        document.documentElement.classList.toggle("cloud-menu-page", t === "cloud");
+        document.body.classList.toggle("cloud-menu-page", t === "cloud");
         document.querySelectorAll(".tab").forEach((b) => b.classList.remove("active"));
         document.querySelectorAll(".section").forEach((s) => s.classList.remove("active"));
         const tabEl = document.getElementById("tab" + t.charAt(0).toUpperCase() + t.slice(1)); if (tabEl) tabEl.classList.add("active");
@@ -5381,5 +5494,5 @@ document.addEventListener("keydown", (e) => {
 
 init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a524a7e64c281aaf',t:'MTc5MzMwMjg2Ng=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a524a7e64c281aaf',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a524cadd5c1e1aaf',t:'MTc5MzMwNDI5OQ=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a524cadd5c1e1aaf',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
