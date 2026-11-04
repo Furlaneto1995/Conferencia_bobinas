@@ -854,7 +854,7 @@
       </div>
       <div class="header">
         <!-- A cada atualização, manter a versão abaixo igual à de sw.js. -->
-        <h1><span class="header-title-icon" aria-hidden="true">📦</span> <span class="header-title-text">Conferência de Bobinas</span> <span class="app-version" aria-label="Versão do aplicativo 22">v22</span></h1>
+        <h1><span class="header-title-icon" aria-hidden="true">📦</span> <span class="header-title-text">Conferência de Bobinas</span> <span class="app-version" aria-label="Versão do aplicativo 23">v23</span></h1>
         <p>Sistema de conferência por código de barras</p>
       </div>
       <div class="section" id="sectionImport">
@@ -2561,7 +2561,7 @@ let bobinaAlertCloudReady = false;
       async function cloudBuildExportData(confId) {
         if (confId === "__merged__") {
           if (!cloudMergedReport) throw new Error("Nenhum consolidado aberto");
-          return { id: cloudMergedReport.id || "consolidado", title: "RELATÓRIO CONSOLIDADO", operador: "Consolidado", tipo: cloudMergedReport.title || "Consolidado", status: "consolidado", inicio: cloudMergedReport.inicio || "", fim: cloudMergedReport.fim || "", resumo: cloudMergedReport.resumo || {}, opSummary: cloudMergedReport.opSummary || [], rows: cloudMergedReport.rows || [], confIds: cloudMergedReport.ids || [] };
+          return { id: cloudMergedReport.id || "consolidado", title: "RELATÓRIO CONSOLIDADO", operador: "Consolidado", tipo: cloudMergedReport.title || "Consolidado", tiposConferencia: cloudMergedReport.tiposConferencia || [], status: "consolidado", inicio: cloudMergedReport.inicio || "", fim: cloudMergedReport.fim || "", resumo: cloudMergedReport.resumo || {}, opSummary: cloudMergedReport.opSummary || [], rows: cloudMergedReport.rows || [], confIds: cloudMergedReport.ids || [] };
         }
         if (!(await cloudInit())) throw new Error("Firebase indisponível");
         const confRef = cloudDb.collection("conferencias").doc(confId);
@@ -2574,11 +2574,12 @@ let bobinaAlertCloudReady = false;
           const report = await resp.json();
           const rows = Array.isArray(report.rows) ? report.rows : [];
           const resumo = report.resumo || conf.resumo || {};
+          const reportTipo = String(report.tipo || "").trim();
           return {
             id: conf.id,
             title: report.title || "RELATÓRIO DE CONFERÊNCIA - NUVEM",
             operador: report.operador || conf.operador || "-",
-            tipo: report.tipo || conf.tipo || "-",
+            tipo: reportTipo && reportTipo !== "-" && reportTipo !== "—" ? reportTipo : (conf.tipo || reportTipo || "-"),
             status: conf.status || report.status || "finalizada",
             inicio: report.primeiraLeituraEmLocal || conf.primeiraLeituraEmLocal || conf.iniciadoEmLocal || conf.iniciadoEm || "",
             fim: report.ultimaLeituraEmLocal || conf.ultimaLeituraEmLocal || "",
@@ -2737,9 +2738,25 @@ let bobinaAlertCloudReady = false;
         const rows = getReportItems().map((item) => ({ ...item, code: String(item.code), lote: item.lote || "", fotoUrl: "" }));
         return { id: S.cloudSessionId || "local", title: "RELATÓRIO DE CONFERÊNCIA", operador: S.checkerName || "-", tipo: S.confType || "-", status: "local", inicio: S.primeiraLeituraEmLocal || "", fim: S.ultimaLeituraEmLocal || "", resumo: cloudSummary(), opSummary: getOpSummaryItems(), rows };
       }
+      function unifiedReportLayout(data = {}) {
+        // Relatórios consolidados conservam os tipos de origem; quando o tipo
+        // é desconhecido ou misturado, não inventamos categoria para as fotos.
+        const sources = Array.isArray(data.tiposConferencia) && data.tiposConferencia.length ? data.tiposConferencia : [data.tipo];
+        const tipos = sources.flatMap((source) => {
+          const parts = String(source || "").split(",").map((part) => normalizeCategoryText(part).trim()).filter(Boolean);
+          return parts.length ? parts : [""];
+        });
+        const isBaseOrCapa = (tipo) => /^(BASES?|CAPAS?)(?:\s|-|$)/.test(tipo);
+        const isRefiladeiraOrCS = (tipo) => /^(REFILADEIRA|C\s*&\s*S)(?:\s|-|$)/.test(tipo);
+        return {
+          categorias: tipos.length > 0 && tipos.every(isBaseOrCapa),
+          lote: !(tipos.length > 0 && tipos.every(isRefiladeiraOrCS)),
+        };
+      }
       async function buildExcelReport(data, selected = {}) {
         if (typeof JSZip === "undefined") throw new Error("Não foi possível carregar o gerador do Excel.");
-        const opt = { summary: true, ops: true, checked: true, pending: true, extra: true, naoAprov: true, obs: true, photoLinks: true, ...selected };
+        const opt = { summary: true, ops: true, checked: true, pending: true, extra: true, naoAprov: true, obs: true, ...selected };
+        const layout = unifiedReportLayout(data);
         const allRows = Array.isArray(data.rows) ? data.rows : [];
         const chosen = allRows.filter((row) => {
           if (reportIsNaoAprovada(row)) return !!opt.naoAprov;
@@ -2766,35 +2783,41 @@ let bobinaAlertCloudReady = false;
             ["Não previstas", cloudSummaryNumber(summary.naoPrevistas, allRows.filter((r) => reportConferenceKey(r) === "extra").length)],
             ["Não aprovadas", cloudSummaryNumber(summary.naoAprovadas, allRows.filter(reportIsNaoAprovada).length)],
             ["Não aprovadas conferidas", naoConferidasLidas], ["Não aprovadas não conferidas", naoConferidas],
-            ["Importante", "Não aprovadas estão incluídas nos totais de conferidas e pendentes; nas abas específicas aparecem somente em Não aprovadas."],
           ] });
           if (data.exportPhotoSummary) {
             const photos = data.exportPhotoSummary;
             sheets[sheets.length - 1].rows.push(["Fotos incluídas no ZIP", photos.included || 0], ["Fotos não incluídas", (photos.missingCodes || []).length]);
             if ((photos.missingCodes || []).length) sheets[sheets.length - 1].rows.push(["Códigos sem foto no ZIP", photos.missingCodes.join(", ")]);
           }
-          const categories = reportBuildCategorySummary(chosen);
-          sheets.push({ name: "Por categoria", widths: [20, 12, 15, 15, 18, 27, 31], rows: [
-            ["Categoria", "Total", "Conferidas", "Pendentes", "Não previstas", "Não aprovadas conferidas", "Não aprovadas não conferidas"],
-            ...categories.map((c) => [c.categoria, c.total, c.conferidos, c.pendentes, c.naoPrevistas, c.naoAprovadasConferidas, c.naoAprovadasPendentes]),
-          ] });
+          if (layout.categorias) {
+            const categories = reportBuildCategorySummary(chosen);
+            sheets.push({ name: "Por categoria", widths: [20, 12, 15, 15, 18, 27, 31], rows: [
+              ["Categoria", "Total", "Conferidas", "Pendentes", "Não previstas", "Não aprovadas conferidas", "Não aprovadas não conferidas"],
+              ...categories.map((c) => [c.categoria, c.total, c.conferidos, c.pendentes, c.naoPrevistas, c.naoAprovadasConferidas, c.naoAprovadasPendentes]),
+            ] });
+          }
         }
         if (opt.ops) sheets.push({ name: "Por OP", widths: [18, 15, 15, 16, 15], rows: [
           ["OP", "Total", "Conferidas", "Pendentes", "Percentual"],
           ...ops.map((op) => [String(op.op || "—"), cloudSummaryNumber(op.total), cloudSummaryNumber(op.checked), cloudSummaryNumber(op.pending, Math.max(0, cloudSummaryNumber(op.total) - cloudSummaryNumber(op.checked))), `${op.pct ?? "0.0"}%`]),
         ] });
-        const cols = ["Código", "Lote", "Categoria", "OP", "Peso", "Status", "Conferência", "Hora", "Localização"];
-        const widths = [20, 16, 18, 16, 14, 22, 20, 14, 26];
-        if (opt.obs) { cols.push("Observação"); widths.push(40); }
-        if (opt.photoLinks) { cols.push("Foto"); widths.push(42); }
-        const toRow = (item) => {
-          const row = [String(item.code || ""), item.lote || "", reportCategoryLabel(item), String(item.op || "—"), reportWeightCell(item.peso), reportDisplayStatus(item), reportConferenceLabel(item), item.time === "-" ? "" : (item.time || ""), item.location === "-" ? "" : (item.location || "")];
-          if (opt.obs) row.push(item.observation || "");
-          if (opt.photoLinks) row.push(item.fotoUrl ? { value: item.fotoUrl, link: item.fotoUrl } : (item.fotoZipPath || (item.hasPhoto ? "Foto disponível no aparelho" : "Não")));
-          return row;
+        const addItems = (name, rows, includeConference = false) => {
+          const columns = [{ title: "Código", width: 20, read: (item) => String(item.code || "") }];
+          if (layout.lote) columns.push({ title: "Lote", width: 16, read: (item) => String(item.lote || "") });
+          if (layout.categorias) columns.push({ title: "Categoria", width: 18, read: (item) => reportCategoryLabel(item) });
+          columns.push(
+            { title: "OP", width: 16, read: (item) => String(item.op || "—") },
+            { title: "Peso", width: 14, read: (item) => reportWeightCell(item.peso) }
+          );
+          if (includeConference) columns.push({ title: "Conferência", width: 20, read: (item) => reportConferenceLabel(item) });
+          columns.push(
+            { title: "Hora", width: 14, read: (item) => item.time === "-" ? "" : (item.time || "") },
+            { title: "Localização", width: 26, read: (item) => item.location === "-" ? "" : (item.location || "") }
+          );
+          if (opt.obs) columns.push({ title: "Observação", width: 40, read: (item) => item.observation || "" });
+          sheets.push({ name, widths: columns.map((column) => column.width), rows: [columns.map((column) => column.title), ...rows.map((item) => columns.map((column) => column.read(item)))] });
         };
-        const addItems = (name, rows) => sheets.push({ name, widths, rows: [cols, ...rows.map(toRow)] });
-        addItems("Todas as bobinas", chosen);
+        addItems("Todas as bobinas", chosen, true);
         if (opt.checked) addItems("Conferidas", chosen.filter((r) => !reportIsNaoAprovada(r) && reportConferenceKey(r) === "checked"));
         if (opt.pending) addItems("Pendentes", chosen.filter((r) => !reportIsNaoAprovada(r) && reportConferenceKey(r) === "pending"));
         if (opt.naoAprov) addItems("Não aprovadas", chosen.filter(reportIsNaoAprovada));
@@ -2976,12 +2999,14 @@ ${"=".repeat(95)}
           if (!local && confId === S.cloudSessionId && data.status !== "finalizada" && S.db.length) { data = reportLocalDataForExcel(); localAllowed = true; }
           if (data.missingBobinas) throw new Error("Esta conferência antiga não possui a lista de bobinas necessária para um relatório completo.");
           if (state.cancelled) return;
+          const useCategoryFolders = unifiedReportLayout(data).categorias;
+          const zipPathFor = (row) => photoZipRelativePath(row.code, useCategoryFolders ? row : null);
           const rows = Array.isArray(data.rows) ? data.rows : [], byPath = new Map();
           rows.forEach((row) => {
             if (!row || !row.code) return;
             const expected = !!(row.hasPhoto || row.fotoUrl);
             if (!expected && !(localAllowed && reportConferenceKey(row) === "extra")) return;
-            const path = photoZipRelativePath(row.code, row);
+            const path = zipPathFor(row);
             if (!byPath.has(path)) byPath.set(path, { path, code: String(row.code), rows: [], expected: false });
             const entry = byPath.get(path); entry.rows.push(row); entry.expected = entry.expected || expected;
           });
@@ -3009,7 +3034,7 @@ ${"=".repeat(95)}
           const missingCodes = pending.map((entry) => entry.code);
           const rowsWithPhotos = rows.map((row) => {
             if (!row || !row.code) return row;
-            const path = photoZipRelativePath(row.code, row);
+            const path = zipPathFor(row);
             return included.has(path) ? { ...row, fotoZipPath: path } : row;
           });
           data = { ...data, rows: rowsWithPhotos, exportPhotoSummary: { expected: included.size + pending.length, included: included.size, missingCodes } };
@@ -3478,7 +3503,7 @@ ${"=".repeat(95)}
           const ends = confs.map((c) => cloudValueToDate(c.fim));
           const inicio = starts.every(Boolean) ? new Date(Math.min(...starts.map((d) => d.getTime()))).toISOString() : "";
           const fim = ends.every(Boolean) ? new Date(Math.max(...ends.map((d) => d.getTime()))).toISOString() : "";
-          cloudMergedReport = { id: `consolidado_${new Date().toISOString().slice(0, 10)}_${ids.length}_conferencias`, title: `Consolidado de ${ids.length} conferências`, subtitle: confs.map((c) => `${c.operador || "-"} • ${c.tipo || "-"}`).join(" | "), ids, inicio, fim, rows, opSummary, resumo: { total, conferidos, pendentes, naoPrevistas: naoPrev, naoAprovadas: rows.filter(reportIsNaoAprovada).length, percentual: pct } };
+          cloudMergedReport = { id: `consolidado_${new Date().toISOString().slice(0, 10)}_${ids.length}_conferencias`, title: `Consolidado de ${ids.length} conferências`, subtitle: confs.map((c) => `${c.operador || "-"} • ${c.tipo || "-"}`).join(" | "), tiposConferencia: confs.map((c) => c.tipo || ""), ids, inicio, fim, rows, opSummary, resumo: { total, conferidos, pendentes, naoPrevistas: naoPrev, naoAprovadas: rows.filter(reportIsNaoAprovada).length, percentual: pct } };
           cloudRenderMergedReport(); cloudSetStatus("ok", "☁️ Conferências juntadas"); notify("Conferências juntadas para visualização/exportação.");
         } catch (e) { console.error(e); if (box) box.innerHTML = '<div class="empty">Erro ao juntar conferências. Veja o console.</div>'; cloudSetStatus("error", "☁️ Erro ao juntar"); notify("Erro ao juntar: " + (e.message || e), "error"); }
       }
@@ -6120,7 +6145,7 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") { save(); cloudFlushBuffer(); }
 });
 window.addEventListener("beforeunload", () => {
-  try { cloudFlushBuffer(); } catch (e) {}  
+  try { cloudFlushBuffer(); } catch (e) {}
 });
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && document.getElementById("reportFullscreen")?.classList.contains("show")) closeReportPanel();
@@ -6128,5 +6153,5 @@ document.addEventListener("keydown", (e) => {
 
 init();
     </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a5556d640efcbba0',t:'MTc5MzgxNDI3Mg=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a5556d640efcbba0',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
