@@ -193,6 +193,8 @@
       .collector-toggle-seg { border: none; border-radius: 999px; padding: 5px 9px; font-size: 0.72rem; font-weight: 800; cursor: pointer; white-space: nowrap; background: transparent; color: #334155; }
       .collector-toggle-seg.active-on { background: linear-gradient(135deg, var(--accent-blue), #2563eb); color: #fff; }
       .collector-toggle-seg.active-off { background: #475569; color: #fff; }
+      .collector-toggle-seg:disabled { opacity: .65; cursor: wait; }
+      .nao-info-sync { margin-top: 10px; color: var(--text-secondary); font-size: .78em; line-height: 1.4; }
       .collector-panel { display: none; margin-top: 12px; padding: 12px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.18); background: rgba(59, 130, 246, 0.04); text-align: left; }
       .collector-panel.active { display: block; }
       .collector-panel .hint { color: var(--text-secondary); font-size: 0.8em; margin-bottom: 8px; }
@@ -749,6 +751,9 @@
         color: var(--text-muted); font-size: .72em; margin-top: 2px;
         overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
       }
+      #cloudDetailBox.cloud-detail-fullscreen .cloud-saved-times {
+        color: var(--text-secondary); font-size: .72em; margin-top: 2px; line-height: 1.3;
+      }
       #cloudDetailBox.cloud-detail-fullscreen #cloudDetailOpSummary {
         display: grid; grid-template-columns: 1fr; gap: 9px; align-items: start;
       }
@@ -795,15 +800,52 @@
         .cloud-menu-title { display: inline; font-size: .74em; }
         .header h1 { font-size: clamp(1rem, calc(6.5vw - 5px), 1.4rem); }
       }
+      /* Navegação por menu */
+      .app-menu-button { flex:0 0 42px; width:42px; height:42px; border:1px solid var(--border); border-radius:10px; background:#fff; color:#334155; font-size:1.35rem; font-weight:800; cursor:pointer; }
+      .app-nav-title { display:none; flex:1; color:var(--text-secondary); font-size:.86em; font-weight:800; padding:0 6px; }
+      .app[data-screen="scan"] > .header, .app[data-screen="settings"] > .header, .app[data-screen="admin"] > .header { display:none; }
+      .app[data-screen="cloud"] > .tabs { display:flex; }
+      .app:not([data-screen="scan"]):not([data-screen="report"]) > .tabs .tab { display:none; }
+      .app:not([data-screen="scan"]):not([data-screen="report"]) > .tabs .app-nav-title { display:block; }
+      #dbEmpty, #dbContent { display:none !important; }
+      body.app-menu-open { overflow:hidden; }
+      .app-menu { display:none; position:fixed; inset:0; z-index:8500; }
+      .app-menu.show { display:block; }
+      .app-menu-backdrop { position:absolute; inset:0; background:rgba(15,23,42,.5); }
+      .app-menu-drawer { position:absolute; inset:0 auto 0 0; width:min(365px,88vw); background:#fff; box-shadow:8px 0 36px rgba(15,23,42,.2); overflow:auto; }
+      .app-menu-head { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; padding:20px 16px 15px; border-bottom:1px solid var(--border); }
+      .app-menu-head strong { display:block; color:#2563eb; font-size:1rem; }
+      .app-menu-head small { color:var(--text-muted); font-size:.72rem; }
+      .app-menu-close { border:0; border-radius:9px; padding:7px 10px; background:var(--bg-input); color:#475569; font-weight:900; cursor:pointer; }
+      .app-menu-items { display:grid; gap:5px; padding:10px; }
+      .app-menu-items button { display:flex; align-items:center; gap:10px; width:100%; border:0; border-radius:10px; padding:12px; background:#fff; color:#334155; text-align:left; font-weight:800; cursor:pointer; }
+      .app-menu-items button:hover { background:var(--bg-input); }
+      .app-menu-items button span { margin-left:auto; color:var(--text-muted); }
+      .collector-overlay-header { gap:8px; }
+      .collector-overlay-title { flex:1; min-width:0; }
+      .collector-overlay-body { padding-top:88px; }
+      /* Ações de foto ficam abaixo da imagem e não são cobertas pela prévia. */
+      #camLocModal .cam-photo-preview { height:auto; max-height:none; aspect-ratio:auto; overflow:visible; }
+      #camLocModal .cam-photo-preview img { width:100%; height:auto; aspect-ratio:1 / 1; object-fit:contain; background:#e2e8f0; }
+      .loc-photo-preview img { object-fit:contain; background:#e2e8f0; }
+      .photo-preview-actions { display:flex; flex-direction:column; gap:6px; margin-top:7px; }
+      .photo-rotate-action, .photo-remove-action { width:100%; min-height:44px; border-radius:10px; font-weight:800; font-size:.78em; cursor:pointer; }
+      .photo-rotate-action { background:#dbeafe; border:1px solid #93c5fd; color:#1d4ed8; }
+      .photo-remove-action { background:transparent; border:1px solid var(--border); color:var(--text-secondary); }
+      .photo-rotate-action:disabled { opacity:.5; }
+      #alertFoundModal { z-index:6200; }
+      #locModal.show, #alertFoundModal.show, #naoAprovadaModal.show {
+        align-items:flex-start; overflow-y:auto; padding-top:max(env(safe-area-inset-top, 12px), 12px); padding-bottom:max(env(safe-area-inset-bottom, 12px), 12px);
+      }
+      #locModal .modal, #alertFoundModal .modal, #naoAprovadaModal .modal { margin:auto 0; flex:0 0 auto; }
     </style>
   </head>
   <body>
-    <div class="app" data-screen="import">
+    <div class="app" data-screen="scan">
       <div class="tabs">
-        <button class="tab active" onclick="switchTab('import')" id="tabImport">
-          <span class="t-icon">📥</span><span class="t-text">Importar</span>
-        </button>
-        <button class="tab" onclick="switchTab('scan')" id="tabScan">
+        <button type="button" class="app-menu-button" onclick="openAppMenu()" aria-label="Abrir menu">☰</button>
+        <span class="app-nav-title" id="appNavTitle"></span>
+        <button class="tab active" onclick="switchTab('scan')" id="tabScan">
           <span class="t-icon">📷</span><span class="t-text">Conferir</span><span class="badge" id="scanBadge">0</span>
         </button>
         <button class="tab" onclick="switchTab('report')" id="tabReport">
@@ -812,27 +854,22 @@
       </div>
       <div class="header">
         <!-- A cada atualização, manter a versão abaixo igual à de sw.js. -->
-        <h1><span class="header-title-icon" aria-hidden="true">📦</span> <span class="header-title-text">Conferência de Bobinas</span> <span class="app-version" aria-label="Versão do aplicativo 18">v18</span></h1>
+        <h1><span class="header-title-icon" aria-hidden="true">📦</span> <span class="header-title-text">Conferência de Bobinas</span> <span class="app-version" aria-label="Versão do aplicativo 22">v22</span></h1>
         <p>Sistema de conferência por código de barras</p>
-        <div class="collector-topbar">
-          <div class="collector-toggle-wrap">
-            <div class="collector-toggle-label">Coletor</div>
-            <button class="collector-toggle-seg" id="collectorModeOffBtn" onclick="setCollectorMode(false)">OFF</button>
-            <button class="collector-toggle-seg" id="collectorModeOnBtn" onclick="setCollectorMode(true)">ON</button>
-          </div>
-          <div
-          id="cloudStatus"
-          class="cloud-status"
-          title="Toque: menu • Segure 2s: admin (senha numérica)"
-          onpointerdown="cloudStartSecretPress(event)"
-          onpointerup="cloudEndSecretPress(event)"
-          onpointerleave="cloudEndSecretPress(event)"
-          onpointercancel="cloudEndSecretPress(event)"
-          oncontextmenu="return false"
-        >⚙️</div>
-        </div>
       </div>
-      <div class="section active" id="sectionImport">
+      <div class="section" id="sectionImport">
+        <div class="cloud-menu-head"><button type="button" class="cloud-back-btn" onclick="switchTab('scan')">← Voltar para a conferência</button><span class="cloud-menu-title">📁 Base ativa / Importar</span></div>
+        <div class="card">
+          <div class="card-title">📤 Arquivo-base</div>
+          <input type="file" id="leaderBaseFileInput" accept=".csv,.txt,.tsv,.text" style="display:none" onchange="cloudHandleLeaderBaseFile(event)" />
+          <div class="btn-group" style="margin-top:0">
+            <button class="btn btn-primary" onclick="cloudPickLeaderBaseFile()">📁 Importar arquivo do dispositivo</button>
+          </div>
+        </div>
+        <div class="card" id="leaderActiveBaseCard" style="display:none">
+          <div class="card-title">📁 Base ativa <span class="card-actions-inline"><button class="btn btn-outline btn-sm" onclick="cloudRefreshBaseFiles()">🔄 Atualizar</button></span></div>
+          <div class="empty">Clique em atualizar para consultar.</div>
+        </div>
         <div class="card" style="display:none">
           <div class="card-title">📋 Importar Lista de Bobinas</div>
           <div class="card-sub">Importe os códigos de barras do sistema</div>
@@ -871,8 +908,7 @@
           <div id="cloudBaseFilesBox" class="cloud-list"><div class="empty">Clique em atualizar para consultar a base ativa.</div></div>
         </div>
         <div class="card">
-          <div class="card-title">🗄️ Banco de Dados <span style="margin-left: auto; font-size: 0.75em; color: var(--text-muted);" id="dbCount">0 códigos</span><span class="card-actions-inline"><button class="btn btn-outline btn-sm" id="dbClearBtn" style="display:none" onclick="confirmClear()">🗑️ Limpar bobinas</button></span></div>
-          <div class="card-sub">Códigos carregados para conferência</div>
+          <div class="card-title">📦 Bobinas carregadas <span style="margin-left: auto; font-size: 0.75em; color: var(--text-muted);" id="dbCount">0 códigos</span><span class="card-actions-inline"><button class="btn btn-outline btn-sm" id="dbClearBtn" style="display:none" onclick="confirmClear()">🗑️ Limpar bobinas</button></span></div>
           <div id="dbEmpty" class="empty"><div class="e-icon">📭</div><h3>Nenhum código importado</h3><p>Importe usando as opções acima</p></div>
           <div id="dbContent" style="display: none">
             <div class="search-wrap"><span class="si">🔍</span><input class="search-input" placeholder="Buscar código..." oninput="filterDB(this.value)" /></div>
@@ -882,7 +918,7 @@
           </div>
         </div>
       </div>
-      <div class="section" id="sectionScan">
+      <div class="section active" id="sectionScan">
         <div class="stats">
           <div class="stat blue"><div class="s-icon">📦</div><div class="s-val" id="sTotal">0</div><div class="s-lbl">Total</div></div>
           <div class="stat green"><div class="s-icon">✅</div><div class="s-val" id="sChecked">0</div><div class="s-lbl">Conferidos</div></div>
@@ -899,17 +935,7 @@
               <div class="collector-last-read" id="collectorLastRead">Pronto para iniciar.</div>
             </div>
           </div>
-          <div class="btn-group" style="justify-content: center"><button class="btn btn-outline" onclick="undoLast()" id="btnUndo" disabled>↩️ Desfazer</button><button class="btn btn-outline" onclick="clearScans()">🔄 Reiniciar</button><button class="btn btn-outline" onclick="toggleBobinaAlertPanel()">🚨 Alerta de Bobina</button></div>
-          <div class="bobina-alert-panel" id="bobinaAlertPanel">
-            <div class="bobina-alert-form">
-              <input id="alertBobinaCode" inputmode="numeric" maxlength="9" placeholder="Código sem 500/700" />
-              <input id="alertBobinaPeso" placeholder="Peso da bobina" />
-              <input id="alertBobinaOp" placeholder="OP" />
-              <textarea id="alertBobinaObs" class="wide" rows="2" placeholder="Observação para aparecer no alerta"></textarea>
-              <button class="btn btn-primary wide" onclick="addBobinaAlert()">➕ Adicionar alerta</button>
-            </div>
-            <div class="bobina-alert-list" id="bobinaAlertList"></div>
-          </div>
+          <div class="btn-group" style="justify-content: center"><button class="btn btn-outline" onclick="undoLast()" id="btnUndo" disabled>↩️ Desfazer</button><button class="btn btn-outline" onclick="clearScans()">🔄 Reiniciar</button></div>
         </div>
         <div class="card">
           <div class="card-title">📜 Histórico <span style="margin-left: auto; font-size: 0.75em; color: var(--text-muted);" id="hCount">0 leituras</span></div>
@@ -923,6 +949,8 @@
           <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin: 10px 0; font-size: 0.9em; color: var(--text-secondary); display: grid; gap: 4px;">
             <div>👤 Conferente: <strong id="rCheckerName" style="color: var(--text-primary)">—</strong></div>
             <div>📋 Tipo de conferência: <strong id="rConferenceType" style="color: var(--text-primary)">—</strong></div>
+            <div>🕒 Início: <strong id="rStartTime" style="color: var(--text-primary)">—</strong></div>
+            <div>🏁 Fim (última leitura): <strong id="rEndTime" style="color: var(--text-primary)">—</strong></div>
           </div>
           <div class="stats stats-auto" style="margin-top: 10px">
             <div class="stat blue"><div class="s-val" id="rTotal">0</div><div class="s-lbl">Total</div></div>
@@ -935,7 +963,6 @@
         </div>
         <div class="card">
           <div class="card-title">🔎 Detalhes do relatório</div>
-          <div class="card-sub">Toque em uma opção para abrir em tela cheia com busca, filtros e rolagem própria.</div>
           <div class="report-actions-grid">
             <button type="button" class="report-action-card" onclick="openReportPanel('ops')">
               <span class="report-action-icon blue">📦</span>
@@ -968,8 +995,7 @@
           <div class="btn-group report-final-actions">
             <button class="btn btn-primary" onclick="finishConference()">✅ Finalizar</button>
             <button class="btn btn-outline" id="reviewExtraCategoriesBtn" onclick="showExtraCategoryReviewModal()">🧭 Categorias</button>
-            <button class="btn btn-outline" onclick="exportRpt('csv')">📄 CSV local</button>
-            <button class="btn btn-outline" onclick="exportRpt('txt')">📝 TXT local</button>
+            <button class="btn btn-outline" onclick="exportUnifiedReport('')">📦 Exportar ZIP</button>
           </div>
         </div>
 
@@ -1009,7 +1035,7 @@
               <div class="report-result-count" id="reportDetailResultCount">0 itens</div>
               <div class="tbl-wrap report-table-wrap">
                 <table class="dtbl report-detail-table">
-                  <thead><tr><th>#</th><th>Código</th><th>Categoria</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Situação</th><th>Observação</th><th>📸</th></tr></thead>
+                  <thead><tr><th>#</th><th>Código</th><th>Categoria</th><th>OP</th><th>Peso</th><th>Status</th><th>Conferência</th><th>Hora</th><th>Local</th><th>Observação</th><th>📸</th></tr></thead>
                   <tbody id="rptBody"></tbody>
                 </table>
               </div>
@@ -1017,22 +1043,35 @@
           </div>
         </div>
       </div>
+      <div class="section" id="sectionSettings">
+        <div class="cloud-menu-head"><button type="button" class="cloud-back-btn" onclick="switchTab('scan')">← Voltar para a conferência</button><span class="cloud-menu-title">⚙️ Configurações</span></div>
+        <div class="card"><div class="card-title">📟 Modo coletor</div><div class="card-sub">Ligue para usar o coletor ou desligue para usar a câmera.</div>
+          <div class="collector-toggle-wrap"><div class="collector-toggle-label">Coletor</div><button class="collector-toggle-seg" id="collectorModeOffBtn" onclick="setCollectorMode(false)">OFF</button><button class="collector-toggle-seg" id="collectorModeOnBtn" onclick="setCollectorMode(true)">ON</button></div>
+        </div>
+      </div>
+      <div class="section" id="sectionAdmin">
+        <div class="cloud-menu-head"><button type="button" class="cloud-back-btn" onclick="switchTab('scan')">← Voltar para a conferência</button><span class="cloud-menu-title">🛡️ Modo administrador</span></div>
+        <div class="card"><div class="card-title">❌ Informações para não aprovadas</div><div class="card-sub" id="naoInfoDescription">Ligado: pede endereço e observação.</div>
+          <div class="collector-toggle-wrap"><div class="collector-toggle-label">Informações</div><button type="button" class="collector-toggle-seg" id="naoInfoOffBtn" onclick="setNaoAprovadaInfo(false)">OFF</button><button type="button" class="collector-toggle-seg" id="naoInfoOnBtn" onclick="setNaoAprovadaInfo(true)">ON</button></div>
+          <div class="nao-info-sync" id="naoInfoSyncStatus" role="status" aria-live="polite">🔄 Buscando a configuração geral...</div>
+        </div>
+        <div class="card"><div class="card-title">🚨 Alerta de Bobina</div><button class="btn btn-outline" onclick="toggleBobinaAlertPanel()">🚨 Abrir Alerta de Bobina</button>
+          <div class="bobina-alert-panel" id="bobinaAlertPanel">
+            <div class="bobina-alert-form">
+              <input id="alertBobinaCode" inputmode="numeric" maxlength="9" placeholder="Código sem 500/700" />
+              <input id="alertBobinaPeso" placeholder="Peso da bobina" />
+              <input id="alertBobinaOp" placeholder="OP" />
+              <textarea id="alertBobinaObs" class="wide" rows="2" placeholder="Observação para aparecer no alerta"></textarea>
+              <button class="btn btn-primary wide" onclick="addBobinaAlert()">➕ Adicionar alerta</button>
+            </div>
+            <div class="bobina-alert-list" id="bobinaAlertList"></div>
+          </div>
+        </div>
+      </div>
       <div class="section" id="sectionCloud">
         <div class="cloud-menu-head">
           <button type="button" class="cloud-back-btn" id="cloudBackToConference" onclick="switchTab('scan')">← Voltar para a conferência</button>
           <span class="cloud-menu-title">⚙️ Arquivos e conferências</span>
-        </div>
-        <div class="card">
-          <div class="card-title">📤 Arquivo-base</div>
-          <div class="card-sub">Importe a planilha completa, dê um nome e defina como a única base ativa para os outros dispositivos baixarem.</div>
-          <input type="file" id="leaderBaseFileInput" accept=".csv,.txt,.tsv,.text" style="display:none" onchange="cloudHandleLeaderBaseFile(event)" />
-          <div class="btn-group" style="margin-top:0">
-            <button class="btn btn-primary" onclick="cloudPickLeaderBaseFile()">📁 Importar arquivo do dispositivo</button>
-          </div>
-        </div>
-        <div class="card" id="leaderActiveBaseCard">
-          <div class="card-title">📁 Base ativa <span class="card-actions-inline"><button class="btn btn-outline btn-sm" onclick="cloudRefreshBaseFiles()">🔄 Atualizar</button></span></div>
-          <div class="empty">Clique em atualizar para consultar.</div>
         </div>
         <div class="card">
           <div class="card-title">📋 Conferências salvas <span id="cloudRoleBadge" class="cloud-role-badge" style="display:none" title="Toque para entrar como admin"></span> <span class="card-actions-inline"><button class="btn btn-outline btn-sm" onclick="renderCloudConsult(document.getElementById('cloudSearch')?.value || '')">🔄 Atualizar</button></span></div>
@@ -1053,9 +1092,21 @@
       </div>
     </div>
 
+    <div class="app-menu" id="appMenu" aria-hidden="true">
+      <div class="app-menu-backdrop" onclick="closeAppMenu()"></div>
+      <aside class="app-menu-drawer" role="dialog" aria-modal="true" aria-label="Menu">
+        <div class="app-menu-head"><div><strong>📦 Conferência de Bobinas</strong><small id="appMenuVersion"></small></div><button type="button" class="app-menu-close" onclick="closeAppMenu()" aria-label="Fechar menu">✕</button></div>
+        <div class="app-menu-items">
+          <button type="button" onclick="menuNavigate('import')">📁 Base ativa / Importar <span>›</span></button>
+          <button type="button" onclick="menuNavigate('cloud')">☁️ Conferências salvas <span>›</span></button>
+          <button type="button" onclick="menuNavigate('settings')">⚙️ Configurações <span>›</span></button>
+          <button type="button" onclick="requestAdminMenu()">🛡️ Modo administrador <span>›</span></button>
+        </div>
+      </aside>
+    </div>
     <div class="collector-overlay" id="collectorOverlay">
       <div class="collector-overlay-page">
-        <div class="collector-overlay-header"><div class="collector-overlay-title"><span class="collector-overlay-dot"></span> Conferência por Coletor</div><button class="collector-overlay-close" onclick="stopCollectorConference()">✕</button></div>
+        <div class="collector-overlay-header"><button type="button" class="app-menu-button" onclick="openAppMenu()" aria-label="Abrir menu">☰</button><div class="collector-overlay-title"><span class="collector-overlay-dot"></span> Conferência por Coletor</div><button class="collector-overlay-close" onclick="stopCollectorConference()">✕</button></div>
         <div class="collector-overlay-body">
           <div class="collector-overlay-center">
             <div class="collector-overlay-badge">✅ Coletor ativo</div>
@@ -1081,7 +1132,7 @@
 
     <div class="scanner-overlay" id="scannerOverlay">
       <div class="scanner-page">
-        <div class="s-header"><div class="s-title"><span class="s-dot"></span> Scanner de Bobinas</div><button class="s-close" onclick="closeIntegratedScanner()">✕</button></div>
+        <div class="s-header"><button type="button" class="app-menu-button" onclick="openAppMenu()" aria-label="Abrir menu">☰</button><div class="s-title"><span class="s-dot"></span> Scanner de Bobinas</div><button class="s-close" onclick="closeIntegratedScanner()">✕</button></div>
         <div class="s-controls">
           <div class="zoom-control" id="camZoomControl">
             <button type="button" class="zoom-btn" id="camZoomMinus" onclick="camZoomStep(-1)" aria-label="Diminuir zoom">−</button>
@@ -1117,11 +1168,11 @@
             <div class="cam-photo-section">
               <div class="cam-photo-label">🏷️ Foto da etiqueta <span style="color: #ef4444; font-weight: 700">*obrigatória</span></div>
               <div class="cam-photo-btn" id="camPhotoBtnEtiqueta" onclick="document.getElementById('camPhotoInputEtiqueta').click()">📷 Tirar foto da etiqueta<input type="file" id="camPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="camHandlePhoto(event, 'etiqueta')" /></div>
-              <div class="cam-photo-preview" id="camPhotoPreviewEtiqueta"><img id="camPhotoImgEtiqueta" src="" /><button class="cam-photo-rotate" onclick="camRotatePhoto('etiqueta')" title="Girar foto">↻</button><button class="cam-photo-remove" onclick="camRemovePhoto('etiqueta')">✕</button></div>
+              <div class="cam-photo-preview" id="camPhotoPreviewEtiqueta"><img id="camPhotoImgEtiqueta" src="" /><div class="photo-preview-actions"><button type="button" class="photo-rotate-action" onclick="rotateCapturedPhoto('cam','etiqueta',this)">↻ Girar foto</button><button type="button" class="photo-remove-action" onclick="camRemovePhoto('etiqueta')">✕ Remover</button></div></div>
               <div class="cam-error" id="camPhotoErrorEtiqueta">⚠️ Foto da etiqueta obrigatória!</div>
               <div class="cam-photo-label" style="margin-top: 12px">📦 Foto da bobina <span style="color: #ef4444; font-weight: 700">*obrigatória</span></div>
               <div class="cam-photo-btn" id="camPhotoBtnBobina" onclick="document.getElementById('camPhotoInputBobina').click()">📷 Tirar foto da bobina<input type="file" id="camPhotoInputBobina" accept="image/*" capture="environment" onchange="camHandlePhoto(event, 'bobina')" /></div>
-              <div class="cam-photo-preview" id="camPhotoPreviewBobina"><img id="camPhotoImgBobina" src="" /><button class="cam-photo-rotate" onclick="camRotatePhoto('bobina')" title="Girar foto">↻</button><button class="cam-photo-remove" onclick="camRemovePhoto('bobina')">✕</button></div>
+              <div class="cam-photo-preview" id="camPhotoPreviewBobina"><img id="camPhotoImgBobina" src="" /><div class="photo-preview-actions"><button type="button" class="photo-rotate-action" onclick="rotateCapturedPhoto('cam','bobina',this)">↻ Girar foto</button><button type="button" class="photo-remove-action" onclick="camRemovePhoto('bobina')">✕ Remover</button></div></div>
               <div class="cam-error" id="camPhotoErrorBobina">⚠️ Foto da bobina obrigatória!</div>
             </div>
             <div class="cam-loc-buttons"><button class="cam-loc-btn cam-confirm" onclick="camConfirmLocation()">✅ Confirmar</button><button class="cam-loc-btn cam-cancel" onclick="camCancelLocation()">❌ Cancelar</button></div>
@@ -1188,7 +1239,7 @@
       </div>
     </div></div>
 
-    <div class="modal-bg" id="locModal"><div class="modal" style="border-color: var(--accent-red)"><h2 style="color: var(--accent-red)">⚠️ Bobina Não Prevista</h2><div class="loc-code-display" id="locCodeMain"></div><p id="locModalDesc">Informe a localização desta bobina:</p><div class="extra-category-box" id="locExtraCategoryBox"><div class="extra-category-label">🏷️ Tipo da base da bobina não prevista:</div><div class="extra-category-buttons"><button type="button" class="extra-category-btn" data-cat="peliculas" onclick="setExtraCategory('loc','peliculas')">🎞️ Películas</button><button type="button" class="extra-category-btn" data-cat="extrusao" onclick="setExtraCategory('loc','extrusao')">🏭 Extrusão</button></div><div class="extra-category-error" id="locExtraCategoryError">⚠️ Selecione Películas ou Extrusão.</div></div><input type="text" id="locInputMain" class="loc-input-main" placeholder="Ex: Galpão A, Corredor 3..." onkeydown="if (event.key === 'Enter') confirmLocMain();" autocomplete="off" /><textarea id="locObsMain" class="loc-input-main" placeholder="Observação (opcional)" style="min-height: 76px; resize: vertical; font-family: inherit;"></textarea><div class="loc-photo-section" id="locPhotoSection"><div class="loc-photo-grid"><div><div class="loc-photo-label">🏷️ Foto da etiqueta <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnEtiqueta" onclick="document.getElementById('locPhotoInputEtiqueta').click()">📷 Tirar foto da etiqueta<input type="file" id="locPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'etiqueta')" /></div><div class="loc-photo-preview" id="locPhotoPreviewEtiqueta"><img id="locPhotoImgEtiqueta" src="" /><button class="loc-photo-remove" onclick="locRemovePhoto('etiqueta')">✕</button></div><div class="loc-photo-error" id="locPhotoErrorEtiqueta">⚠️ Foto da etiqueta obrigatória!</div></div><div><div class="loc-photo-label">📦 Foto da bobina <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnBobina" onclick="document.getElementById('locPhotoInputBobina').click()">📷 Tirar foto da bobina<input type="file" id="locPhotoInputBobina" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'bobina')" /></div><div class="loc-photo-preview" id="locPhotoPreviewBobina"><img id="locPhotoImgBobina" src="" /><button class="loc-photo-remove" onclick="locRemovePhoto('bobina')">✕</button></div><div class="loc-photo-error" id="locPhotoErrorBobina">⚠️ Foto da bobina obrigatória!</div></div></div></div><div id="locErrorMain" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Localização obrigatória!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmLocMain()">✅ Confirmar</button><button class="btn btn-outline" onclick="cancelLocMain()">Cancelar</button></div></div></div>
+    <div class="modal-bg" id="locModal"><div class="modal" style="border-color: var(--accent-red)"><h2 style="color: var(--accent-red)">⚠️ Bobina Não Prevista</h2><div class="loc-code-display" id="locCodeMain"></div><p id="locModalDesc">Informe a localização desta bobina:</p><div class="extra-category-box" id="locExtraCategoryBox"><div class="extra-category-label">🏷️ Tipo da base da bobina não prevista:</div><div class="extra-category-buttons"><button type="button" class="extra-category-btn" data-cat="peliculas" onclick="setExtraCategory('loc','peliculas')">🎞️ Películas</button><button type="button" class="extra-category-btn" data-cat="extrusao" onclick="setExtraCategory('loc','extrusao')">🏭 Extrusão</button></div><div class="extra-category-error" id="locExtraCategoryError">⚠️ Selecione Películas ou Extrusão.</div></div><input type="text" id="locInputMain" class="loc-input-main" placeholder="Ex: Galpão A, Corredor 3..." onkeydown="if (event.key === 'Enter') confirmLocMain();" autocomplete="off" /><textarea id="locObsMain" class="loc-input-main" placeholder="Observação (opcional)" style="min-height: 76px; resize: vertical; font-family: inherit;"></textarea><div class="loc-photo-section" id="locPhotoSection"><div class="loc-photo-grid"><div><div class="loc-photo-label">🏷️ Foto da etiqueta <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnEtiqueta" onclick="document.getElementById('locPhotoInputEtiqueta').click()">📷 Tirar foto da etiqueta<input type="file" id="locPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'etiqueta')" /></div><div class="loc-photo-preview" id="locPhotoPreviewEtiqueta"><img id="locPhotoImgEtiqueta" src="" /><div class="photo-preview-actions"><button type="button" class="photo-rotate-action" onclick="rotateCapturedPhoto('loc','etiqueta',this)">↻ Girar foto</button><button type="button" class="photo-remove-action" onclick="locRemovePhoto('etiqueta')">✕ Remover</button></div></div><div class="loc-photo-error" id="locPhotoErrorEtiqueta">⚠️ Foto da etiqueta obrigatória!</div></div><div><div class="loc-photo-label">📦 Foto da bobina <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnBobina" onclick="document.getElementById('locPhotoInputBobina').click()">📷 Tirar foto da bobina<input type="file" id="locPhotoInputBobina" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'bobina')" /></div><div class="loc-photo-preview" id="locPhotoPreviewBobina"><img id="locPhotoImgBobina" src="" /><div class="photo-preview-actions"><button type="button" class="photo-rotate-action" onclick="rotateCapturedPhoto('loc','bobina',this)">↻ Girar foto</button><button type="button" class="photo-remove-action" onclick="locRemovePhoto('bobina')">✕ Remover</button></div></div><div class="loc-photo-error" id="locPhotoErrorBobina">⚠️ Foto da bobina obrigatória!</div></div></div></div><div id="locErrorMain" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Localização obrigatória!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmLocMain()">✅ Confirmar</button><button class="btn btn-outline" onclick="cancelLocMain()">Cancelar</button></div></div></div>
     <div class="photo-modal" id="photoModal"><div style="text-align: center; color: #fff; font-weight: 700; max-width: 100%; max-height: 82vh; overflow: auto;">🏷️ Etiqueta + 📦 Bobina<br /><img id="photoModalImg" src="" /></div><button class="photo-modal-close" onclick="closePhotoModal()">✕ Fechar</button></div>
     <div class="bobina-alert-flash" id="naoAprovadaFlash"><div><div class="bobina-alert-flash-main">⚠️ BOBINA<br/>NÃO APROVADA ⚠️</div><div class="bobina-alert-flash-sub" id="naoAprovadaFlashCode"></div></div></div>
     <div class="modal-bg" id="naoAprovadaModal"><div class="modal" style="border-color: var(--accent-red); border-width: 2px;"><h2 style="color: var(--accent-red)">❌ Bobina Não Aprovada</h2><div class="loc-code-display" id="naoAprovadaCode"></div><p>Esta bobina está marcada como <strong>não aprovada (N)</strong>. Informe o endereço onde ela está:</p><label style="display:block;font-size:.78em;font-weight:700;color:var(--text-secondary);margin-bottom:5px">📍 Endereço / localização <span style="color:var(--accent-red);font-weight:800">*obrigatório</span></label><input type="text" id="naoAprovadaLocInput" class="loc-input-main" placeholder="Ex: Galpão A, Corredor 3..." onkeydown="if (event.key === 'Enter') confirmNaoAprovada();" autocomplete="off" /><label style="display:block;font-size:.78em;font-weight:700;color:var(--text-secondary);margin-bottom:5px">📝 Observação <span style="color:var(--text-muted);font-weight:600">(opcional)</span></label><textarea id="naoAprovadaObsInput" class="loc-input-main" placeholder="Observação (opcional)" style="min-height: 64px; resize: vertical; font-family: inherit;"></textarea><div id="naoAprovadaLocError" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Endereço obrigatório!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmNaoAprovada()">✅ Confirmar</button><button class="btn btn-outline" onclick="cancelNaoAprovada()">Cancelar</button></div></div></div>
@@ -1204,7 +1255,7 @@
       <p style="color: var(--text-secondary); font-size: .88em; margin-bottom: 8px">Informe endereço/localização e tire as fotos para registrar onde a bobina foi encontrada.</p>
       <input type="text" id="alertFoundLocation" class="loc-input-main" placeholder="Endereço/localização onde encontrou" autocomplete="off" />
       <textarea id="alertFoundFoundObs" class="loc-input-main" placeholder="Observação de quem encontrou (opcional)" style="min-height: 76px; resize: vertical; font-family: inherit;"></textarea>
-      <div class="loc-photo-section" style="display:block"><div class="loc-photo-grid"><div><div class="loc-photo-label">🏷️ Foto da etiqueta <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="alertPhotoBtnEtiqueta" onclick="document.getElementById('alertPhotoInputEtiqueta').click()">📷 Tirar foto da etiqueta<input type="file" id="alertPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="alertHandlePhoto(event, &quot;etiqueta&quot;)" /></div><div class="loc-photo-preview" id="alertPhotoPreviewEtiqueta"><img id="alertPhotoImgEtiqueta" src="" /><button class="loc-photo-remove" onclick="alertRemovePhoto('etiqueta')">✕</button></div><div class="loc-photo-error" id="alertPhotoErrorEtiqueta">⚠️ Foto da etiqueta obrigatória!</div></div><div><div class="loc-photo-label">📦 Foto da bobina <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="alertPhotoBtnBobina" onclick="document.getElementById('alertPhotoInputBobina').click()">📷 Tirar foto da bobina<input type="file" id="alertPhotoInputBobina" accept="image/*" capture="environment" onchange="alertHandlePhoto(event, &quot;bobina&quot;)" /></div><div class="loc-photo-preview" id="alertPhotoPreviewBobina"><img id="alertPhotoImgBobina" src="" /><button class="loc-photo-remove" onclick="alertRemovePhoto('bobina')">✕</button></div><div class="loc-photo-error" id="alertPhotoErrorBobina">⚠️ Foto da bobina obrigatória!</div></div></div></div>
+      <div class="loc-photo-section" style="display:block"><div class="loc-photo-grid"><div><div class="loc-photo-label">🏷️ Foto da etiqueta <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="alertPhotoBtnEtiqueta" onclick="document.getElementById('alertPhotoInputEtiqueta').click()">📷 Tirar foto da etiqueta<input type="file" id="alertPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="alertHandlePhoto(event, &quot;etiqueta&quot;)" /></div><div class="loc-photo-preview" id="alertPhotoPreviewEtiqueta"><img id="alertPhotoImgEtiqueta" src="" /><div class="photo-preview-actions"><button type="button" class="photo-rotate-action" onclick="rotateCapturedPhoto('alert','etiqueta',this)">↻ Girar foto</button><button type="button" class="photo-remove-action" onclick="alertRemovePhoto('etiqueta')">✕ Remover</button></div></div><div class="loc-photo-error" id="alertPhotoErrorEtiqueta">⚠️ Foto da etiqueta obrigatória!</div></div><div><div class="loc-photo-label">📦 Foto da bobina <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="alertPhotoBtnBobina" onclick="document.getElementById('alertPhotoInputBobina').click()">📷 Tirar foto da bobina<input type="file" id="alertPhotoInputBobina" accept="image/*" capture="environment" onchange="alertHandlePhoto(event, &quot;bobina&quot;)" /></div><div class="loc-photo-preview" id="alertPhotoPreviewBobina"><img id="alertPhotoImgBobina" src="" /><div class="photo-preview-actions"><button type="button" class="photo-rotate-action" onclick="rotateCapturedPhoto('alert','bobina',this)">↻ Girar foto</button><button type="button" class="photo-remove-action" onclick="alertRemovePhoto('bobina')">✕ Remover</button></div></div><div class="loc-photo-error" id="alertPhotoErrorBobina">⚠️ Foto da bobina obrigatória!</div></div></div></div>
       <div id="alertFoundLocationError" style="color: var(--accent-red); font-size: 0.82em; font-weight: 700; display:none; margin-top: 8px">⚠️ Endereço/localização obrigatória!</div>
       <div class="btn-group"><button class="btn btn-primary" onclick="confirmAlertFound()">✅ Salvar encontrado</button><button class="btn btn-outline" onclick="cancelAlertFound()">Cancelar</button></div>
     </div></div>
@@ -1213,7 +1264,7 @@
       let S = {
         db: [], scanned: [], checked: new Set(), extras: [], sep: "newline", fileData: null,
         fileLayout: null, meta: {}, coilCategories: {}, alertBobinas: [], confType: "", filter: "all", rptSearch: "",
-        checkerName: "", cloudSessionId: "", cloudSessionStartSaved: false, collectorMode: false, collectorActive: false,
+        checkerName: "", cloudSessionId: "", cloudSessionStartSaved: false, primeiraLeituraEmLocal: "", ultimaLeituraEmLocal: "", horarioLegado: false, estadoGeracao: "", collectorMode: false, collectorActive: false,
       };
       let reportPanelMode = "ops";
       let reportOpSummarySearch = "";
@@ -1251,6 +1302,7 @@ let cloudHeaderDirty = false;
 let cloudLastHeaderWrite = 0;
 let bobinaAlertUnsub = null;
 let bobinaAlertCloudReady = false;
+      let cloudInitPromise = null;
       let cloudReady = false, cloudDb = null, cloudStorage = null, cloudSummaryTimer = null,
         cloudConsultUnsub = null, cloudConsultDocs = [], cloudListStatusFilter = "all",
         cloudDetailRows = [], cloudDetailFilter = "all", cloudDetailSearch = "",
@@ -1299,6 +1351,10 @@ let bobinaAlertCloudReady = false;
           checkerName: S.checkerName || "",
           cloudSessionId: S.cloudSessionId || "",
           cloudSessionStartSaved: !!S.cloudSessionStartSaved && !!S.cloudSessionId,
+          primeiraLeituraEmLocal: S.primeiraLeituraEmLocal || "",
+          ultimaLeituraEmLocal: S.ultimaLeituraEmLocal || "",
+          horarioLegado: !!S.horarioLegado,
+          estadoGeracao: S.estadoGeracao || "",
           collectorMode: !!S.collectorMode,
           // BUG 1 CORRIGIDO: sempre grava false para não reabrir ativo
           collectorActive: false,
@@ -1317,6 +1373,10 @@ let bobinaAlertCloudReady = false;
         S.checkerName = s.checkerName || "";
         S.cloudSessionId = s.cloudSessionId || "";
         S.cloudSessionStartSaved = !!s.cloudSessionStartSaved && !!S.cloudSessionId;
+        S.primeiraLeituraEmLocal = s.primeiraLeituraEmLocal || "";
+        S.ultimaLeituraEmLocal = s.ultimaLeituraEmLocal || "";
+        S.horarioLegado = !!s.horarioLegado || (!S.primeiraLeituraEmLocal && Array.isArray(s.scanned) && s.scanned.length > 0);
+        S.estadoGeracao = s.estadoGeracao || "";
         S.collectorMode = !!s.collectorMode;
         // O operador deve iniciar manualmente após recarregar/restaurar.
         S.collectorActive = false;
@@ -1337,6 +1397,7 @@ let bobinaAlertCloudReady = false;
       }
       function statesCompatible(a, b) {
         if (!a || !b) return false;
+        if ((a.estadoGeracao || b.estadoGeracao) && String(a.estadoGeracao || "") !== String(b.estadoGeracao || "")) return false;
         if ((a.cloudSessionId || "") && (b.cloudSessionId || "")) return a.cloudSessionId === b.cloudSessionId;
         if ((!a.db || !a.db.length) && b.db && b.db.length) return true;
         return stateDbFingerprint(a) === stateDbFingerprint(b)
@@ -1438,7 +1499,8 @@ let bobinaAlertCloudReady = false;
         const backupHasBase = backup.db && backup.db.length;
         const currentHasBase = current.db && current.db.length;
         const compatible = statesCompatible(current, backup);
-        const shouldRestore = backupHasBase && ((!currentHasBase) || (compatible && stateProgressScore(backup) > stateProgressScore(current)));
+        const sameGeneration = !current.estadoGeracao || current.estadoGeracao === backup.estadoGeracao;
+        const shouldRestore = backupHasBase && sameGeneration && ((!currentHasBase) || (compatible && stateProgressScore(backup) > stateProgressScore(current)));
         if (!shouldRestore) return false;
         const oldChecked = S.checked.size;
         applyStateSnapshot(backup);
@@ -1689,6 +1751,15 @@ let bobinaAlertCloudReady = false;
         const name = d.nome || d.fileName || "arquivo-base";
         return String(name).replace(/^.*[\\/]/, "");
       }
+      function cloudDisplayStart(d = {}) {
+        const value = d.primeiraLeituraEmLocal || d.iniciadoEmLocal || d.iniciadoEm || "";
+        return value ? reportDateTime(value) : "—";
+      }
+      function cloudDisplayEnd(d = {}) {
+        if (d.status && d.status !== "finalizada") return "Em andamento";
+        const value = d.ultimaLeituraEmLocal || "";
+        return value ? reportDateTime(value) : "—";
+      }
       function cloudConferenceTitle(d = {}) {
         return `${d.operador || "-"} • ${cloudFormatDateBR(d.data || cloudParseSessionId(d.id)?.date || "")}`;
       }
@@ -1701,76 +1772,93 @@ let bobinaAlertCloudReady = false;
       }
       function cloudMakeSessionId() {
         const d = new Date(); const hhmmss = d.toTimeString().slice(0, 8).replace(/:/g, "");
-        return `${cloudDateKey(d)}_${cloudOperatorKey()}_${hhmmss}`;
+        const unique = Math.random().toString(36).slice(2, 10).padEnd(8, "0");
+        return `${cloudDateKey(d)}_${cloudOperatorKey()}-${unique}_${hhmmss}`;
       }
-      async function cloudInit() {
-        try {
-          if (!cloudIsConfigured()) { cloudSetStatus("", "☁️ Nuvem: local"); return false; }
-          if (typeof firebase === "undefined") { console.warn("Firebase SDK não carregado."); return false; }
-          if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
-          if (firebase.auth) {
-            try { if (!firebase.auth().currentUser) await firebase.auth().signInAnonymously(); }
-            catch (e) { console.warn("Auth anônimo falhou. Verifique regras/Auth.", e); }
+      function cloudInit() {
+        // Compartilha a mesma inicialização entre alertas e configuração geral,
+        // evitando criar duas autenticações anônimas ao abrir o aplicativo.
+        if (cloudInitPromise) return cloudInitPromise;
+        const job = (async () => {
+          try {
+            if (!cloudIsConfigured()) { cloudSetStatus("", "☁️ Nuvem: local"); return false; }
+            if (typeof firebase === "undefined") { console.warn("Firebase SDK não carregado."); return false; }
+            if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+            if (firebase.auth) {
+              try { if (!firebase.auth().currentUser) await firebase.auth().signInAnonymously(); }
+              catch (e) { console.warn("Auth anônimo falhou. Verifique regras/Auth.", e); }
+            }
+            cloudDb = firebase.firestore();
+            cloudStorage = null;
+            cloudReady = true;
+            cloudSetStatus("ok", "☁️ Nuvem conectada");
+            return true;
+          } catch (e) {
+            console.error("Erro ao iniciar Firebase:", e);
+            cloudReady = false;
+            cloudSetStatus("error", "☁️ Erro na nuvem");
+            return false;
           }
-          cloudDb = firebase.firestore();
-          cloudStorage = null;
-          cloudReady = true;
-          cloudSetStatus("ok", "☁️ Nuvem conectada");
-          return true;
-        } catch (e) {
-          console.error("Erro ao iniciar Firebase:", e);
-          cloudReady = false;
-          cloudSetStatus("error", "☁️ Erro na nuvem");
-          return false;
-        }
+        })();
+        cloudInitPromise = job;
+        job.then(() => { if (cloudInitPromise === job) cloudInitPromise = null; }, () => { if (cloudInitPromise === job) cloudInitPromise = null; });
+        return job;
+      }
+      const cloudStartWrites = new Map();
+      function recordConferenceReading() {
+        const now = new Date().toISOString();
+        if (!S.primeiraLeituraEmLocal && !S.horarioLegado) S.primeiraLeituraEmLocal = now;
+        S.ultimaLeituraEmLocal = now;
+        if (!S.cloudSessionId) { S.cloudSessionId = cloudMakeSessionId(); S.cloudSessionStartSaved = false; }
+        const id = S.cloudSessionId;
+        save();
+        setTimeout(() => {
+          if (S.cloudSessionId === id && !S.cloudSessionStartSaved) cloudRegisterSessionStart(false).catch((e) => console.warn("Falha ao registrar início:", e));
+        }, 0);
       }
       async function cloudRegisterSessionStart(force = false) {
-        if (!(await cloudInit())) return null;
-        if (!S.checkerName) return null;
+        if (!S.checkerName || (!S.primeiraLeituraEmLocal && !(S.scanned || []).length && !S.horarioLegado)) return null;
         if (!S.cloudSessionId) { S.cloudSessionId = cloudMakeSessionId(); S.cloudSessionStartSaved = false; save(); }
-        if (S.cloudSessionStartSaved && !force) {
-          cloudSetStatus("ok", "☁️ Conferência em andamento");
-          return S.cloudSessionId;
-        }
-        try {
-          cloudSetStatus("sync", "☁️ Registrando início...");
-          const d = new Date();
-          const resumo = cloudSummary();
-          const payload = {
-            id: S.cloudSessionId,
-            operador: S.checkerName || "",
-            operadorKey: cloudOperatorKey(),
-            data: cloudDateKey(d),
-            tipo: S.confType || "",
-            status: "em_andamento",
-            resumo,
-            storageMode: "economico_supabase_json",
-            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-            iniciadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-            criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-            criadoEmLocal: d.toISOString(),
-            iniciadoEmLocal: d.toISOString(),
-          };
-          // merge: se já existir (ex.: reload), não apaga campos de finalização
-          await cloudDb.collection("conferencias").doc(S.cloudSessionId).set(payload, { merge: true });
-          S.cloudSessionStartSaved = true;
-          save();
-          cloudSetStatus("ok", "☁️ Conferência iniciada na nuvem");
-          return S.cloudSessionId;
-        } catch (e) {
-          console.warn("Falha ao registrar início da conferência:", e);
-          cloudSetStatus("error", "☁️ Falha ao registrar início");
-          return S.cloudSessionId; // segue local mesmo se nuvem falhar
-        }
+        const id = S.cloudSessionId;
+        if (S.cloudSessionStartSaved && !force) return id;
+        if (cloudStartWrites.has(id)) return cloudStartWrites.get(id);
+        const snapshot = { id, operador: S.checkerName, operadorKey: cloudOperatorKey(), tipo: S.confType || "", inicio: S.primeiraLeituraEmLocal || "", resumo: cloudSummary() };
+        const job = (async () => {
+          try {
+            if (!cloudReady && !(await cloudInit())) return null;
+            const ref = cloudDb.collection("conferencias").doc(id);
+            await cloudDb.runTransaction(async (tx) => {
+              const existing = await tx.get(ref);
+              if (existing.exists && (existing.data() || {}).status === "finalizada") return;
+              const startedDate = snapshot.inicio ? new Date(snapshot.inicio) : new Date();
+              const payload = { id, operador: snapshot.operador, operadorKey: snapshot.operadorKey, data: cloudDateKey(startedDate), tipo: snapshot.tipo, status: "em_andamento", resumo: snapshot.resumo, storageMode: "economico_supabase_json", atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() };
+              if (snapshot.inicio) { payload.primeiraLeituraEmLocal = snapshot.inicio; payload.iniciadoEmLocal = snapshot.inicio; }
+              if (!existing.exists) { payload.criadoEm = firebase.firestore.FieldValue.serverTimestamp(); payload.criadoEmLocal = new Date().toISOString(); }
+              tx.set(ref, payload, { merge: true });
+            });
+            if (S.cloudSessionId === id) { S.cloudSessionStartSaved = true; save(); }
+            cloudSetStatus("ok", "☁️ Conferência iniciada");
+            return id;
+          } catch (e) {
+            console.warn("Falha ao registrar início da conferência:", e);
+            cloudSetStatus("error", "☁️ Início será enviado quando houver conexão");
+            return null;
+          }
+        })();
+        cloudStartWrites.set(id, job);
+        try { return await job; } finally { if (cloudStartWrites.get(id) === job) cloudStartWrites.delete(id); }
       }
       async function cloudEnsureSession() {
-        // Garante ID local e registra o início (1 doc leve) na nuvem.
-        if (!(await cloudInit())) return null;
-        if (!S.checkerName) return null;
+        if (!S.checkerName || (!S.primeiraLeituraEmLocal && !(S.scanned || []).length && !S.horarioLegado)) return null;
         if (!S.cloudSessionId) { S.cloudSessionId = cloudMakeSessionId(); S.cloudSessionStartSaved = false; save(); }
-        await cloudRegisterSessionStart(false);
-        return S.cloudSessionId;
+        const id = S.cloudSessionId;
+        if (!(await cloudInit())) return null;
+        const savedId = await cloudRegisterSessionStart(false);
+        return savedId === id && S.cloudSessionId === id ? id : null;
       }
+      window.addEventListener("online", () => {
+        if (S.cloudSessionId && !S.cloudSessionStartSaved && (S.primeiraLeituraEmLocal || (S.scanned || []).length)) cloudRegisterSessionStart(false).catch(() => {});
+      });
       function cloudConferenceRef() { if (!cloudReady || !S.cloudSessionId) return null; return cloudDb.collection("conferencias").doc(S.cloudSessionId); }
       function cloudSummary() {
         const total = S.db.length, checked = S.checked.size;
@@ -2283,7 +2371,9 @@ let bobinaAlertCloudReady = false;
           tipo: S.confType || "-",
           data: cloudDateKey(date),
           status: "finalizada",
-          criadoEmLocal: date.toISOString(),
+          criadoEmLocal: S.primeiraLeituraEmLocal || "",
+          primeiraLeituraEmLocal: S.primeiraLeituraEmLocal || "",
+          ultimaLeituraEmLocal: S.ultimaLeituraEmLocal || "",
           finalizadoEmLocal: date.toISOString(),
           resumo,
           opSummary: getOpSummaryItems(),
@@ -2291,7 +2381,7 @@ let bobinaAlertCloudReady = false;
           confIds: [S.cloudSessionId || ""],
         };
       }
-      async function cloudUploadLocalPhotosForFinalReport() {
+      async function cloudUploadLocalPhotosForFinalReport(expectedSessionId = S.cloudSessionId) {
         refreshCoilCategoriesFromLoadedFile();
         const progress = document.getElementById("exportProgress");
         const uploads = {};
@@ -2304,6 +2394,7 @@ let bobinaAlertCloudReady = false;
         if (!items.length) return uploads;
         if (progress) { progress.classList.add("show"); progress.textContent = `Enviando fotos 0/${items.length}...`; }
         for (let i = 0; i < items.length; i++) {
+          if (S.cloudSessionId !== expectedSessionId) throw new Error("A conferência mudou durante a finalização. Tente novamente.");
           const item = items[i];
           if (progress) progress.textContent = `Enviando fotos ${i + 1}/${items.length}...`;
           const up = await cloudUploadPhoto(item.code, item._photo, item.categoriaInformada ? item.categoriaKey : "");
@@ -2327,26 +2418,30 @@ let bobinaAlertCloudReady = false;
         }
         try {
           if (!S.db.length) { notify("Importe uma base antes de finalizar.", "warning"); return false; }
+          if (!S.primeiraLeituraEmLocal && !(S.scanned || []).length && !S.horarioLegado) { notify("Leia uma etiqueta antes de finalizar a conferência.", "warning"); return false; }
           refreshCoilCategoriesFromLoadedFile();
           if (requireExtraCategoryReview(() => cloudMarkFinished())) return false;
-          if (!(await cloudEnsureSession())) throw new Error("Serviço indisponível ou operador não informado");
+          const sessionId = await cloudEnsureSession();
+          if (!sessionId) throw new Error("Serviço indisponível ou operador não informado");
           cloudSetStatus("sync", "Finalizando...");
           if (progress) { progress.classList.add("show"); progress.textContent = "Preparando relatório final..."; }
 
-          const photoUploads = await cloudUploadLocalPhotosForFinalReport();
+          const photoUploads = await cloudUploadLocalPhotosForFinalReport(sessionId);
+          if (S.cloudSessionId !== sessionId) throw new Error("A conferência mudou durante a finalização. Tente novamente.");
           const reportData = cloudBuildLocalFinalReportData(photoUploads);
-          reportData.id = S.cloudSessionId;
-          reportData.confIds = [S.cloudSessionId];
+          reportData.id = sessionId;
+          reportData.confIds = [sessionId];
           reportData.photoUploadSummary = { totalLocal: Object.keys(photoUploads).length };
 
           if (progress) progress.textContent = "Enviando relatório final...";
-          const reportPath = `conferencias/${cloudDateKey()}/${S.cloudSessionId}_relatorio.json`;
+          const reportPath = `conferencias/${cloudDateKey()}/${sessionId}_relatorio.json`;
           const reportUpload = await cloudUploadJsonObject(reportPath, reportData);
+          if (S.cloudSessionId !== sessionId) throw new Error("A conferência mudou durante a finalização. Tente novamente.");
 
           if (progress) progress.textContent = "Gravando resumo...";
           const d = new Date();
-          await cloudDb.collection("conferencias").doc(S.cloudSessionId).set({
-            id: S.cloudSessionId,
+          await cloudDb.collection("conferencias").doc(sessionId).set({
+            id: sessionId,
             operador: S.checkerName || "",
             operadorKey: cloudOperatorKey(),
             data: cloudDateKey(d),
@@ -2359,13 +2454,14 @@ let bobinaAlertCloudReady = false;
             reportUrl: reportUpload.url,
             reportSize: reportUpload.size,
             fotosEnviadas: Object.keys(photoUploads).length,
-            storagePrefix: `${cloudOperatorKey()}/${cloudDateKey()}/${S.cloudSessionId}/`,
+            storagePrefix: `${cloudOperatorKey()}/${cloudDateKey()}/${sessionId}/`,
             atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
             finalizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            primeiraLeituraEmLocal: S.primeiraLeituraEmLocal || "",
+            ultimaLeituraEmLocal: S.ultimaLeituraEmLocal || "",
             finalizadoEmLocal: d.toISOString(),
           }, { merge: true });
-          S.cloudSessionStartSaved = true;
-          save();
+          if (S.cloudSessionId === sessionId) { S.cloudSessionStartSaved = true; save(); }
 
           cloudStopBufferFlushTimer();
           cloudWriteBuffer = [];
@@ -2444,7 +2540,7 @@ let bobinaAlertCloudReady = false;
                 <span>⚠️ Não previstas: <strong>${r.naoPrevistas ?? 0}</strong></span>
                 <span>📊 <strong>${r.percentual ?? 0}%</strong></span>
               </div>
-              <div class="small" style="margin-top:6px;color:var(--text-muted)">🕒 ${esc(cloudFormatSessionMeta(d.id, d.data))}</div>
+              <div class="small" style="margin-top:6px;color:var(--text-muted)">🕒 Início: ${esc(cloudDisplayStart(d))} &nbsp; │ &nbsp; Fim (última leitura): ${esc(cloudDisplayEnd(d))}</div>
             </div>`;
         }).join("");
         cloudUpdateMergeButton();
@@ -2465,7 +2561,7 @@ let bobinaAlertCloudReady = false;
       async function cloudBuildExportData(confId) {
         if (confId === "__merged__") {
           if (!cloudMergedReport) throw new Error("Nenhum consolidado aberto");
-          return { id: cloudMergedReport.id || "consolidado", title: "RELATÓRIO CONSOLIDADO", operador: "Consolidado", tipo: cloudMergedReport.title || "Consolidado", status: "consolidado", resumo: cloudMergedReport.resumo || {}, opSummary: cloudMergedReport.opSummary || [], rows: cloudMergedReport.rows || [], confIds: cloudMergedReport.ids || [] };
+          return { id: cloudMergedReport.id || "consolidado", title: "RELATÓRIO CONSOLIDADO", operador: "Consolidado", tipo: cloudMergedReport.title || "Consolidado", status: "consolidado", inicio: cloudMergedReport.inicio || "", fim: cloudMergedReport.fim || "", resumo: cloudMergedReport.resumo || {}, opSummary: cloudMergedReport.opSummary || [], rows: cloudMergedReport.rows || [], confIds: cloudMergedReport.ids || [] };
         }
         if (!(await cloudInit())) throw new Error("Firebase indisponível");
         const confRef = cloudDb.collection("conferencias").doc(confId);
@@ -2484,6 +2580,8 @@ let bobinaAlertCloudReady = false;
             operador: report.operador || conf.operador || "-",
             tipo: report.tipo || conf.tipo || "-",
             status: conf.status || report.status || "finalizada",
+            inicio: report.primeiraLeituraEmLocal || conf.primeiraLeituraEmLocal || conf.iniciadoEmLocal || conf.iniciadoEm || "",
+            fim: report.ultimaLeituraEmLocal || conf.ultimaLeituraEmLocal || "",
             resumo: {
               total: resumo.total ?? rows.filter((r) => !String(r.status || "").includes("Não Prevista")).length,
               conferidos: resumo.conferidos ?? rows.filter((r) => String(r.status || "").includes("Conferid") || String(r.status || "").includes("Manual")).length,
@@ -2519,60 +2617,209 @@ let bobinaAlertCloudReady = false;
         Array.from(extraCodes).sort().forEach((code) => {
           const n = naoPrevistas.find((x) => String(x.codigo || x.id) === code) || {};
           const l = leiturasMap.get(code) || {};
-          rows.push({ code, op: "-", peso: "-", situacao: "", lote: "", status: "Não Prevista", time: l.horaLocal || n.horaLocal || "", location: l.location || n.location || "", observation: l.observation || n.observation || "", hasPhoto: !!(l.hasPhoto || n.hasPhoto || fotoMap.get(code)), fotoUrl: l.fotoUrl || n.fotoUrl || fotoMap.get(code)?.url || "" });
+          rows.push({ code, op: "-", peso: "-", situacao: "", lote: "", categoriaKey: l.categoriaKey || n.categoriaKey || "", categoria: l.categoria || n.categoria || "", categoriaInformada: !!(l.categoriaInformada || n.categoriaInformada), status: "Não Prevista", time: l.horaLocal || n.horaLocal || "", location: l.location || n.location || "", observation: l.observation || n.observation || "", hasPhoto: !!(l.hasPhoto || n.hasPhoto || fotoMap.get(code)), fotoUrl: l.fotoUrl || n.fotoUrl || fotoMap.get(code)?.url || "" });
         });
         bobinasSource.slice().sort((a, b) => String(a.codigo || a.id).localeCompare(String(b.codigo || b.id), "pt-BR", { numeric: true })).forEach((b) => {
           const code = String(b.codigo || b.id); const l = leiturasMap.get(code); const checked = !!(l && l.status !== "not-found");
-          rows.push({ code, op: b.op || "-", peso: b.peso || "-", situacao: normalizeSituacaoValue(b.situacao), lote: String(b.lote || b.referenciaLote || ""), tipo: String(b.tipo || b.tipoBobina || ""), status: checked ? (l.manual ? "Conferido Manual" : "Conferido") : "Pendente", time: checked ? (l.horaLocal || "") : "", location: l?.location || "", observation: l?.observation || "", hasPhoto: !!(l?.hasPhoto || fotoMap.get(code)), fotoUrl: l?.fotoUrl || fotoMap.get(code)?.url || "" });
+          rows.push({ code, op: b.op || "-", peso: b.peso || "-", situacao: normalizeSituacaoValue(b.situacao || b.situacaoOp || b.SITUACAO_OP), lote: String(b.lote || b.referenciaLote || ""), tipo: String(b.tipo || b.tipoBobina || ""), categoriaKey: b.categoriaKey || b.categoryKey || "", categoria: b.categoria || b.category || "", categoriaInformada: !!b.categoriaInformada, status: checked ? (l.manual ? "Conferido Manual" : "Conferido") : "Pendente", time: checked ? (l.horaLocal || "") : "", location: l?.location || "", observation: l?.observation || "", hasPhoto: !!(l?.hasPhoto || fotoMap.get(code)), fotoUrl: l?.fotoUrl || fotoMap.get(code)?.url || "" });
         });
-        return { id: conf.id, title: "RELATÓRIO DE CONFERÊNCIA - NUVEM", operador: conf.operador || "-", tipo: conf.tipo || "-", data: conf.data || cloudParseSessionId(conf.id)?.date || "", status: conf.status || "-", resumo: { total, conferidos: chk, pendentes: total - chk, naoPrevistas: extras, naoAprovadas: rows.filter(reportIsNaoAprovada).length, percentual: pct }, opSummary, rows, confIds: [conf.id], missingBobinas: !bobinasSource.length && total > 0 };
+        return { id: conf.id, title: "RELATÓRIO DE CONFERÊNCIA - NUVEM", operador: conf.operador || "-", tipo: conf.tipo || "-", data: conf.data || cloudParseSessionId(conf.id)?.date || "", status: conf.status || "-", inicio: conf.primeiraLeituraEmLocal || conf.iniciadoEmLocal || conf.iniciadoEm || "", fim: conf.ultimaLeituraEmLocal || "", resumo: { total, conferidos: chk, pendentes: total - chk, naoPrevistas: extras, naoAprovadas: rows.filter(reportIsNaoAprovada).length, percentual: pct }, opSummary, rows, confIds: [conf.id], missingBobinas: !bobinasSource.length && total > 0 };
       }
       function cloudFilterRowsForExport(rows, opt) {
-        return (rows || []).filter((i) => {
-          const st = String(i.status || "");
-          let base = true;
-          if (st === "Pendente") base = !!opt.pending;
-          else if (st === "Não Prevista" || st.includes("Não prevista")) base = !!opt.extra;
-          else if (st.startsWith("Conferido") || st.includes("Conferid") || st.includes("Manual")) base = !!opt.checked;
-          if (reportIsNaoAprovada(i)) return !!opt.naoAprov || base;
-          return base;
+        return (rows || []).filter((item) => {
+          if (reportIsNaoAprovada(item)) return !!opt.naoAprov;
+          const key = reportConferenceKey(item);
+          if (key === "pending") return !!opt.pending;
+          if (key === "extra") return !!opt.extra;
+          if (key === "checked") return !!opt.checked;
+          return true;
         });
       }
       function reportCategoryKey(row = {}) {
         return normalizedCategoryKey(row.categoriaKey || row.categoryKey || row.categoria || row.category || "");
       }
       function reportCategoryLabel(row = {}) {
-        if (reportIsNaoAprovada(row)) return "Não Aprovada";
+        const key = reportCategoryKey(row);
+        if (reportIsNaoAprovada(row)) return key ? coilCategoryLabel(key) : "Sem categoria";
         const tipo = normalizeCategoryText(row.tipo || row.tipoBobina || "");
         if (tipo.startsWith("IMPRESS")) return "Impressa";
         if (tipo.startsWith("LAMINAD")) return "Laminada";
-        const key = reportCategoryKey(row);
         return key ? coilCategoryLabel(key) : "Sem categoria";
+      }
+      function reportConferenceKey(row = {}) {
+        const status = normalizeCategoryText(row.status || "");
+        if (status === "EXTRA" || status.includes("NAO PREVISTA") || status === "NOT-FOUND") return "extra";
+        if (status === "PENDING" || status.includes("PENDENTE") || status.includes("NAO CONFERID")) return "pending";
+        if (status === "CHECKED" || status === "FOUND" || status.includes("CONFERID") || status.includes("MANUAL")) return "checked";
+        return "";
+      }
+      function reportDisplayStatus(row = {}) {
+        if (reportIsNaoAprovada(row)) return "Não aprovada";
+        const key = reportConferenceKey(row);
+        if (key === "extra") return "Não prevista";
+        if (key === "pending") return "Pendente";
+        if (key === "checked") return row.manual || normalizeCategoryText(row.status || "").includes("MANUAL") ? "Conferida manual" : "Conferida";
+        return row.status || "—";
+      }
+      function reportConferenceLabel(row = {}) {
+        const key = reportConferenceKey(row);
+        return key === "checked" ? "Conferida" : key === "pending" ? "Não conferida" : key === "extra" ? "Registrada" : "—";
       }
       function reportBuildCategorySummary(rows = []) {
         const map = new Map();
         (rows || []).forEach((row) => {
           const label = reportCategoryLabel(row);
-          if (!map.has(label)) map.set(label, { categoria: label, total: 0, conferidos: 0, pendentes: 0, naoPrevistas: 0 });
-          const item = map.get(label); item.total++;
-          const st = String(row.status || "");
-          if (st.includes("Pendente")) item.pendentes++;
-          else if (st.includes("Não Prevista") || st.includes("Não prevista")) item.naoPrevistas++;
-          else if (st.includes("Conferid") || st.includes("Manual")) item.conferidos++;
+          if (!map.has(label)) map.set(label, { categoria: label, total: 0, conferidos: 0, pendentes: 0, naoPrevistas: 0, naoAprovadasConferidas: 0, naoAprovadasPendentes: 0 });
+          const item = map.get(label), key = reportConferenceKey(row); item.total++;
+          if (key === "pending") item.pendentes++;
+          else if (key === "extra") item.naoPrevistas++;
+          else if (key === "checked") item.conferidos++;
+          if (reportIsNaoAprovada(row) && key === "checked") item.naoAprovadasConferidas++;
+          if (reportIsNaoAprovada(row) && key === "pending") item.naoAprovadasPendentes++;
         });
-        const order = { "Não Aprovada": 0, "Películas": 1, "Extrusão": 2, "Impressa": 3, "Laminada": 4, "Sem categoria": 5 };
+        const order = { "Películas": 1, "Extrusão": 2, "Impressa": 3, "Laminada": 4, "Sem categoria": 5 };
         return Array.from(map.values()).sort((a, b) => (order[a.categoria] || 99) - (order[b.categoria] || 99) || a.categoria.localeCompare(b.categoria, "pt-BR"));
       }
       function reportCategorySummaryCsv(rows = []) {
         const summary = reportBuildCategorySummary(rows);
         if (!summary.length) return "";
-        return `\nRESUMO POR CATEGORIA\nCategoria;Total;Conferidos;Pendentes;Não Previstas\n` + summary.map((i) => `${i.categoria};${i.total};${i.conferidos};${i.pendentes};${i.naoPrevistas}`).join("\n") + "\n";
+        return `\nRESUMO POR CATEGORIA\nCategoria;Total;Conferidos;Pendentes;Não Previstas;Não aprovadas conferidas;Não aprovadas não conferidas\n` + summary.map((i) => `${i.categoria};${i.total};${i.conferidos};${i.pendentes};${i.naoPrevistas};${i.naoAprovadasConferidas};${i.naoAprovadasPendentes}`).join("\n") + "\n";
       }
       function reportCategorySummaryTxt(rows = []) {
         const summary = reportBuildCategorySummary(rows);
         if (!summary.length) return "";
-        return `\n${"=".repeat(95)}\nRESUMO POR CATEGORIA\n${"=".repeat(95)}\n` + summary.map((i) => `${String(i.categoria).padEnd(14)} | Total: ${String(i.total).padEnd(5)} | Conferidos: ${String(i.conferidos).padEnd(5)} | Pendentes: ${String(i.pendentes).padEnd(5)} | Não Previstas: ${i.naoPrevistas}`).join("\n") + "\n";
+        return `\n${"=".repeat(95)}\nRESUMO POR CATEGORIA\n${"=".repeat(95)}\n` + summary.map((i) => `${String(i.categoria).padEnd(14)} | Total: ${String(i.total).padEnd(5)} | Conferidos: ${String(i.conferidos).padEnd(5)} | Pendentes: ${String(i.pendentes).padEnd(5)} | Não Previstas: ${i.naoPrevistas} | Não aprovadas conferidas: ${i.naoAprovadasConferidas} | Não aprovadas não conferidas: ${i.naoAprovadasPendentes}`).join("\n") + "\n";
       }
+      function excelXmlText(value) {
+        return String(value ?? "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g, "").slice(0, 32767)
+          .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+      }
+      function excelColumnName(index) {
+        let n = index + 1, name = "";
+        while (n > 0) { n--; name = String.fromCharCode(65 + (n % 26)) + name; n = Math.floor(n / 26); }
+        return name;
+      }
+      function reportDateTime(value) {
+        const date = cloudValueToDate(value);
+        return date ? `${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : "—";
+      }
+      function reportWeightCell(value) {
+        const raw = String(value ?? "").trim();
+        if (/^[+-]?\d+(?:[.,]\d+)?$/.test(raw)) {
+          const n = Number(raw.replace(",", "."));
+          if (Number.isFinite(n)) return n;
+        }
+        return raw || "—";
+      }
+      function excelWorksheetXml(rows, widths = [], withFilter = true) {
+        const links = [], values = rows.length ? rows : [[""]];
+        const maxColumns = values.reduce((max, row) => Math.max(max, row.length), 1);
+        const lastCell = excelColumnName(maxColumns - 1) + values.length;
+        const columns = Array.from({ length: maxColumns }, (_, i) => `<col min="${i + 1}" max="${i + 1}" width="${Number(widths[i]) || 18}" customWidth="1"/>`).join("");
+        const sheetRows = values.map((row, ri) => {
+          const cells = row.map((raw, ci) => {
+            const cell = raw && typeof raw === "object" && !(raw instanceof Date) ? raw : { value: raw };
+            const ref = excelColumnName(ci) + (ri + 1), value = cell.value ?? "";
+            const hyperlink = ri > 0 && /^https?:\/\//i.test(String(cell.link || "")) ? String(cell.link) : "";
+            const style = ri === 0 ? 1 : hyperlink ? 2 : 0;
+            if (hyperlink) links.push({ ref, url: hyperlink, id: `rId${links.length + 1}` });
+            if (typeof value === "number" && Number.isFinite(value)) return `<c r="${ref}" s="${style}" t="n"><v>${value}</v></c>`;
+            return `<c r="${ref}" s="${style}" t="inlineStr"><is><t xml:space="preserve">${excelXmlText(value)}</t></is></c>`;
+          }).join("");
+          return `<row r="${ri + 1}">${cells}</row>`;
+        }).join("");
+        const hyperlinkXml = links.length ? `<hyperlinks>${links.map((link) => `<hyperlink ref="${link.ref}" r:id="${link.id}"/>`).join("")}</hyperlinks>` : "";
+        const relationships = links.length ? `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${links.map((link) => `<Relationship Id="${link.id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="${excelXmlText(link.url)}" TargetMode="External"/>`).join("")}</Relationships>` : "";
+        const xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><dimension ref="A1:${lastCell}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/><cols>${columns}</cols><sheetData>${sheetRows}</sheetData>${withFilter ? `<autoFilter ref="A1:${lastCell}"/>` : ""}${hyperlinkXml}</worksheet>`;
+        return { xml, relationships };
+      }
+      function reportLocalDataForExcel() {
+        const rows = getReportItems().map((item) => ({ ...item, code: String(item.code), lote: item.lote || "", fotoUrl: "" }));
+        return { id: S.cloudSessionId || "local", title: "RELATÓRIO DE CONFERÊNCIA", operador: S.checkerName || "-", tipo: S.confType || "-", status: "local", inicio: S.primeiraLeituraEmLocal || "", fim: S.ultimaLeituraEmLocal || "", resumo: cloudSummary(), opSummary: getOpSummaryItems(), rows };
+      }
+      async function buildExcelReport(data, selected = {}) {
+        if (typeof JSZip === "undefined") throw new Error("Não foi possível carregar o gerador do Excel.");
+        const opt = { summary: true, ops: true, checked: true, pending: true, extra: true, naoAprov: true, obs: true, photoLinks: true, ...selected };
+        const allRows = Array.isArray(data.rows) ? data.rows : [];
+        const chosen = allRows.filter((row) => {
+          if (reportIsNaoAprovada(row)) return !!opt.naoAprov;
+          const key = reportConferenceKey(row);
+          if (key === "checked") return !!opt.checked;
+          if (key === "pending") return !!opt.pending;
+          if (key === "extra") return !!opt.extra;
+          return true;
+        });
+        const summary = data.resumo || {}, ops = Array.isArray(data.opSummary) && data.opSummary.length ? data.opSummary : cloudBuildSavedOps(allRows);
+        const naoConferidas = allRows.filter((r) => reportIsNaoAprovada(r) && reportConferenceKey(r) === "pending").length;
+        const naoConferidasLidas = allRows.filter((r) => reportIsNaoAprovada(r) && reportConferenceKey(r) === "checked").length;
+        const sheets = [];
+        if (opt.summary) {
+          sheets.push({ name: "Resumo", widths: [36, 70], filter: false, rows: [
+            ["Informação", "Valor"],
+            ["Relatório", data.title || "RELATÓRIO DE CONFERÊNCIA"],
+            ["Conferente", data.operador || "—"], ["Tipo de conferência", data.tipo || "—"], ["ID", data.id || "—"],
+            ["Início (primeira leitura)", reportDateTime(data.inicio || data.primeiraLeituraEmLocal || "")],
+            ["Fim (última leitura)", reportDateTime(data.fim || data.ultimaLeituraEmLocal || "")],
+            ["Total previsto", cloudSummaryNumber(summary.total, allRows.filter((r) => reportConferenceKey(r) !== "extra").length)],
+            ["Conferidas", cloudSummaryNumber(summary.conferidos, allRows.filter((r) => reportConferenceKey(r) === "checked").length)],
+            ["Pendentes", cloudSummaryNumber(summary.pendentes, allRows.filter((r) => reportConferenceKey(r) === "pending").length)],
+            ["Não previstas", cloudSummaryNumber(summary.naoPrevistas, allRows.filter((r) => reportConferenceKey(r) === "extra").length)],
+            ["Não aprovadas", cloudSummaryNumber(summary.naoAprovadas, allRows.filter(reportIsNaoAprovada).length)],
+            ["Não aprovadas conferidas", naoConferidasLidas], ["Não aprovadas não conferidas", naoConferidas],
+            ["Importante", "Não aprovadas estão incluídas nos totais de conferidas e pendentes; nas abas específicas aparecem somente em Não aprovadas."],
+          ] });
+          if (data.exportPhotoSummary) {
+            const photos = data.exportPhotoSummary;
+            sheets[sheets.length - 1].rows.push(["Fotos incluídas no ZIP", photos.included || 0], ["Fotos não incluídas", (photos.missingCodes || []).length]);
+            if ((photos.missingCodes || []).length) sheets[sheets.length - 1].rows.push(["Códigos sem foto no ZIP", photos.missingCodes.join(", ")]);
+          }
+          const categories = reportBuildCategorySummary(chosen);
+          sheets.push({ name: "Por categoria", widths: [20, 12, 15, 15, 18, 27, 31], rows: [
+            ["Categoria", "Total", "Conferidas", "Pendentes", "Não previstas", "Não aprovadas conferidas", "Não aprovadas não conferidas"],
+            ...categories.map((c) => [c.categoria, c.total, c.conferidos, c.pendentes, c.naoPrevistas, c.naoAprovadasConferidas, c.naoAprovadasPendentes]),
+          ] });
+        }
+        if (opt.ops) sheets.push({ name: "Por OP", widths: [18, 15, 15, 16, 15], rows: [
+          ["OP", "Total", "Conferidas", "Pendentes", "Percentual"],
+          ...ops.map((op) => [String(op.op || "—"), cloudSummaryNumber(op.total), cloudSummaryNumber(op.checked), cloudSummaryNumber(op.pending, Math.max(0, cloudSummaryNumber(op.total) - cloudSummaryNumber(op.checked))), `${op.pct ?? "0.0"}%`]),
+        ] });
+        const cols = ["Código", "Lote", "Categoria", "OP", "Peso", "Status", "Conferência", "Hora", "Localização"];
+        const widths = [20, 16, 18, 16, 14, 22, 20, 14, 26];
+        if (opt.obs) { cols.push("Observação"); widths.push(40); }
+        if (opt.photoLinks) { cols.push("Foto"); widths.push(42); }
+        const toRow = (item) => {
+          const row = [String(item.code || ""), item.lote || "", reportCategoryLabel(item), String(item.op || "—"), reportWeightCell(item.peso), reportDisplayStatus(item), reportConferenceLabel(item), item.time === "-" ? "" : (item.time || ""), item.location === "-" ? "" : (item.location || "")];
+          if (opt.obs) row.push(item.observation || "");
+          if (opt.photoLinks) row.push(item.fotoUrl ? { value: item.fotoUrl, link: item.fotoUrl } : (item.fotoZipPath || (item.hasPhoto ? "Foto disponível no aparelho" : "Não")));
+          return row;
+        };
+        const addItems = (name, rows) => sheets.push({ name, widths, rows: [cols, ...rows.map(toRow)] });
+        addItems("Todas as bobinas", chosen);
+        if (opt.checked) addItems("Conferidas", chosen.filter((r) => !reportIsNaoAprovada(r) && reportConferenceKey(r) === "checked"));
+        if (opt.pending) addItems("Pendentes", chosen.filter((r) => !reportIsNaoAprovada(r) && reportConferenceKey(r) === "pending"));
+        if (opt.naoAprov) addItems("Não aprovadas", chosen.filter(reportIsNaoAprovada));
+        if (opt.extra) addItems("Não previstas", chosen.filter((r) => !reportIsNaoAprovada(r) && reportConferenceKey(r) === "extra"));
+        const zip = new JSZip();
+        const sheetOverrides = sheets.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("");
+        zip.file("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheetOverrides}</Types>`);
+        zip.file("_rels/.rels", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>');
+        zip.file("xl/workbook.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sheets.map((sheet, i) => `<sheet name="${excelXmlText(sheet.name)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join("")}</sheets></workbook>`);
+        zip.file("xl/_rels/workbook.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join("")}<Relationship Id="rId${sheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`);
+        zip.file("xl/styles.xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="11"/><name val="Calibri"/></font><font><u/><color rgb="FF2563EB"/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF2563EB"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>');
+        sheets.forEach((sheet, i) => {
+          const output = excelWorksheetXml(sheet.rows, sheet.widths, sheet.filter !== false);
+          zip.file(`xl/worksheets/sheet${i + 1}.xml`, output.xml);
+          if (output.relationships) zip.file(`xl/worksheets/_rels/sheet${i + 1}.xml.rels`, output.relationships);
+        });
+        return zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 }, mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      }
+      function downloadExcelBlob(blob, filename) {
+        const url = URL.createObjectURL(blob), link = document.createElement("a");
+        link.href = url; link.download = filename; document.body.appendChild(link); link.click(); link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      }
+      async function exportExcelLocal() { return exportUnifiedReport(""); }
+      async function exportExcelLocalZip() { return exportUnifiedReport(""); }
       function cloudBuildCsvReport(data, opt) {
         const date = new Date(); const r = data.resumo || {};
         const exportRows = cloudFilterRowsForExport(data.rows, opt);
@@ -2582,6 +2829,8 @@ Conferente;${data.operador}
 Tipo;${data.tipo}
 ID;${data.id}
 Status;${data.status}
+Início;${reportDateTime(data.inicio || data.primeiraLeituraEmLocal || "")}
+Fim (última leitura);${reportDateTime(data.fim || data.ultimaLeituraEmLocal || "")}
 `;
         if (opt.summary) {
           csv += `
@@ -2599,12 +2848,12 @@ Percentual;${r.percentual ?? 0}%
 RESUMO POR OP
 OP;Encontradas;Percentual
 `; csv += (data.opSummary || []).map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`).join("\n") + "\n"; }
-        const cols = ["Código", "Lote", "Categoria", "OP", "Peso", "Status", "Situação", "Hora", "Localização"]; if (opt.obs) cols.push("Observação"); if (opt.photoLinks) cols.push("Foto");
+        const cols = ["Código", "Lote", "Categoria", "OP", "Peso", "Status", "Conferência", "Hora", "Localização"]; if (opt.obs) cols.push("Observação"); if (opt.photoLinks) cols.push("Foto");
         csv += `
 BOBINAS
 ${cols.join(";")}
 `;
-        csv += exportRows.map((i) => { const row = [i.code, i.lote || "", reportCategoryLabel(i), i.op, i.peso, i.status, reportSitValue(i), i.time || "", i.location || ""]; if (opt.obs) row.push(i.observation || ""); if (opt.photoLinks) row.push(i.fotoUrl || (i.hasPhoto ? "Sim" : "Não")); return row.join(";"); }).join("\n");
+        csv += exportRows.map((i) => { const row = [i.code, i.lote || "", reportCategoryLabel(i), i.op, i.peso, reportDisplayStatus(i), reportConferenceLabel(i), i.time || "", i.location || ""]; if (opt.obs) row.push(i.observation || ""); if (opt.photoLinks) row.push(i.fotoUrl || (i.hasPhoto ? "Sim" : "Não")); return row.join(";"); }).join("\n");
         return csv;
       }
       function cloudBuildTxtReport(data, opt) {
@@ -2616,6 +2865,8 @@ Conferente: ${data.operador}
 Tipo: ${data.tipo}
 ID: ${data.id}
 Status: ${data.status}
+Início: ${reportDateTime(data.inicio || data.primeiraLeituraEmLocal || "")}
+Fim (última leitura): ${reportDateTime(data.fim || data.ultimaLeituraEmLocal || "")}
 ${"=".repeat(95)}
 `;
         if (opt.summary) {
@@ -2641,82 +2892,143 @@ BOBINAS
 ${"=".repeat(95)}
 
 `;
-        txt += exportRows.map((i) => { let line = `${String(i.code).padEnd(25)} | Lote: ${String(i.lote || "—").padEnd(11)} | Cat: ${String(reportCategoryLabel(i)).padEnd(13)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${String(i.status).padEnd(16)} | Sit: ${String(reportSitValue(i) || "—").padEnd(3)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)}`; if (opt.obs) line += `| Obs: ${(i.observation || "—").padEnd(20)}`; if (opt.photoLinks) line += `| ${i.fotoUrl ? "📸 " + i.fotoUrl : (i.hasPhoto ? "📸 Sim" : "—")}`; return line; }).join("\n");
+        txt += exportRows.map((i) => { let line = `${String(i.code).padEnd(25)} | Lote: ${String(i.lote || "—").padEnd(11)} | Cat: ${String(reportCategoryLabel(i)).padEnd(13)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${String(reportDisplayStatus(i)).padEnd(16)} | Conferência: ${reportConferenceLabel(i)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)}`; if (opt.obs) line += `| Obs: ${(i.observation || "—").padEnd(20)}`; if (opt.photoLinks) line += `| ${i.fotoUrl ? "📸 " + i.fotoUrl : (i.hasPhoto ? "📸 Sim" : "—")}`; return line; }).join("\n");
         return txt;
       }
-      function cloudCloseExportModal() { document.getElementById("cloudExportModal")?.classList.remove("show"); }
-      function cloudGetExportOptions() {
-        return { csv: !!document.getElementById("exFmtCsv")?.checked, txt: !!document.getElementById("exFmtTxt")?.checked, zip: !!document.getElementById("exFmtZip")?.checked, summary: !!document.getElementById("exSummary")?.checked, ops: !!document.getElementById("exOps")?.checked, checked: !!document.getElementById("exChecked")?.checked, pending: !!document.getElementById("exPending")?.checked, extra: !!document.getElementById("exExtra")?.checked, naoAprov: !!document.getElementById("exNaoAprov")?.checked, obs: !!document.getElementById("exObs")?.checked, photoLinks: !!document.getElementById("exPhotoLinks")?.checked, photosZip: !!document.getElementById("exPhotosZip")?.checked };
-      }
-      function cloudShowExportModal(confId) {
-        let modal = document.getElementById("cloudExportModal");
-        if (!modal) {
-          modal = document.createElement("div"); modal.id = "cloudExportModal"; modal.className = "modal-bg";
-          modal.innerHTML = `<div class="modal" style="max-height: calc(100dvh - 32px); overflow: auto">
-            <h2>📤 Exportar conferência</h2><p>Escolha formato e conteúdo:</p>
-            <div style="font-weight:900;margin:8px 0 6px;color:var(--text-primary)">Formato</div>
-            <div style="display:grid;gap:8px">
-              <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px"><input type="checkbox" id="exFmtCsv" checked style="width:18px;height:18px;accent-color:var(--accent-blue)"> CSV</label>
-              <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px"><input type="checkbox" id="exFmtTxt" style="width:18px;height:18px;accent-color:var(--accent-blue)"> TXT</label>
-              <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px"><input type="checkbox" id="exFmtZip" style="width:18px;height:18px;accent-color:var(--accent-blue)"> ZIP</label>
-            </div>
-            <div style="font-weight:900;margin:12px 0 6px;color:var(--text-primary)">Conteúdo</div>
-            <div style="display:grid;gap:8px">
-              <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px"><input type="checkbox" id="exSummary" checked style="width:18px;height:18px;accent-color:var(--accent-blue)"> Resumo geral</label>
-              <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px"><input type="checkbox" id="exOps" checked style="width:18px;height:18px;accent-color:var(--accent-blue)"> Resumo por OP</label>
-              <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px"><input type="checkbox" id="exChecked" checked style="width:18px;height:18px;accent-color:var(--accent-blue)"> Bobinas conferidas</label>
-              <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px"><input type="checkbox" id="exPending" checked style="width:18px;height:18px;accent-color:var(--accent-blue)"> Bobinas pendentes</label>
-              <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px"><input type="checkbox" id="exExtra" checked style="width:18px;height:18px;accent-color:var(--accent-blue)"> Bobinas não previstas</label>
-              <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px"><input type="checkbox" id="exNaoAprov" checked style="width:18px;height:18px;accent-color:var(--accent-blue)"> Bobinas não aprovadas</label>
-              <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px"><input type="checkbox" id="exObs" checked style="width:18px;height:18px;accent-color:var(--accent-blue)"> Observações</label>
-              <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px"><input type="checkbox" id="exPhotoLinks" checked style="width:18px;height:18px;accent-color:var(--accent-blue)"> Links das fotos</label>
-              <label style="display:flex;align-items:center;gap:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:10px 12px"><input type="checkbox" id="exPhotosZip" onchange="document.getElementById('exFmtZip').checked = this.checked || document.getElementById('exFmtZip').checked" style="width:18px;height:18px;accent-color:var(--accent-blue)"> Fotos no ZIP</label>
-            </div>
-            <p style="font-size:.82em;margin-top:10px">Baixar fotos no ZIP pode demorar em conferências grandes.</p>
-            <div class="btn-group"><button class="btn btn-primary" id="cloudExportConfirmBtn">📤 Exportar selecionado</button><button class="btn btn-outline" onclick="cloudCloseExportModal()">Cancelar</button></div>
-          </div>`;
+      let unifiedExportState = null;
+      function ensureUnifiedExportUi() {
+        if (!document.getElementById("unifiedZipProgress")) {
+          const progress = document.createElement("div"); progress.id = "unifiedZipProgress"; progress.className = "modal-bg";
+          progress.innerHTML = '<div class="modal"><h2>📦 Preparando ZIP</h2><p id="unifiedZipProgressText">Preparando relatório e fotos...</p><div class="btn-group"><button type="button" class="btn btn-outline" onclick="cancelUnifiedExport()">Cancelar</button></div></div>';
+          document.body.appendChild(progress);
+        }
+        if (!document.getElementById("unifiedMissingPhotos")) {
+          const modal = document.createElement("div"); modal.id = "unifiedMissingPhotos"; modal.className = "modal-bg";
+          modal.innerHTML = '<div class="modal"><h2>⚠️ Fotos não incluídas</h2><p id="unifiedMissingText"></p><div class="btn-group"><button type="button" class="btn btn-primary" id="unifiedRetryPhotos">🔄 Tentar novamente</button><button type="button" class="btn btn-outline" id="unifiedPartialZip">📦 Baixar incompleto</button><button type="button" class="btn btn-outline" id="unifiedCancelZip">Cancelar</button></div></div>';
           document.body.appendChild(modal);
         }
-        document.getElementById("cloudExportConfirmBtn").onclick = () => cloudExportSelected(confId);
+      }
+      function unifiedProgress(text, visible = true) {
+        ensureUnifiedExportUi();
+        const box = document.getElementById("unifiedZipProgress"), label = document.getElementById("unifiedZipProgressText");
+        if (label) label.textContent = text || "Preparando relatório e fotos...";
+        if (box) box.classList.toggle("show", visible);
+      }
+      function cancelUnifiedExport() {
+        const state = unifiedExportState;
+        if (state) { state.cancelled = true; if (state.controller) state.controller.abort(); }
+        if (unifiedExportState === state) unifiedExportState = null;
+        unifiedProgress("", false);
+      }
+      function askAboutMissingPhotos(entries) {
+        ensureUnifiedExportUi();
+        const modal = document.getElementById("unifiedMissingPhotos");
+        document.getElementById("unifiedMissingText").textContent = `${entries.length} foto(s) indicada(s) no relatório não puderam ser incluídas. Tente novamente ou baixe o ZIP incompleto. Os códigos faltantes constarão no resumo.`;
         modal.classList.add("show");
+        return new Promise((resolve) => {
+          const done = (answer) => { modal.classList.remove("show"); resolve(answer); };
+          document.getElementById("unifiedRetryPhotos").onclick = () => done("retry");
+          document.getElementById("unifiedPartialZip").onclick = () => done("partial");
+          document.getElementById("unifiedCancelZip").onclick = () => done("cancel");
+        });
       }
-      async function cloudExportSelected(confId) {
-        const opt = cloudGetExportOptions();
-        if (!opt.csv && !opt.txt && !opt.zip) { notify("Selecione pelo menos um formato.", "warning"); return; }
-        if (opt.photosZip && !opt.zip) { notify("Para incluir fotos, selecione o formato ZIP.", "warning"); return; }
+      async function unifiedFetchPhoto(url, state) {
+        const controller = new AbortController(); state.controller = controller;
+        const timer = setTimeout(() => controller.abort(), 20000);
         try {
-          cloudCloseExportModal(); cloudSetStatus("sync", "☁️ Gerando exportação...");
-          const data = await cloudBuildExportData(confId);
-          const dateStr = new Date().toISOString().slice(0, 10);
-          const safeId = String(data.id || "relatorio").replace(/[^a-zA-Z0-9_-]/g, "_");
-          const csv = opt.csv || opt.zip ? cloudBuildCsvReport(data, opt) : null;
-          const txt = opt.txt || opt.zip ? cloudBuildTxtReport(data, opt) : null;
-          if (opt.zip) {
-            const zip = new JSZip();
-            if (csv) zip.file(`relatorio_${safeId}.csv`, "\uFEFF" + csv);
-            if (txt) zip.file(`relatorio_${safeId}.txt`, "\uFEFF" + txt);
-            if (opt.photosZip) {
-              const rows = cloudFilterRowsForExport(data.rows, opt).filter((r) => r.fotoUrl);
-              for (let idx = 0; idx < rows.length; idx++) {
-                const r = rows[idx];
-                try {
-                  const resp = await fetch(r.fotoUrl); if (!resp.ok) throw new Error("HTTP " + resp.status);
-                  const blob = await resp.blob(); zip.file(photoZipRelativePath(r.code, r), blob);
-                  const progress = document.getElementById("exportProgress");
-                  if (progress) { progress.classList.add("show"); progress.textContent = `⏳ Baixando fotos ${idx + 1}/${rows.length}...`; }
-                } catch (e) { console.warn("Falha ao baixar foto para ZIP:", r.code, e); }
-              }
-            }
-            const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
-            const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `exportacao_${safeId}_${dateStr}.zip`; a.click(); URL.revokeObjectURL(a.href);
-            document.getElementById("exportProgress")?.classList.remove("show");
-          } else {
-            if (opt.csv && csv) download(csv, `exportacao_${safeId}_${dateStr}.csv`, "text/csv");
-            if (opt.txt && txt) download(txt, `exportacao_${safeId}_${dateStr}.txt`, "text/plain");
-          }
-          cloudSetStatus("ok", "☁️ Exportação gerada"); notify("Exportação gerada!");
-        } catch (e) { console.error(e); cloudSetStatus("error", "☁️ Erro na exportação"); notify("Erro ao exportar: " + (e.message || e), "error"); }
+          const response = await fetch(url, { cache: "no-store", signal: controller.signal });
+          if (!response.ok) throw new Error("Foto indisponível");
+          const type = String(response.headers.get("content-type") || "").toLowerCase();
+          if (type && !type.startsWith("image/") && !type.includes("application/octet-stream")) throw new Error("O arquivo recebido não é uma foto");
+          const blob = await response.blob(); if (!blob.size) throw new Error("Foto vazia");
+          return { blob };
+        } finally { clearTimeout(timer); if (state.controller === controller) state.controller = null; }
       }
+      async function unifiedTryPhoto(entry, localAllowed, state) {
+        for (const row of entry.rows) {
+          if (state.cancelled) return null;
+          if (localAllowed) {
+            try {
+              const photo = await getPhotoAsync(row.code);
+              if (photo && /^data:image\/[^;]+;base64,/i.test(photo)) return { base64: photo.slice(photo.indexOf(",") + 1) };
+            } catch (e) { console.warn("Foto local indisponível:", e); }
+          }
+          if (row.fotoUrl) {
+            try { return await unifiedFetchPhoto(row.fotoUrl, state); }
+            catch (e) { if (!state.cancelled) console.warn("Foto da nuvem indisponível:", e); }
+          }
+        }
+        return null;
+      }
+      async function exportUnifiedReport(confId = "") {
+        if (unifiedExportState) { notify("Já existe uma exportação em andamento.", "warning"); return; }
+        const local = !confId;
+        if (local) {
+          if (!S.db.length && !S.extras.length) { notify("Não há conferência para exportar.", "warning"); return; }
+          refreshCoilCategoriesFromLoadedFile();
+          if (requireExtraCategoryReview(() => exportUnifiedReport(""))) return;
+        }
+        const state = { cancelled: false, controller: null }; unifiedExportState = state;
+        try {
+          unifiedProgress("Preparando relatório...");
+          let data = local ? reportLocalDataForExcel() : await cloudBuildExportData(confId);
+          let localAllowed = local;
+          if (!local && confId === S.cloudSessionId && data.status !== "finalizada" && S.db.length) { data = reportLocalDataForExcel(); localAllowed = true; }
+          if (data.missingBobinas) throw new Error("Esta conferência antiga não possui a lista de bobinas necessária para um relatório completo.");
+          if (state.cancelled) return;
+          const rows = Array.isArray(data.rows) ? data.rows : [], byPath = new Map();
+          rows.forEach((row) => {
+            if (!row || !row.code) return;
+            const expected = !!(row.hasPhoto || row.fotoUrl);
+            if (!expected && !(localAllowed && reportConferenceKey(row) === "extra")) return;
+            const path = photoZipRelativePath(row.code, row);
+            if (!byPath.has(path)) byPath.set(path, { path, code: String(row.code), rows: [], expected: false });
+            const entry = byPath.get(path); entry.rows.push(row); entry.expected = entry.expected || expected;
+          });
+          const entries = Array.from(byPath.values()), included = new Map();
+          let pending = entries;
+          while (pending.length && !state.cancelled) {
+            const failed = [];
+            for (let i = 0; i < pending.length; i++) {
+              if (state.cancelled) return;
+              unifiedProgress(`Verificando fotos ${i + 1}/${pending.length}...`);
+              const entry = pending[i], photo = await unifiedTryPhoto(entry, localAllowed, state);
+              if (state.cancelled) return;
+              if (photo) included.set(entry.path, photo);
+              else if (entry.expected) failed.push(entry);
+            }
+            pending = failed;
+            if (!pending.length) break;
+            unifiedProgress("", false);
+            const decision = await askAboutMissingPhotos(pending);
+            if (decision === "cancel") return;
+            if (decision === "partial") break;
+            unifiedProgress("Tentando novamente...");
+          }
+          if (state.cancelled) return;
+          const missingCodes = pending.map((entry) => entry.code);
+          const rowsWithPhotos = rows.map((row) => {
+            if (!row || !row.code) return row;
+            const path = photoZipRelativePath(row.code, row);
+            return included.has(path) ? { ...row, fotoZipPath: path } : row;
+          });
+          data = { ...data, rows: rowsWithPhotos, exportPhotoSummary: { expected: included.size + pending.length, included: included.size, missingCodes } };
+          unifiedProgress("Montando planilha e ZIP...");
+          const workbook = await buildExcelReport(data);
+          if (state.cancelled) return;
+          const zip = new JSZip(); zip.file("relatorio_conferencia.xlsx", workbook); zip.folder("fotos");
+          included.forEach((photo, path) => { if (photo.base64) zip.file(path, photo.base64, { base64: true }); else zip.file(path, photo.blob); });
+          const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
+          if (state.cancelled) return;
+          const safe = String(data.id || "conferencia").replace(/[^a-zA-Z0-9_-]/g, "_");
+          downloadExcelBlob(blob, `conferencia_${safe}_${new Date().toISOString().slice(0, 10)}.zip`);
+          notify(missingCodes.length ? `ZIP gerado com ${missingCodes.length} foto(s) não incluída(s).` : "ZIP com relatório e fotos gerado!", missingCodes.length ? "warning" : "success");
+        } catch (e) {
+          if (!state.cancelled) { console.error(e); notify("Não foi possível gerar o ZIP: " + (e.message || e), "error"); }
+        } finally { if (unifiedExportState === state) { unifiedProgress("", false); unifiedExportState = null; } }
+      }
+      function cloudShowExportModal(confId) { return exportUnifiedReport(confId); }
+      function cloudCloseExportModal() { document.getElementById("cloudExportModal")?.classList.remove("show"); }
       async function cloudExportConference(confId, fmt, scope = "all") {
         if (confId === "__merged__") { cloudExportMergedReport(fmt, scope); return; }
         try {
@@ -2736,14 +3048,14 @@ ${"=".repeat(95)}
           if (fmt === "csv") {
             let csv = `RELATÓRIO DE CONFERÊNCIA - NUVEM (${scopeTitle})\nData;${new Date().toLocaleDateString("pt-BR")} ${new Date().toLocaleTimeString("pt-BR")}\nConferente;${data.operador}\nTipo de Conferência;${data.tipo}\nID;${data.id}\nStatus;${data.status}\n\nRESUMO\nTotal;${data.resumo.total}\nConferidos;${data.resumo.conferidos}\nPendentes;${data.resumo.pendentes}\nNão Previstas;${data.resumo.naoPrevistas}\nNão Aprovadas;${data.resumo.naoAprovadas ?? data.rows.filter(reportIsNaoAprovada).length}\nPercentual;${data.resumo.percentual}%\n\nRESUMO POR OP\nOP;Encontradas;Percentual\n`;
             csv += (data.opSummary || []).map((op) => `${op.op};${op.checked}/${op.total};${op.pct}%`).join("\n");
-            csv += `\n\nBOBINAS\nCódigo;Lote;OP;Peso;Status;Situação;Hora;Localização;Observação;Foto\n`;
-            csv += exportItems.map((i) => `${i.code};${i.lote || ""};${i.op};${i.peso};${i.status};${reportSitValue(i)};${i.time};${i.location};${i.observation};${i.fotoUrl || (i.hasPhoto ? "Sim" : "Não")}`).join("\n");
+            csv += `\n\nBOBINAS\nCódigo;Lote;Categoria;OP;Peso;Status;Conferência;Hora;Localização;Observação;Foto\n`;
+            csv += exportItems.map((i) => `${i.code};${i.lote || ""};${reportCategoryLabel(i)};${i.op};${i.peso};${reportDisplayStatus(i)};${reportConferenceLabel(i)};${i.time};${i.location};${i.observation};${i.fotoUrl || (i.hasPhoto ? "Sim" : "Não")}`).join("\n");
             download(csv, `${scopeLabel}_conferencia_${data.id}_${dateStr}.csv`, "text/csv");
           } else {
             let txt = `RELATÓRIO DE CONFERÊNCIA - NUVEM (${scopeTitle})\nData: ${new Date().toLocaleDateString("pt-BR")} ${new Date().toLocaleTimeString("pt-BR")}\nConferente: ${data.operador}\nTipo de Conferência: ${data.tipo}\nID: ${data.id}\nStatus: ${data.status}\n${"=".repeat(95)}\n\nTotal: ${data.resumo.total}\nConferidos: ${data.resumo.conferidos}\nPendentes: ${data.resumo.pendentes}\nNão Previstas: ${data.resumo.naoPrevistas}\nNão Aprovadas: ${data.resumo.naoAprovadas ?? data.rows.filter(reportIsNaoAprovada).length}\nPercentual: ${data.resumo.percentual}%\n\n${"=".repeat(95)}\nRESUMO POR OP\n${"=".repeat(95)}\n`;
             txt += (data.opSummary || []).map((op) => `OP: ${String(op.op || "-").padEnd(15)} | Encontradas: ${String(op.checked + "/" + op.total).padEnd(8)} | ${op.pct}%`).join("\n");
             txt += `\n\n${"=".repeat(95)}\nBOBINAS\n${"=".repeat(95)}\n\n`;
-            txt += exportItems.map((i) => `${String(i.code).padEnd(25)} | Lote: ${String(i.lote || "—").padEnd(11)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${String(i.status).padEnd(16)} | Sit: ${String(reportSitValue(i) || "—").padEnd(3)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.fotoUrl ? "📸 " + i.fotoUrl : (i.hasPhoto ? "📸 Sim" : "—")}`).join("\n");
+            txt += exportItems.map((i) => `${String(i.code).padEnd(25)} | Lote: ${String(i.lote || "—").padEnd(11)} | Cat: ${String(reportCategoryLabel(i)).padEnd(13)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${String(reportDisplayStatus(i)).padEnd(16)} | Conferência: ${reportConferenceLabel(i)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.fotoUrl ? "📸 " + i.fotoUrl : (i.hasPhoto ? "📸 Sim" : "—")}`).join("\n");
             download(txt, `${scopeLabel}_conferencia_${data.id}_${dateStr}.txt`, "text/plain");
           }
           cloudSetStatus("ok", "☁️ Relatório da nuvem gerado"); notify("Relatório exportado!");
@@ -2763,16 +3075,9 @@ ${"=".repeat(95)}
       let cloudSavedPanelMode = "ops";
       let cloudSavedOpsSearch = "";
       let cloudSavedOps = [];
-      function cloudIsExtraRow(row = {}) {
-        return normalizeCategoryText(row.status || "").includes("NAO PREVISTA");
-      }
-      function cloudIsCheckedRow(row = {}) {
-        const status = normalizeCategoryText(row.status || "");
-        return status.includes("CONFERID") || status.includes("MANUAL");
-      }
-      function cloudIsPendingRow(row = {}) {
-        return normalizeCategoryText(row.status || "").includes("PENDENTE");
-      }
+      function cloudIsExtraRow(row = {}) { return reportConferenceKey(row) === "extra"; }
+      function cloudIsCheckedRow(row = {}) { return reportConferenceKey(row) === "checked"; }
+      function cloudIsPendingRow(row = {}) { return reportConferenceKey(row) === "pending"; }
       function cloudSummaryNumber(value, fallback = 0) {
         if (value === null || value === undefined || value === "") return fallback;
         const number = Number(String(value).replace(",", ".").replace(/%$/, ""));
@@ -2876,12 +3181,14 @@ ${"=".repeat(95)}
           const naoAprovadas = cloudSummaryNumber(resumo.naoAprovadas, cloudDetailRows.filter(reportIsNaoAprovada).length);
           const pct = cloudSummaryNumber(resumo.percentual, total ? (checked / total) * 100 : 0).toFixed(1);
           const context = `${data.operador || "-"} • ${cloudFormatSessionMeta(data.id, data.data || "")} • ${data.tipo || "-"}`;
+          const savedTimes = `Início: ${reportDateTime(data.inicio)} • Fim (última leitura): ${data.status && data.status !== "finalizada" ? "Em andamento" : reportDateTime(data.fim)}`;
           box.innerHTML = `<div class="report-fullscreen-head">
             <div class="report-panel-row cloud-saved-header-row">
               <button type="button" class="cloud-back-btn" id="cloudSavedBackToList" onclick="cloudCloseConferenceDetail()">← Voltar para a lista</button>
               <div class="report-panel-title-wrap">
                 <div class="report-panel-title" id="cloudSavedPanelTitle">📦 Resumo por OP's</div>
                 <div class="cloud-saved-context">${esc(context)}</div>
+                <div class="cloud-saved-times">${esc(savedTimes)}</div>
               </div>
               <button type="button" class="cloud-report-btn" onclick="cloudShowExportModal(cloudDetailConfId)">📤 Exportar</button>
             </div>
@@ -2913,7 +3220,7 @@ ${"=".repeat(95)}
             <div class="report-panel-view" id="cloudSavedDetailView">
               <div class="report-result-count" id="cloudSavedResultCount">0 itens</div>
               <div class="cloud-detail-swipe-hint">↔️ Deslize a tabela para ver as outras colunas.</div>
-              <div class="cloud-detail-scroll"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>Categoria</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Situação</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>
+              <div class="cloud-detail-scroll"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>Categoria</th><th>OP</th><th>Peso</th><th>Status</th><th>Conferência</th><th>Hora</th><th>Local</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>
             </div>
           </div>`;
           cloudSetSavedMode(prevMode);
@@ -2933,7 +3240,7 @@ ${"=".repeat(95)}
         if (cloudDetailFilter === "naoaprov") rows = rows.filter((r) => reportIsNaoAprovada(r));
         if (includeSearch) {
           const q = String(cloudDetailSearch || "").trim().toLowerCase();
-          if (q) rows = rows.filter((r) => [r.code, r.lote, reportCategoryLabel(r), r.op, r.peso, r.status, reportSituacao(r), r.time, r.location, r.observation].join(" ").toLowerCase().includes(q));
+          if (q) rows = rows.filter((r) => [r.code, r.lote, reportCategoryLabel(r), r.op, r.peso, reportDisplayStatus(r), reportConferenceLabel(r), r.time, r.location, r.observation].join(" ").toLowerCase().includes(q));
         }
         return rows;
       }
@@ -3023,7 +3330,7 @@ ${"=".repeat(95)}
         if (count) count.textContent = `${rows.length} ${rows.length === 1 ? "item" : "itens"}`;
         const limited = rows.slice(0, 700);
         if (!limited.length) { tbody.innerHTML = '<tr><td colspan="11">Nenhum item encontrado</td></tr>'; return; }
-        tbody.innerHTML = limited.map((r, i) => `<tr><td>${i + 1}</td><td class="cc">${esc(r.code)}${r.lote ? `<div style="font-size:.72em;color:var(--text-muted);font-weight:600">(${esc(r.lote)})</div>` : ""}</td><td>${esc(reportCategoryLabel(r))}</td><td>${esc(r.op)}</td><td>${esc(r.peso)}</td><td>${esc(r.status)}</td><td>${esc(r.time || "")}</td><td>${esc(r.location || "")}</td><td>${reportSitCell(r)}</td><td>${esc(r.observation || "")}</td><td>${r.fotoUrl ? `<a href="${esc(r.fotoUrl)}" target="_blank" rel="noopener">📸</a>` : (r.hasPhoto ? "📸" : "—")}</td></tr>`).join("");
+        tbody.innerHTML = limited.map((r, i) => `<tr><td>${i + 1}</td><td class="cc">${esc(r.code)}${r.lote ? `<div style="font-size:.72em;color:var(--text-muted);font-weight:600">(${esc(r.lote)})</div>` : ""}</td><td>${esc(reportCategoryLabel(r))}</td><td>${esc(r.op)}</td><td>${esc(r.peso)}</td><td>${esc(reportDisplayStatus(r))}</td><td>${esc(reportConferenceLabel(r))}</td><td>${esc(r.time || "")}</td><td>${esc(r.location || "")}</td><td>${esc(r.observation || "")}</td><td>${r.fotoUrl ? `<a href="${esc(r.fotoUrl)}" target="_blank" rel="noopener">📸</a>` : (r.hasPhoto ? "📸" : "—")}</td></tr>`).join("");
         if (rows.length > 700) tbody.innerHTML += `<tr><td colspan="11">Mostrando 700 de ${rows.length} itens</td></tr>`;
       }
       function cloudCloseConferenceDetail() {
@@ -3071,6 +3378,8 @@ ${"=".repeat(95)}
           let csv = `RELATÓRIO CONSOLIDADO (${scopeTitle})
 Data;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}
 Conferências;${(cloudMergedReport.ids || []).join(", ")}
+Início;${reportDateTime(cloudMergedReport.inicio)}
+Fim (última leitura);${reportDateTime(cloudMergedReport.fim)}
 
 RESUMO
 Total;${r.total ?? 0}
@@ -3089,14 +3398,16 @@ OP;Encontradas;Percentual
           csv += `
 
 BOBINAS
-Código;Lote;Categoria;OP;Peso;Status;Situação;Hora;Localização;Observação;Fotos
+Código;Lote;Categoria;OP;Peso;Status;Conferência;Hora;Localização;Observação;Fotos
 `;
-          csv += exportItems.map((i) => `${i.code};${i.lote || ""};${reportCategoryLabel(i)};${i.op};${i.peso};${i.status};${reportSitValue(i)};${i.time || ""};${i.location || ""};${i.observation || ""};${i.hasPhoto ? "Sim" : "Não"}`).join("\n");
+          csv += exportItems.map((i) => `${i.code};${i.lote || ""};${reportCategoryLabel(i)};${i.op};${i.peso};${reportDisplayStatus(i)};${reportConferenceLabel(i)};${i.time || ""};${i.location || ""};${i.observation || ""};${i.hasPhoto ? "Sim" : "Não"}`).join("\n");
           download(csv, `${scopeLabel}_${id}_${dateStr}.csv`, "text/csv");
         } else {
           let txt = `RELATÓRIO CONSOLIDADO (${scopeTitle})
 Data: ${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}
 Conferências: ${(cloudMergedReport.ids || []).join(", ")}
+Início: ${reportDateTime(cloudMergedReport.inicio)}
+Fim (última leitura): ${reportDateTime(cloudMergedReport.fim)}
 ${"=".repeat(95)}
 
 Total: ${r.total ?? 0}
@@ -3120,7 +3431,7 @@ BOBINAS
 ${"=".repeat(95)}
 
 `;
-          txt += exportItems.map((i) => `${String(i.code).padEnd(25)} | Lote: ${String(i.lote || "—").padEnd(11)} | Cat: ${String(reportCategoryLabel(i)).padEnd(13)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${String(i.status).padEnd(16)} | Sit: ${String(reportSitValue(i) || "—").padEnd(3)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.hasPhoto ? "📸 Sim" : "—"}`).join("\n");
+          txt += exportItems.map((i) => `${String(i.code).padEnd(25)} | Lote: ${String(i.lote || "—").padEnd(11)} | Cat: ${String(reportCategoryLabel(i)).padEnd(13)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${String(reportDisplayStatus(i)).padEnd(16)} | Conferência: ${reportConferenceLabel(i)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.hasPhoto ? "📸 Sim" : "—"}`).join("\n");
           download(txt, `${scopeLabel}_${id}_${dateStr}.txt`, "text/plain");
         }
         notify("Relatório consolidado exportado!");
@@ -3143,6 +3454,17 @@ ${"=".repeat(95)}
               if (!extraMap.has(code)) extraMap.set(code, r);
             } else {
               if (!bobinaMap.has(code)) bobinaMap.set(code, { codigo: code, op: r.op || "-", peso: r.peso || "-", situacao: reportSituacao(r), lote: r.lote || r.referenciaLote || "", tipo: r.tipo || "", categoriaKey: r.categoriaKey || "", categoria: r.categoria || "", categoriaInformada: !!r.categoriaInformada });
+              else {
+                const existing = bobinaMap.get(code);
+                if (reportIsNaoAprovada(r)) existing.situacao = "N";
+                if (!reportCategoryKey(existing) && reportCategoryKey(r)) {
+                  existing.categoriaKey = r.categoriaKey || r.categoryKey || "";
+                  existing.categoria = r.categoria || r.category || "";
+                }
+                if (!existing.lote && (r.lote || r.referenciaLote)) existing.lote = r.lote || r.referenciaLote;
+                if (!existing.tipo && r.tipo) existing.tipo = r.tipo;
+                existing.categoriaInformada = !!(existing.categoriaInformada || r.categoriaInformada);
+              }
               if (st.includes("Conferid") || st.includes("Manual")) {
                 if (!checkedMap.has(code)) checkedMap.set(code, { codigo: code, manual: st.includes("Manual"), horaLocal: r.time || "", location: r.location || "", observation: r.observation || "", hasPhoto: !!r.hasPhoto, fotoUrl: r.fotoUrl || "", categoriaKey: r.categoriaKey || "", categoria: r.categoria || "", categoriaInformada: !!r.categoriaInformada });
               }
@@ -3150,9 +3472,13 @@ ${"=".repeat(95)}
           });
           const opSummary = cloudBuildOpSummaryFromMaps(bobinaMap, checkedMap); const rows = [];
           Array.from(extraMap.keys()).sort().forEach((code) => { const x = extraMap.get(code) || {}; rows.push({ code, op: "-", peso: "-", situacao: "", lote: x.lote || "", categoriaKey: x.categoriaKey || "", categoria: x.categoria || "", categoriaInformada: !!x.categoriaInformada, status: "⚠️ Não prevista", time: x.time || x.horaLocal || "", location: x.location || "", observation: x.observation || "", hasPhoto: !!x.hasPhoto, fotoUrl: x.fotoUrl || "" }); });
-          Array.from(bobinaMap.keys()).sort((a, b) => String(a).localeCompare(String(b), "pt-BR", { numeric: true })).forEach((code) => { const b = bobinaMap.get(code) || {}; const l = checkedMap.get(code); const catSource = l || b; rows.push({ code, op: b.op || "-", peso: b.peso || "-", situacao: reportSituacao(b), lote: b.lote || "", tipo: b.tipo || "", categoriaKey: catSource.categoriaKey || "", categoria: catSource.categoria || "", categoriaInformada: !!catSource.categoriaInformada, status: l ? (l.manual ? "📸 Manual" : "✅ Conferida") : "⏳ Pendente", time: l?.horaLocal || "", location: l?.location || "", observation: l?.observation || "", hasPhoto: !!l?.hasPhoto, fotoUrl: l?.fotoUrl || "" }); });
+          Array.from(bobinaMap.keys()).sort((a, b) => String(a).localeCompare(String(b), "pt-BR", { numeric: true })).forEach((code) => { const b = bobinaMap.get(code) || {}; const l = checkedMap.get(code); const catSource = l || b; rows.push({ code, op: b.op || "-", peso: b.peso || "-", situacao: reportSituacao(b), lote: b.lote || "", tipo: b.tipo || "", categoriaKey: catSource.categoriaKey || b.categoriaKey || "", categoria: catSource.categoria || b.categoria || "", categoriaInformada: !!(catSource.categoriaInformada || b.categoriaInformada), status: l ? (l.manual ? "📸 Manual" : "✅ Conferida") : "⏳ Pendente", time: l?.horaLocal || "", location: l?.location || "", observation: l?.observation || "", hasPhoto: !!l?.hasPhoto, fotoUrl: l?.fotoUrl || "" }); });
           const total = bobinaMap.size, conferidos = checkedMap.size, naoPrev = extraMap.size, pendentes = Math.max(0, total - conferidos), pct = total > 0 ? ((conferidos / total) * 100).toFixed(1) : "0.0";
-          cloudMergedReport = { id: `consolidado_${new Date().toISOString().slice(0, 10)}_${ids.length}_conferencias`, title: `Consolidado de ${ids.length} conferências`, subtitle: confs.map((c) => `${c.operador || "-"} • ${c.tipo || "-"}`).join(" | "), ids, rows, opSummary, resumo: { total, conferidos, pendentes, naoPrevistas: naoPrev, naoAprovadas: rows.filter(reportIsNaoAprovada).length, percentual: pct } };
+          const starts = confs.map((c) => cloudValueToDate(c.inicio));
+          const ends = confs.map((c) => cloudValueToDate(c.fim));
+          const inicio = starts.every(Boolean) ? new Date(Math.min(...starts.map((d) => d.getTime()))).toISOString() : "";
+          const fim = ends.every(Boolean) ? new Date(Math.max(...ends.map((d) => d.getTime()))).toISOString() : "";
+          cloudMergedReport = { id: `consolidado_${new Date().toISOString().slice(0, 10)}_${ids.length}_conferencias`, title: `Consolidado de ${ids.length} conferências`, subtitle: confs.map((c) => `${c.operador || "-"} • ${c.tipo || "-"}`).join(" | "), ids, inicio, fim, rows, opSummary, resumo: { total, conferidos, pendentes, naoPrevistas: naoPrev, naoAprovadas: rows.filter(reportIsNaoAprovada).length, percentual: pct } };
           cloudRenderMergedReport(); cloudSetStatus("ok", "☁️ Conferências juntadas"); notify("Conferências juntadas para visualização/exportação.");
         } catch (e) { console.error(e); if (box) box.innerHTML = '<div class="empty">Erro ao juntar conferências. Veja o console.</div>'; cloudSetStatus("error", "☁️ Erro ao juntar"); notify("Erro ao juntar: " + (e.message || e), "error"); }
       }
@@ -3172,7 +3498,7 @@ ${"=".repeat(95)}
         <div class="op-summary-list" id="cloudDetailOpSummary" style="max-height:220px;overflow:auto;padding-right:4px"></div>
         <div class="cloud-detail-toolbar"><div class="cloud-detail-section-title" style="margin:0">📋 Bobinas e leituras</div><button class="cloud-report-btn" onclick="cloudShowMergedExportModal()">Exportar consolidado</button></div>
         <div class="search-wrap" style="margin-bottom: 8px"><span class="si">🔍</span><input class="search-input" id="cloudDetailSearch" placeholder="Buscar código, OP, status ou observação..." oninput="cloudDetailSearch=this.value; cloudRenderDetailRows(); cloudRenderDetailOpSummary()" /></div>
-        <div class="cloud-detail-scroll" style="margin-top: 8px"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>Categoria</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Situação</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>`;
+        <div class="cloud-detail-scroll" style="margin-top: 8px"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>Categoria</th><th>OP</th><th>Peso</th><th>Status</th><th>Conferência</th><th>Hora</th><th>Local</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>`;
         cloudApplyDetailFilterUI();
         cloudRenderDetailOpSummary();
         cloudRenderDetailRows();
@@ -3279,16 +3605,52 @@ ${"=".repeat(95)}
         }
       }
 
+      let adminMenuPermit = false;
+      let menuCameraWasScanning = false;
+      function openAppMenu() {
+        const menu = document.getElementById("appMenu"); if (!menu) return;
+        const menuVersion = document.getElementById("appMenuVersion"); if (menuVersion) menuVersion.textContent = document.querySelector(".header .app-version")?.textContent || "";
+        clearTimeout(collectorReadTimer); collectorReadTimer = null;
+        clearTimeout(collectorKeyTimer); collectorKeyTimer = null; collectorKeyBuffer = "";
+        const input = document.getElementById("collectorInput"); if (input) { input.value = ""; input.blur(); }
+        if (document.getElementById("scannerOverlay")?.classList.contains("show")) { menuCameraWasScanning = !camCooldown; camCooldown = true; }
+        menu.classList.add("show"); menu.setAttribute("aria-hidden", "false"); document.body.classList.add("app-menu-open");
+      }
+      function closeAppMenu(resume = true) {
+        const menu = document.getElementById("appMenu"); if (menu) { menu.classList.remove("show"); menu.setAttribute("aria-hidden", "true"); }
+        document.body.classList.remove("app-menu-open");
+        if (resume && menuCameraWasScanning && !camPendingExtra && !pendingNaoAprovada && !pendingAlertFound) camCooldown = false;
+        menuCameraWasScanning = false;
+        if (resume && collectorCanFocus()) setTimeout(focusCollectorInput, 120);
+      }
+      async function stopReadersForMenu() {
+        if (S.collectorActive) stopCollectorConference(true);
+        if (document.getElementById("scannerOverlay")?.classList.contains("show")) { collectorReturnAfterManualCamera = false; await closeIntegratedScanner(); }
+      }
+      async function menuNavigate(tab) { closeAppMenu(false); await stopReadersForMenu(); switchTab(tab); }
+      async function requestAdminMenu() {
+        closeAppMenu(false); await stopReadersForMenu();
+        showAdminPinModal({ title: "🛡️ Modo administrador", message: "Digite a senha de administrador para abrir:", onSuccess: () => {
+          cloudLeaderUnlocked = true; cloudLeaderRole = "admin"; adminMenuPermit = true; cloudApplyCloudAccessUI(); switchTab("admin");
+        }});
+      }
       function switchTab(t) {
+        if (t === "admin" && !adminMenuPermit) { requestAdminMenu(); return; }
+        if (t === "admin") adminMenuPermit = false;
         const app = document.querySelector(".app"); if (app) app.dataset.screen = t;
-        document.documentElement.classList.toggle("cloud-menu-page", t === "cloud");
-        document.body.classList.toggle("cloud-menu-page", t === "cloud");
+        const menuPage = ["import", "cloud", "settings", "admin"].includes(t);
+        document.documentElement.classList.toggle("cloud-menu-page", menuPage);
+        document.body.classList.toggle("cloud-menu-page", menuPage);
+        const navTitle = document.getElementById("appNavTitle");
+        if (navTitle) navTitle.textContent = ({ import: "Base ativa / Importar", cloud: "Conferências salvas", settings: "Configurações", admin: "Modo administrador" })[t] || "";
         document.querySelectorAll(".tab").forEach((b) => b.classList.remove("active"));
         document.querySelectorAll(".section").forEach((s) => s.classList.remove("active"));
         const tabEl = document.getElementById("tab" + t.charAt(0).toUpperCase() + t.slice(1)); if (tabEl) tabEl.classList.add("active");
         const sectionEl = document.getElementById("section" + t.charAt(0).toUpperCase() + t.slice(1)); if (sectionEl) sectionEl.classList.add("active");
         if (t === "scan") { updateStats(); updateCollectorModeUI(); ensureCheckerName(); if (S.collectorMode && S.collectorActive) setTimeout(focusCollectorInput, 120); }
         if (t === "report") updateReport();
+        if (t === "settings") updateCollectorModeUI();
+        if (t === "admin") updateNaoAprovadaInfoUI();
         if (t === "import" && !cloudBaseFilesDocs.length) cloudRefreshBaseFiles();
         if (t === "cloud") {
           cloudApplyCloudAccessUI();
@@ -3324,6 +3686,7 @@ ${"=".repeat(95)}
       dz.addEventListener("dragover", (e) => { e.preventDefault(); dz.classList.add("over"); });
       dz.addEventListener("dragleave", () => dz.classList.remove("over"));
       dz.addEventListener("drop", (e) => { e.preventDefault(); dz.classList.remove("over"); if (e.dataTransfer.files.length) handleFile({ target: { files: e.dataTransfer.files } }); });
+      function newConferenceGeneration() { return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`; }
       function resetConferenceData({ keepImportedFile = false } = {}) {
   // BUG 4 CORRIGIDO: flush e cancelamento do listener Firestore
   cloudFlushBuffer();
@@ -3352,6 +3715,10 @@ ${"=".repeat(95)}
   S.confType = "";
   S.cloudSessionId = "";
   S.cloudSessionStartSaved = false;
+  S.primeiraLeituraEmLocal = "";
+  S.ultimaLeituraEmLocal = "";
+  S.horarioLegado = false;
+  S.estadoGeracao = newConferenceGeneration();
   S.db = [];
   S.scanned = [];
   S.checked = new Set();
@@ -3411,6 +3778,10 @@ ${"=".repeat(95)}
           S.extras = [];
           S.cloudSessionId = "";
           S.cloudSessionStartSaved = false;
+          S.primeiraLeituraEmLocal = "";
+          S.ultimaLeituraEmLocal = "";
+          S.horarioLegado = false;
+          S.estadoGeracao = newConferenceGeneration();
         }
         const maxC = Math.max(...rows.map((r) => r.length));
         const special = detectSpecialLayout(rows);
@@ -3844,6 +4215,7 @@ ${"=".repeat(95)}
       }
       async function confirmAlertFound() {
         if (!pendingAlertFound) return;
+        if (photoRotationInProgress("alert")) { notify("Aguarde a foto terminar de girar.", "warning"); return; }
         const loc = document.getElementById("alertFoundLocation").value.trim();
         const foundObs = document.getElementById("alertFoundFoundObs").value.trim();
         if (!loc) { document.getElementById("alertFoundLocationError").style.display = "block"; document.getElementById("alertFoundLocation").focus(); return; }
@@ -4089,27 +4461,25 @@ if (S.collectorMode) {
   if (!S.collectorMode || !S.collectorActive) return false;
   const overlay = document.getElementById("collectorOverlay");
   if (!overlay || !overlay.classList.contains("show")) return false;
-  // Não roubar foco de campos que precisam de digitação/foto.
-  const modals = ["locModal", "checkerModal", "modal", "confTypeModal", "baseNameModal", "camLocModal", "camManualModal", "camPhotoViewModal"];
-  for (const id of modals) {
-    const el = document.getElementById(id);
-    if (el && el.classList.contains("show")) return false;
-  }
+  // Durante menus, alertas ou formulários, o leitor não pode roubar o foco.
+  if (pendingNaoAprovada || pendingAlertFound) return false;
+  if (document.querySelector(".modal-bg.show, .cam-loc-modal.show, .cam-photo-view.show, .photo-modal.show, #appMenu.show")) return false;
   return true;
 }
       function focusCollectorInput(force = false) {
-  if (!force && !collectorCanFocus()) return;
+  if (!collectorCanFocus()) return;
   const input = mountCollectorInputForFocus();
   if (!input) return;
-  // Limpa sobras de leituras parciais antes de focar novamente.
-  input.value = "";
+  // Não limpar nem selecionar o conteúdo: o coletor pode já estar enviando uma leitura.
   requestAnimationFrame(() => {
-    try { input.focus({ preventScroll: true }); } catch (e) { try { input.focus(); } catch (err) {} }
-    try { input.select(); } catch (e) {}
+    if (!collectorCanFocus()) return;
+    if (document.activeElement !== input) {
+      try { input.focus({ preventScroll: true }); } catch (e) { try { input.focus(); } catch (err) {} }
+    }
     // Alguns coletores Android demoram para entregar o foco ao WebView/Chrome.
     // Uma segunda tentativa curta deixa a captura estável.
     setTimeout(() => {
-      if ((force || collectorCanFocus()) && document.activeElement !== input) {
+      if (collectorCanFocus() && document.activeElement !== input) {
         try { input.focus({ preventScroll: true }); } catch (e) { try { input.focus(); } catch (err) {} }
       }
     }, 90);
@@ -4160,11 +4530,9 @@ if (S.collectorMode) {
       async function startConference() {
         if (S.db.length === 0) { notify("Importe os dados primeiro!", "error"); return; }
         if (!ensureCheckerName(() => startConference())) return;
-        // Registra o início na nuvem (doc em_andamento) sem bloquear o fluxo se falhar
-        try { await cloudEnsureSession(); } catch (e) { console.warn(e); }
         if (S.collectorMode) startCollectorConference();
         else openCamera(true);
-        cloudSetStatus("ok", S.cloudSessionStartSaved ? "☁️ Conferência registrada" : "☁️ Nuvem: salva ao finalizar");
+        cloudSetStatus("ok", S.cloudSessionStartSaved ? "☁️ Conferência registrada" : "☁️ Aguardando primeira leitura");
       }
       function processCollectorCode(rawCode) {
   // BUG 2 CORRIGIDO: trava anti duplo disparo
@@ -4188,6 +4556,7 @@ if (S.collectorMode) {
     return;
   }
 
+  recordConferenceReading();
   if (handleBobinaAlertScan(code, time, "collector")) {
     setCollectorLastRead(`🚨 ${code} é uma bobina em alerta.`, "err");
     updateCollectorOverlayCenter("🚨 Alerta de bobina", "Bobina procurada encontrada.", code);
@@ -4215,8 +4584,8 @@ if (S.collectorMode) {
   if (S.db.includes(code)) {
     if (isNaoAprovadaCode(code)) {
       collectorShowBigStatus("red", "⚠️ NÃO APROVADA", code, 1200);
-      setCollectorLastRead(`⚠️ ${code} é bobina NÃO APROVADA. Informe o endereço.`, "warn");
-      updateCollectorOverlayCenter("Bobina não aprovada", "Informe o endereço onde a bobina está.", code);
+      setCollectorLastRead(`⚠️ ${code} é bobina NÃO APROVADA. ${naoAprovadaInfoOn ? "Informe o endereço." : "Será conferida sem pedir dados."}`, "warn");
+      updateCollectorOverlayCenter("Bobina não aprovada", naoAprovadaInfoOn ? "Informe o endereço onde a bobina está." : "Será conferida sem pedir dados.", code);
       showNaoAprovadaFlow(code, time, "collector");
       return;
     }
@@ -4259,7 +4628,7 @@ if (S.collectorMode) {
   if (!input) return;
 
   input.addEventListener("keydown", (event) => {
-    if (!S.collectorMode || !S.collectorActive) return;
+    if (!S.collectorMode || !S.collectorActive || !collectorCanFocus()) return;
     if (event.key === "Enter" || event.key === "Tab") {
       event.preventDefault();
       handleCollectorRead();
@@ -4267,7 +4636,7 @@ if (S.collectorMode) {
   });
 
   input.addEventListener("input", () => {
-    if (!S.collectorMode || !S.collectorActive) return;
+    if (!S.collectorMode || !S.collectorActive || !collectorCanFocus()) return;
     // BUG 2 CORRIGIDO: cancelar o timer global também
     clearTimeout(collectorKeyTimer);
     collectorKeyTimer = null;
@@ -4288,12 +4657,12 @@ if (S.collectorMode) {
   // Alguns coletores enviam a leitura como colagem/alteração direta do campo,
   // não como sequência normal de keydown.
   input.addEventListener("paste", () => {
-    if (!S.collectorMode || !S.collectorActive) return;
+    if (!S.collectorMode || !S.collectorActive || !collectorCanFocus()) return;
     clearTimeout(collectorReadTimer);
     collectorReadTimer = setTimeout(() => handleCollectorRead(), 40);
   });
   input.addEventListener("change", () => {
-    if (!S.collectorMode || !S.collectorActive) return;
+    if (!S.collectorMode || !S.collectorActive || !collectorCanFocus()) return;
     if ((input.value || "").trim().length >= 10) handleCollectorRead();
   });
 
@@ -4347,6 +4716,10 @@ if (S.collectorMode) {
         startIntegratedScanner();
       }
       window.addEventListener("storage", function (e) {
+        if (e.key === NAO_APROVADA_INFO_KEY) {
+          if (e.newValue === "on" || e.newValue === "off") { naoAprovadaInfoOn = e.newValue === "on"; naoInfoHasGlobalCache = true; }
+          updateNaoAprovadaInfoUI(); return;
+        }
         if (e.key !== "bob3") return;
         try {
           const incoming = e.newValue ? JSON.parse(e.newValue) : null;
@@ -4421,7 +4794,9 @@ if (S.collectorMode) {
       function clearScans() {
         showModal("🔄 Reiniciar", "Limpar leituras mas manter banco de dados?", () => {
           S.scanned.forEach((scan) => { if (scan && scan.hasPhoto) removeSavedPhoto(scan.code); });
-          S.scanned = []; S.checked = new Set(); S.extras = []; save(); updateStats(); updateHistory(); updateDBUI(); document.getElementById("btnUndo").disabled = true; notify("Conferência reiniciada!");
+          S.scanned = []; S.checked = new Set(); S.extras = [];
+          S.cloudSessionId = ""; S.cloudSessionStartSaved = false; S.primeiraLeituraEmLocal = ""; S.ultimaLeituraEmLocal = ""; S.horarioLegado = false; S.estadoGeracao = newConferenceGeneration();
+          save(); updateStats(); updateHistory(); updateDBUI(); document.getElementById("btnUndo").disabled = true; notify("Conferência reiniciada!");
         });
       }
       function getOP(code) { return S.meta && S.meta[code] && S.meta[code].op ? S.meta[code].op : "-"; }
@@ -4434,6 +4809,7 @@ if (S.collectorMode) {
         const etapa = etapaMatch ? parseInt(etapaMatch[0], 10) : 0;
         const materialRaw = String(meta.material || "").trim();
         const material = normalizeCategoryText(materialRaw).replace(/\s+/g, " ").trim();
+        if (!material) return "";
         const exact = {
           20: {
             "1 - PE": "extrusao",
@@ -4509,7 +4885,7 @@ if (S.collectorMode) {
         };
         if (exact[etapa] && exact[etapa][material]) return exact[etapa][material];
         const parts = material.split("+").map((p) => p.trim()).filter(Boolean);
-        const relevant = etapa === 20 ? (parts[0] || material) : etapa === 30 ? (parts.slice(1).join(" + ") || material) : material;
+        const relevant = etapa === 20 ? (parts[0] || material) : (etapa >= 30 && etapa <= 39) ? (parts.slice(1).join(" + ") || material) : material;
         if (relevant.includes("BOPP") || relevant.includes("PET") || relevant.includes("PP")) return "peliculas";
         return "extrusao";
       }
@@ -4522,7 +4898,7 @@ if (S.collectorMode) {
         // O mapa salvo pode ter sido criado por versão anterior da regra.
         if (S.meta && S.meta[key]) return coilCategoryFromMeta(S.meta[key]);
         if (S.coilCategories && S.coilCategories[key]) return S.coilCategories[key] === "peliculas" ? "peliculas" : "extrusao";
-        return "extrusao";
+        return "";
       }
       function coilCategoryLabel(cat) { return cat === "peliculas" ? "Películas" : "Extrusão"; }
       function coilCategoryFolder(cat) { return cat === "peliculas" ? "peliculas" : "extrusao"; }
@@ -4712,20 +5088,17 @@ if (S.collectorMode) {
           const situacao = coilSituacaoForCode(code) || normalizeSituacaoValue(scan?.situacao);
           const lote = (S.meta && S.meta[code] && S.meta[code].referenciaLote) || "";
           const tipo = (S.meta && S.meta[code] && S.meta[code].tipoBobina) || "";
-          items.push({ code, op: getOP(code), peso: getPeso(code), status: chk ? "checked" : "pending", manual: !!scan?.manual, time: scan ? scan.time : "-", location: scan?.location || "", observation: scan?.observation || "", hasPhoto: !!scan?.hasPhoto, categoriaKey, categoria: coilCategoryLabel(categoriaKey), categoriaInformada: !!scan?.categoriaInformada, situacao, lote, tipo });
+          items.push({ code, op: getOP(code), peso: getPeso(code), status: chk ? "checked" : "pending", manual: !!scan?.manual, time: scan ? scan.time : "-", location: scan?.location || "", observation: scan?.observation || "", hasPhoto: !!scan?.hasPhoto, categoriaKey, categoria: categoriaKey ? coilCategoryLabel(categoriaKey) : "", categoriaInformada: !!scan?.categoriaInformada, situacao, lote, tipo });
         });
         return items;
       }
       function setText(id, value) { const el = document.getElementById(id); if (el) el.textContent = value; }
       function reportPct(total, checked) { return total > 0 ? ((checked / total) * 100).toFixed(1) : "0.0"; }
-      function reportStatusText(it) {
-        if (it.status === "checked") return it.manual ? "Conferido Manual" : "Conferido";
-        if (it.status === "pending") return "Pendente";
-        return "Não Prevista";
-      }
+      function reportStatusText(it) { return reportDisplayStatus(it); }
       function reportStatusBadge(it) {
-        const cls = it.status === "checked" ? "checked" : it.status === "pending" ? "pending" : "extra";
-        const icon = it.status === "checked" ? (it.manual ? "📸" : "✅") : it.status === "pending" ? "⏳" : "⚠️";
+        const key = reportConferenceKey(it);
+        const cls = reportIsNaoAprovada(it) ? "extra" : key === "checked" ? "checked" : key === "pending" ? "pending" : "extra";
+        const icon = reportIsNaoAprovada(it) ? "❌" : key === "checked" ? (it.manual ? "📸" : "✅") : key === "pending" ? "⏳" : "⚠️";
         return `<span class="badge ${cls}">${icon} ${esc(reportStatusText(it))}</span>`;
       }
       function updateReportPanelMetrics() {
@@ -4766,6 +5139,8 @@ if (S.collectorMode) {
       function updateReport() {
         const total = S.db.length, chk = S.checked.size, pend = total - chk, ext = [...new Set(S.extras)].length, pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0;
         document.getElementById("rTotal").textContent = total; document.getElementById("rChecked").textContent = chk; document.getElementById("rPending").textContent = pend; document.getElementById("rExtra").textContent = ext; document.getElementById("rPct").textContent = pct + "%"; document.getElementById("rFill").style.width = pct + "%"; document.getElementById("rCheckerName").textContent = S.checkerName || "—"; document.getElementById("rConferenceType").textContent = S.confType || "—";
+        setText("rStartTime", reportDateTime(S.primeiraLeituraEmLocal));
+        setText("rEndTime", reportDateTime(S.ultimaLeituraEmLocal));
         const reviewBtn = document.getElementById("reviewExtraCategoriesBtn");
         if (reviewBtn) reviewBtn.style.display = shouldAskExtraCategoryForCurrentConference() ? "inline-flex" : "none";
         updateReportPanelMetrics(); renderRpt(); renderOpSummary(reportOpSummarySearch);
@@ -4777,14 +5152,14 @@ if (S.collectorMode) {
         else if (S.filter !== "all") items = items.filter((i) => i.status === S.filter);
         if (S.rptSearch) {
           const q = S.rptSearch.toLowerCase();
-          items = items.filter((i) => [i.code, i.lote, reportCategoryLabel(i), i.op, i.peso, reportStatusText(i), reportSituacao(i), i.time, i.location, i.observation].some((v) => String(v || "").toLowerCase().includes(q)));
+          items = items.filter((i) => [i.code, i.lote, reportCategoryLabel(i), i.op, i.peso, reportStatusText(i), reportConferenceLabel(i), i.time, i.location, i.observation].some((v) => String(v || "").toLowerCase().includes(q)));
         }
         const counter = document.getElementById("reportDetailResultCount"); if (counter) counter.textContent = `${items.length} ${items.length === 1 ? "item" : "itens"}`;
         const d = items.slice(0, 500);
         tbody.innerHTML = d.map((it, i) => {
           const loc = it.status === "extra" ? ("📌 " + esc(it.location || "-")) : (it.location ? esc(it.location) : "—");
           const photoCode = esc(it.code).replace(/'/g, "&#39;");
-          return `<tr${reportIsNaoAprovada(it) ? ' class="row-n"' : ""}><td>${i + 1}</td><td class="cc">${esc(it.code)}${it.lote ? `<div style="font-size:.72em;color:var(--text-muted);font-weight:600">(${esc(it.lote)})</div>` : ""}</td><td>${esc(reportCategoryLabel(it))}</td><td>${esc(it.op || "-")}</td><td>${esc(it.peso || "-")}</td><td>${reportStatusBadge(it)}</td><td>${esc(it.time)}</td><td>${loc}</td><td>${reportSitCell(it)}</td><td>${it.observation ? esc(it.observation) : "—"}</td><td>${it.hasPhoto ? `<button class="icon-btn" onclick="showPhotoModal('${photoCode}')">📸</button>` : "—"}</td></tr>`;
+          return `<tr${reportIsNaoAprovada(it) ? ' class="row-n"' : ""}><td>${i + 1}</td><td class="cc">${esc(it.code)}${it.lote ? `<div style="font-size:.72em;color:var(--text-muted);font-weight:600">(${esc(it.lote)})</div>` : ""}</td><td>${esc(reportCategoryLabel(it))}</td><td>${esc(it.op || "-")}</td><td>${esc(it.peso || "-")}</td><td>${reportStatusBadge(it)}</td><td>${esc(reportConferenceLabel(it))}</td><td>${esc(it.time)}</td><td>${loc}</td><td>${it.observation ? esc(it.observation) : "—"}</td><td>${it.hasPhoto ? `<button class="icon-btn" onclick="showPhotoModal('${photoCode}')">📸</button>` : "—"}</td></tr>`;
         }).join("");
         if (items.length > 500) tbody.innerHTML += `<tr><td colspan="11">... +${items.length - 500}</td></tr>`;
         if (!items.length) tbody.innerHTML = '<tr><td colspan="11">Nenhum item</td></tr>';
@@ -4831,6 +5206,8 @@ if (S.collectorMode) {
 Data;${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}
 Conferente;${conferente}
 Tipo de Conferência;${tipo}
+Início;${reportDateTime(S.primeiraLeituraEmLocal)}
+Fim (última leitura);${reportDateTime(S.ultimaLeituraEmLocal)}
 
 RESUMO
 Total;${total}
@@ -4849,15 +5226,17 @@ OP;Encontradas;Percentual
           csv += `
 
 BOBINAS
-Código;Lote;Categoria;OP;Peso;Status;Situação;Hora;Localização;Observação;Fotos
+Código;Lote;Categoria;OP;Peso;Status;Conferência;Hora;Localização;Observação;Fotos
 `;
-          csv += items.map((i) => `${i.code};${i.lote || ""};${i.categoria};${i.op};${i.peso};${i.status};${i.situacao};${i.time};${i.location};${i.observation};${i.hasPhoto ? "Combinada etiqueta+bobina" : "Não"}`).join("\n");
+          csv += items.map((i) => `${i.code};${i.lote || ""};${i.categoria};${i.op};${i.peso};${reportDisplayStatus(i)};${reportConferenceLabel(i)};${i.time};${i.location};${i.observation};${i.hasPhoto ? "Combinada etiqueta+bobina" : "Não"}`).join("\n");
           download(csv, `conferencia_${date.toISOString().slice(0, 10)}.csv`, "text/csv");
         } else {
           let txt = `RELATÓRIO DE CONFERÊNCIA
 Data: ${date.toLocaleDateString("pt-BR")} ${date.toLocaleTimeString("pt-BR")}
 Conferente: ${conferente}
 Tipo de Conferência: ${tipo}
+Início: ${reportDateTime(S.primeiraLeituraEmLocal)}
+Fim (última leitura): ${reportDateTime(S.ultimaLeituraEmLocal)}
 ${"=".repeat(95)}
 Total: ${total}
 Conferidos: ${chk}
@@ -4878,7 +5257,7 @@ ${"=".repeat(95)}
 BOBINAS
 ${"=".repeat(95)}
 `;
-          txt += items.map((i) => `${i.code.padEnd(25)} | Lote: ${String(i.lote || "—").padEnd(11)} | Cat: ${String(i.categoria || "-").padEnd(13)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${i.status.padEnd(15)} | Sit: ${String(i.situacao || "—").padEnd(3)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.hasPhoto ? "📸 Combinada" : "—"}`).join("\n");
+          txt += items.map((i) => `${i.code.padEnd(25)} | Lote: ${String(i.lote || "—").padEnd(11)} | Cat: ${String(i.categoria || "-").padEnd(13)} | OP: ${String(i.op || "-").padEnd(12)} | Peso: ${String(i.peso || "-").padEnd(10)} | ${String(reportDisplayStatus(i)).padEnd(15)} | Conferência: ${reportConferenceLabel(i)} | ${(i.time || "").padEnd(10)} | ${(i.location || "").padEnd(15)} | Obs: ${(i.observation || "—").padEnd(20)} | ${i.hasPhoto ? "📸 Combinada" : "—"}`).join("\n");
           download(txt, `conferencia_${date.toISOString().slice(0, 10)}.txt`, "text/plain");
         }
         notify("Relatório exportado!");
@@ -5051,7 +5430,7 @@ ${"=".repeat(95)}
         if (typeof Html5Qrcode === "undefined") { notify("Biblioteca da câmera não carregou.", "error"); return; }
         document.getElementById("scannerOverlay").classList.add("show"); document.body.style.overflow = "hidden"; camUpdateCounters(); camUpdateHistory(); camCooldown = false; camEnableVolumeZoom();
         const scanW = Math.min(Math.floor(window.innerWidth * 0.94), 720), scanH = Math.min(Math.floor(window.innerHeight * 0.24), 240);
-        const onSuccess = (text) => { if (camCooldown) return; camCooldown = true; camProcessScan(String(text).trim()); if (!camPendingExtra && !pendingNaoAprovada) setTimeout(() => (camCooldown = false), CAM_SCAN_DELAY_MS); };
+        const onSuccess = (text) => { if (camCooldown || document.getElementById("appMenu")?.classList.contains("show")) return; camCooldown = true; camProcessScan(String(text).trim()); if (!camPendingExtra && !pendingNaoAprovada) setTimeout(() => (camCooldown = false), CAM_SCAN_DELAY_MS); };
         const onError = () => {};
         async function cleanupScannerInstance() { if (camScanner) { try { await camScanner.stop(); } catch (e) {} try { camScanner.clear(); } catch (e) {} camScanner = null; } }
         async function tryStart(cameraConfig) {
@@ -5150,12 +5529,13 @@ ${"=".repeat(95)}
         const time = new Date().toLocaleTimeString("pt-BR"), err = document.getElementById("camErrorOverlay"), warn = document.getElementById("camWarnOverlay");
         if (!/^(500|700)\d{8,10}$/.test(code)) return;
         if (pendingNaoAprovada) return;
+        recordConferenceReading();
         if (handleBobinaAlertScan(code, time, "camera")) { camFlash("red"); camShowBigStatus("red", "🚨 ALERTA", code, 1700); camShowResult("red", `🚨 ALERTA — bobina procurada "${code}" encontrada`, 2400); camVibrate("notfound"); camBeep("notfound"); return; }
         if (S.checked.has(code)) { camFlash("yellow"); camShowBigStatus("yellow", "⚠️ JÁ LIDA", code, 1500); camShowResult("yellow", `⚠️ "${code}" — já conferido`, 1500); camVibrate("already"); camBeep("warning"); return; }
         if (S.extras.includes(code)) { camFlash("yellow"); camShowBigStatus("yellow", "⚠️ JÁ REGISTRADA", code, 1700); warn.classList.add("show"); setTimeout(() => warn.classList.remove("show"), 2000); camShowResult("yellow", `⚠️ "${code}" — já registrado como não prevista`, 2500); camVibrate("already"); camBeep("warning"); return; }
         if (S.db.includes(code)) {
           if (isNaoAprovadaCode(code)) {
-            camFlash("red"); camShowBigStatus("red", "⚠️ NÃO APROVADA", code, 1600); camShowResult("red", `⚠️ NÃO APROVADA — "${code}" — informe o endereço`, 2400); camVibrate("notfound"); camBeep("notfound");
+            camFlash("red"); camShowBigStatus("red", "⚠️ NÃO APROVADA", code, 1600); camShowResult("red", `⚠️ NÃO APROVADA — "${code}" — ${naoAprovadaInfoOn ? "informe o endereço" : "será conferida sem pedir dados"}`, 2400); camVibrate("notfound"); camBeep("notfound");
             camCooldown = true;
             showNaoAprovadaFlow(code, time, "camera");
             return;
@@ -5181,9 +5561,10 @@ ${"=".repeat(95)}
       function camSelectManualBobina(code) { camCloseManualModal(); camManualSelectedCode = null; camPendingExtra = null; camMarkManualFound(code); }
       function camMarkManualFound(code) {
         const time = new Date().toLocaleTimeString("pt-BR");
+        recordConferenceReading();
         if (isNaoAprovadaCode(code) && !S.checked.has(code)) {
           camCooldown = true;
-          camShowResult("red", `⚠️ NÃO APROVADA — "${code}" — informe o endereço`, 2200);
+          camShowResult("red", `⚠️ NÃO APROVADA — "${code}" — ${naoAprovadaInfoOn ? "informe o endereço" : "será conferida sem pedir dados"}`, 2200);
           showNaoAprovadaFlow(code, time, "camera", { manual: true });
           return;
         }
@@ -5204,12 +5585,14 @@ ${"=".repeat(95)}
         document.getElementById("camLocHeader").textContent = mode === "manualFound" ? "📸 CONFERÊNCIA MANUAL" : "⚠️ BOBINA NÃO PREVISTA"; document.getElementById("camLocHeader").style.color = mode === "manualFound" ? "#3b82f6" : "#ef4444"; document.getElementById("camLocLabel").textContent = mode === "manualFound" ? "📌 Observação/localização (opcional):" : "📌 Informe a localização:"; document.getElementById("camLocInput").placeholder = mode === "manualFound" ? "Opcional" : "Ex: A2, E17, 240..."; camRemovePhoto("etiqueta"); camRemovePhoto("bobina"); setTimeout(() => document.getElementById("camLocInput").focus(), 300);
       }
       async function camConfirmLocation() {
+        if (photoRotationInProgress("cam")) { notify("Aguarde a foto terminar de girar.", "warning"); return; }
         const input = document.getElementById("camLocInput"), loc = input.value.trim(), obs = document.getElementById("camObsInput").value.trim(); let hasError = false; let categoriaKey = "";
         if (camManualMode !== "manualFound") { categoriaKey = shouldAskExtraCategoryForCurrentConference() ? validateExtraCategory("cam") : automaticExtraCategoryForCurrentConference(camPendingExtra?.code); if (!categoriaKey) hasError = true; }
         if (camManualMode !== "manualFound" && !loc) { document.getElementById("camLocError").style.display = "block"; input.focus(); hasError = true; } else document.getElementById("camLocError").style.display = "none";
         if (!camCurrentPhotoEtiqueta) { document.getElementById("camPhotoErrorEtiqueta").style.display = "block"; hasError = true; } else document.getElementById("camPhotoErrorEtiqueta").style.display = "none";
         if (!camCurrentPhotoBobina) { document.getElementById("camPhotoErrorBobina").style.display = "block"; hasError = true; } else document.getElementById("camPhotoErrorBobina").style.display = "none";
         if (hasError) { camVibrate("notfound"); return; }
+        if (!S.primeiraLeituraEmLocal && !S.horarioLegado && !(S.scanned || []).length) recordConferenceReading();
         if (camManualMode === "manualFound" && camManualSelectedCode) {
           const code = camManualSelectedCode, time = new Date().toLocaleTimeString("pt-BR"), savedPhoto = await savePhotosExtra(code, camCurrentPhotoEtiqueta, camCurrentPhotoBobina);
           S.checked.add(code); S.scanned.unshift({ code, time, status: "found", manual: true, location: loc, observation: obs, hasPhoto: savedPhoto, hasPhotoEtiqueta: savedPhoto, hasPhotoBobina: savedPhoto });
@@ -5242,18 +5625,35 @@ ${"=".repeat(95)}
       }
       function rotateDataUrl90(dataUrl) {
         return new Promise((resolve, reject) => {
-          const img = new Image(); img.onload = () => { const canvas = document.createElement("canvas"); const ctx = canvas.getContext("2d"); canvas.width = img.height; canvas.height = img.width; ctx.translate(canvas.width / 2, canvas.height / 2); ctx.rotate(Math.PI / 2); ctx.drawImage(img, -img.width / 2, -img.height / 2); resolve(canvas.toDataURL("image/jpeg", 0.85)); }; img.onerror = reject; img.src = dataUrl;
+          const img = new Image(); img.onload = () => { const canvas = document.createElement("canvas"); const ctx = canvas.getContext("2d"); canvas.width = img.height; canvas.height = img.width; ctx.translate(canvas.width / 2, canvas.height / 2); ctx.rotate(Math.PI / 2); ctx.drawImage(img, -img.width / 2, -img.height / 2); resolve(canvas.toDataURL("image/jpeg", 0.92)); }; img.onerror = reject; img.src = dataUrl;
         });
       }
-      async function camRotatePhoto(tipo) {
-        const isBobina = tipo === "bobina"; const currentPhoto = isBobina ? camCurrentPhotoBobina : camCurrentPhotoEtiqueta;
-        if (!currentPhoto) { notify("Tire a foto primeiro para poder girar.", "warning"); return; }
-        try {
-          const rotated = await rotateDataUrl90(currentPhoto);
-          if (isBobina) { camCurrentPhotoBobina = rotated; document.getElementById("camPhotoImgBobina").src = rotated; }
-          else { camCurrentPhotoEtiqueta = rotated; document.getElementById("camPhotoImgEtiqueta").src = rotated; }
-        } catch (e) { console.error(e); notify("Não foi possível girar a foto.", "error"); }
+      const photoRotationBusy = new Set();
+      function photoRotationInProgress(scope) { return Array.from(photoRotationBusy).some((key) => key.startsWith(scope + ":")); }
+      function currentCapturedPhoto(scope, tipo) {
+        const bobina = tipo === "bobina";
+        if (scope === "cam") return bobina ? camCurrentPhotoBobina : camCurrentPhotoEtiqueta;
+        if (scope === "loc") return bobina ? pendingExtraMainPhotoBobina : pendingExtraMainPhotoEtiqueta;
+        if (scope === "alert") return bobina ? pendingAlertPhotoBobina : pendingAlertPhotoEtiqueta;
+        return null;
       }
+      async function rotateCapturedPhoto(scope, tipo, button) {
+        const key = scope + ":" + tipo, current = currentCapturedPhoto(scope, tipo);
+        if (!current) { notify("Tire a foto primeiro para poder girar.", "warning"); return; }
+        if (photoRotationBusy.has(key)) return;
+        photoRotationBusy.add(key); if (button) button.disabled = true;
+        try {
+          const rotated = await rotateDataUrl90(current);
+          if (currentCapturedPhoto(scope, tipo) !== current) return;
+          const bobina = tipo === "bobina", suffix = bobina ? "Bobina" : "Etiqueta";
+          if (scope === "cam") { if (bobina) camCurrentPhotoBobina = rotated; else camCurrentPhotoEtiqueta = rotated; }
+          else if (scope === "loc") { if (bobina) pendingExtraMainPhotoBobina = rotated; else pendingExtraMainPhotoEtiqueta = rotated; }
+          else if (scope === "alert") { if (bobina) pendingAlertPhotoBobina = rotated; else pendingAlertPhotoEtiqueta = rotated; }
+          const img = document.getElementById(scope + "PhotoImg" + suffix); if (img) img.src = rotated;
+        } catch (e) { console.error(e); notify("Não foi possível girar a foto.", "error"); }
+        finally { photoRotationBusy.delete(key); if (button) button.disabled = false; }
+      }
+      async function camRotatePhoto(tipo) { return rotateCapturedPhoto("cam", tipo, null); }
       function camViewPhoto(code) { const photo = getPhoto(code); if (photo) { document.getElementById("camPhotoViewImg").src = photo; document.getElementById("camPhotoViewModal").classList.add("show"); } }
       function camClosePhotoView() { document.getElementById("camPhotoViewModal").classList.remove("show"); }
       function camUpdateCounters() { document.getElementById("camCntFound").textContent = S.checked.size; document.getElementById("camCntExtra").textContent = S.extras.length; }
@@ -5324,6 +5724,7 @@ ${"=".repeat(95)}
         setTimeout(() => document.getElementById("locInputMain").focus(), 300);
       }
       async function confirmLocMain() {
+        if (photoRotationInProgress("loc")) { notify("Aguarde a foto terminar de girar.", "warning"); return; }
         const loc = document.getElementById("locInputMain").value.trim();
         const obs = document.getElementById("locObsMain").value.trim();
         if (!loc) { document.getElementById("locErrorMain").style.display = "block"; document.getElementById("locInputMain").focus(); return; }
@@ -5335,6 +5736,7 @@ ${"=".repeat(95)}
         if (requirePhotos && !pendingExtraMainPhotoBobina) { document.getElementById("locPhotoErrorBobina").style.display = "block"; photoError = true; }
         if (photoError) return;
         if (pendingExtraMain) {
+          if (!S.primeiraLeituraEmLocal && !S.horarioLegado && !(S.scanned || []).length) recordConferenceReading();
           let savedPhoto = false;
           if (requirePhotos) {
             savedPhoto = await savePhotosExtra(pendingExtraMain.code, pendingExtraMainPhotoEtiqueta, pendingExtraMainPhotoBobina);
@@ -5375,7 +5777,7 @@ ${"=".repeat(95)}
       }
       function isNaoAprovadaCode(code) { return coilSituacaoForCode(code) === "N"; }
       function reportSituacao(row = {}) { return normalizeSituacaoValue(row.situacao || row.SITUACAO_OP || row.situacaoOp || ""); }
-      function reportIsNaoAprovada(row = {}) { return reportSituacao(row) === "N"; }
+      function reportIsNaoAprovada(row = {}) { return reportSituacao(row) === "N" || normalizeCategoryText(row.status || "").includes("NAO APROVAD"); }
       function reportSitCell(row = {}) { return reportIsNaoAprovada(row) ? '<span class="sit-n">N</span>' : "—"; }
       function reportSitValue(row = {}) { return reportIsNaoAprovada(row) ? "N" : ""; }
       function loteRefToLabelCode(ref) {
@@ -5405,15 +5807,237 @@ ${"=".repeat(95)}
         const capa = normalizeCategoryText(capaSideMaterial(materialRaw)).replace(/\s+/g, " ").trim();
         return CAPA_PELICULA_TERMS.includes(capa);
       }
+      // A chave antiga era uma preferência individual. Esta guarda apenas a última
+      // configuração geral confirmada, para que o aparelho também funcione offline.
+      const NAO_APROVADA_INFO_KEY = "bobinas_nao_aprovada_global_v1";
+      // Documento próprio em uma coleção já usada e autorizada pelo aplicativo;
+      // não altera nem substitui o documento da base ativa.
+      const NAO_APROVADA_INFO_DOC_ID = "configuracao_nao_aprovadas";
+      const NAO_APROVADA_INFO_FIELD = "informacoesNaoAprovadas";
+      let naoAprovadaInfoOn = true;
       let pendingNaoAprovada = null;
+      let naoInfoHasGlobalCache = false, naoInfoStorageAvailable = true;
+      let naoInfoSyncState = "connecting", naoInfoSaving = false;
+      let naoInfoUnsubscribe = null, naoInfoStartPromise = null, naoInfoSdkPromise = null;
+      let naoInfoRetryTimer = null, naoInfoWatcherGeneration = 0;
+
+      function loadNaoAprovadaInfo() {
+        try {
+          const saved = localStorage.getItem(NAO_APROVADA_INFO_KEY);
+          naoInfoHasGlobalCache = saved === "on" || saved === "off";
+          // Sem configuração geral conhecida, o padrão é ligado em todos os aparelhos.
+          naoAprovadaInfoOn = saved !== "off";
+        } catch (e) { naoAprovadaInfoOn = true; naoInfoStorageAvailable = false; }
+        naoInfoSyncState = navigator.onLine === false ? "offline" : "connecting";
+        updateNaoAprovadaInfoUI();
+      }
+      function updateNaoAprovadaInfoUI() {
+        const on = document.getElementById("naoInfoOnBtn"), off = document.getElementById("naoInfoOffBtn"), desc = document.getElementById("naoInfoDescription"), status = document.getElementById("naoInfoSyncStatus");
+        if (on) { on.classList.toggle("active-on", naoAprovadaInfoOn); on.setAttribute("aria-pressed", String(naoAprovadaInfoOn)); on.disabled = naoInfoSaving; }
+        if (off) { off.classList.toggle("active-off", !naoAprovadaInfoOn); off.setAttribute("aria-pressed", String(!naoAprovadaInfoOn)); off.disabled = naoInfoSaving; }
+        if (desc) desc.textContent = naoAprovadaInfoOn ? "Ligado: pede endereço obrigatório e observação opcional." : "Desligado: mostra o alerta e confere sem pedir dados.";
+        if (status) {
+          const local = naoInfoHasGlobalCache ? "Usando a última configuração recebida neste aparelho." : "Sem histórico: padrão ligado até receber a configuração geral.";
+          let text;
+          if (naoInfoSaving) text = "🔄 Salvando a configuração geral...";
+          else if (navigator.onLine === false || naoInfoSyncState === "offline") text = "📴 Sem internet. " + local;
+          else if (naoInfoSyncState === "synced") text = "";
+          else if (naoInfoSyncState === "error") text = "⚠️ Não foi possível confirmar a configuração geral. " + local;
+          else text = "🔄 Buscando a configuração geral. " + local;
+          if (!naoInfoStorageAvailable) text += (text ? " " : "⚠️ ") + "Não foi possível guardar a opção para uso offline.";
+          status.textContent = text;
+          status.hidden = !text;
+        }
+      }
+      function naoInfoApplyConfirmed(value) {
+        naoAprovadaInfoOn = value;
+        naoInfoHasGlobalCache = true;
+        try { localStorage.setItem(NAO_APROVADA_INFO_KEY, value ? "on" : "off"); naoInfoStorageAvailable = true; }
+        catch (e) { naoInfoStorageAvailable = false; console.warn("Não foi possível guardar a configuração geral:", e); }
+      }
+      function naoInfoAwait(promise, ms, message) {
+        let timer;
+        const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(message)), ms); });
+        return Promise.race([Promise.resolve(promise), timeout]).finally(() => clearTimeout(timer));
+      }
+      function naoInfoFirebaseReady() {
+        return typeof firebase !== "undefined" && typeof firebase.initializeApp === "function" && typeof firebase.auth === "function" && typeof firebase.firestore === "function";
+      }
+      async function naoInfoLoadFirebase() {
+        if (naoInfoFirebaseReady()) return true;
+        if (navigator.onLine === false) return false;
+        if (naoInfoSdkPromise) return naoInfoSdkPromise;
+        const scripts = [
+          { name: "firebase-app-compat.js", ready: () => typeof firebase !== "undefined" && typeof firebase.initializeApp === "function" },
+          { name: "firebase-auth-compat.js", ready: () => typeof firebase !== "undefined" && typeof firebase.auth === "function" },
+          { name: "firebase-firestore-compat.js", ready: () => typeof firebase !== "undefined" && typeof firebase.firestore === "function" },
+        ];
+        const job = (async () => {
+          for (const item of scripts) {
+            if (item.ready()) continue;
+            // A página pode ter sido aberta offline sem os scripts da nuvem.
+            // Ao reconectar, carrega somente os componentes que faltaram.
+            await new Promise((resolve, reject) => {
+              const script = document.createElement("script");
+              let done = false;
+              const finish = (error) => {
+                if (done) return;
+                done = true; clearTimeout(timer);
+                script.onload = null; script.onerror = null; script.remove();
+                if (error) reject(error); else resolve();
+              };
+              const timer = setTimeout(() => finish(new Error("Tempo esgotado ao carregar " + item.name)), 10000);
+              script.onload = () => finish(null);
+              script.onerror = () => finish(new Error("Falha ao carregar " + item.name));
+              script.src = "https://www.gstatic.com/firebasejs/10.12.5/" + item.name;
+              document.head.appendChild(script);
+            });
+            if (!item.ready()) throw new Error("Componente da nuvem indisponível: " + item.name);
+          }
+          return naoInfoFirebaseReady();
+        })();
+        naoInfoSdkPromise = job;
+        try { return await job; } finally { if (naoInfoSdkPromise === job) naoInfoSdkPromise = null; }
+      }
+      async function naoInfoPrepareCloud() {
+        if (navigator.onLine === false || !(await naoInfoLoadFirebase())) return false;
+        if (!cloudReady || !firebase.auth().currentUser) {
+          const ok = await naoInfoAwait(cloudInit(), 15000, "Sem resposta da nuvem.");
+          if (!ok) return false;
+        }
+        return !!(cloudDb && firebase.auth().currentUser);
+      }
+      function naoInfoScheduleRetry() {
+        if (naoInfoRetryTimer || navigator.onLine === false) return;
+        naoInfoRetryTimer = setTimeout(() => {
+          naoInfoRetryTimer = null;
+          cloudStartNaoAprovadaInfoWatcher();
+        }, 30000);
+      }
+      function naoInfoHandleSnapshot(snap) {
+        if (!snap || !snap.metadata || snap.metadata.hasPendingWrites) return;
+        if (snap.metadata.fromCache) {
+          naoInfoSyncState = navigator.onLine === false ? "offline" : "connecting";
+          updateNaoAprovadaInfoUI();
+          return;
+        }
+        const data = snap.exists ? (snap.data() || {}) : null;
+        const value = data ? data[NAO_APROVADA_INFO_FIELD] : true;
+        if (typeof value !== "boolean") {
+          console.warn("Configuração geral de não aprovadas inválida.");
+          naoInfoSyncState = "error"; updateNaoAprovadaInfoUI(); return;
+        }
+        naoInfoApplyConfirmed(value);
+        naoInfoSyncState = "synced";
+        updateNaoAprovadaInfoUI();
+      }
+      function cloudStartNaoAprovadaInfoWatcher() {
+        if (naoInfoUnsubscribe) return Promise.resolve(true);
+        if (naoInfoStartPromise) return naoInfoStartPromise;
+        if (navigator.onLine === false) {
+          naoInfoSyncState = "offline"; updateNaoAprovadaInfoUI(); return Promise.resolve(false);
+        }
+        const generation = ++naoInfoWatcherGeneration;
+        const job = (async () => {
+          try {
+            if (!(await naoInfoPrepareCloud())) throw new Error("Nuvem indisponível ou sem autenticação.");
+            if (generation !== naoInfoWatcherGeneration) return false;
+            let ended = false;
+            const ref = cloudDb.collection("arquivos_base").doc(NAO_APROVADA_INFO_DOC_ID);
+            const stop = ref.onSnapshot({ includeMetadataChanges: true }, (snap) => {
+              if (generation === naoInfoWatcherGeneration) naoInfoHandleSnapshot(snap);
+            }, (error) => {
+              if (generation !== naoInfoWatcherGeneration) return;
+              ended = true; naoInfoUnsubscribe = null;
+              naoInfoSyncState = navigator.onLine === false ? "offline" : "error";
+              console.warn("Falha ao acompanhar a configuração geral:", error);
+              updateNaoAprovadaInfoUI(); naoInfoScheduleRetry();
+            });
+            if (ended || generation !== naoInfoWatcherGeneration) { try { stop(); } catch (e) {} return false; }
+            naoInfoUnsubscribe = stop;
+            return true;
+          } catch (error) {
+            if (generation === naoInfoWatcherGeneration) {
+              naoInfoSyncState = navigator.onLine === false ? "offline" : "error";
+              console.warn("Configuração geral indisponível:", error);
+              updateNaoAprovadaInfoUI(); naoInfoScheduleRetry();
+            }
+            return false;
+          }
+        })();
+        naoInfoStartPromise = job;
+        job.finally(() => { if (naoInfoStartPromise === job) naoInfoStartPromise = null; });
+        return job;
+      }
+      function naoInfoReconnect() {
+        if (navigator.onLine === false) { naoInfoSyncState = "offline"; updateNaoAprovadaInfoUI(); return; }
+        if (naoInfoRetryTimer) { clearTimeout(naoInfoRetryTimer); naoInfoRetryTimer = null; }
+        if (naoInfoUnsubscribe) {
+          ++naoInfoWatcherGeneration;
+          try { naoInfoUnsubscribe(); } catch (e) {}
+          naoInfoUnsubscribe = null;
+        }
+        naoInfoSyncState = "connecting"; updateNaoAprovadaInfoUI();
+        if (naoInfoStartPromise) {
+          naoInfoStartPromise.finally(() => { if (!naoInfoUnsubscribe && navigator.onLine !== false) cloudStartNaoAprovadaInfoWatcher(); });
+        } else cloudStartNaoAprovadaInfoWatcher();
+      }
+      async function setNaoAprovadaInfo(enabled) {
+        if (!cloudIsAdmin()) { notify("Abra o modo administrador para alterar esta opção.", "warning"); return; }
+        if (naoInfoSaving) return;
+        if (navigator.onLine === false) { notify("Conecte o aparelho à internet para alterar a opção em todos os aparelhos.", "warning"); return; }
+        naoInfoSaving = true; updateNaoAprovadaInfoUI();
+        try {
+          if (!(await naoInfoPrepareCloud())) throw new Error("Nuvem indisponível ou sem autenticação.");
+          const token = await naoInfoAwait(firebase.auth().currentUser.getIdToken(), 12000, "Sem resposta da autenticação.");
+          const controller = typeof AbortController === "function" ? new AbortController() : null;
+          const cancelTimer = controller ? setTimeout(() => controller.abort(), 12000) : null;
+          let response;
+          try {
+            // A chamada é confirmada pelo servidor. Nunca enfileiramos uma alteração
+            // offline que poderia substituir uma escolha mais recente do administrador.
+            const url = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(FIREBASE_CONFIG.projectId)}/databases/(default)/documents/arquivos_base/${encodeURIComponent(NAO_APROVADA_INFO_DOC_ID)}?updateMask.fieldPaths=${encodeURIComponent(NAO_APROVADA_INFO_FIELD)}`;
+            response = await naoInfoAwait(fetch(url, {
+              method: "PATCH",
+              headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ fields: { [NAO_APROVADA_INFO_FIELD]: { booleanValue: !!enabled } } }),
+              cache: "no-store",
+              ...(controller ? { signal: controller.signal } : {}),
+            }), 15000, "Sem resposta ao salvar a configuração.");
+          } finally { if (cancelTimer) clearTimeout(cancelTimer); }
+          if (!response.ok) throw new Error("Falha ao salvar a configuração (" + response.status + ").");
+          // Somente uma leitura confirmada atualiza o estado local: se dois admins
+          // alterarem ao mesmo tempo, prevalece a configuração mais recente da nuvem.
+          naoInfoReconnect();
+          notify("✅ Configuração salva. Os aparelhos conectados serão atualizados.");
+        } catch (error) {
+          console.warn("Não foi possível confirmar a configuração geral:", error);
+          naoInfoSyncState = navigator.onLine === false ? "offline" : "error";
+          notify("Não foi possível confirmar a alteração. Verifique a conexão e tente novamente.", "error");
+        } finally {
+          naoInfoSaving = false; updateNaoAprovadaInfoUI();
+        }
+      }
+      window.addEventListener("offline", () => { naoInfoSyncState = "offline"; updateNaoAprovadaInfoUI(); });
+      window.addEventListener("online", naoInfoReconnect);
+      window.addEventListener("focus", () => { if (!naoInfoUnsubscribe && navigator.onLine !== false) cloudStartNaoAprovadaInfoWatcher(); });
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible" && !naoInfoUnsubscribe && navigator.onLine !== false) cloudStartNaoAprovadaInfoWatcher();
+      });
       function showNaoAprovadaFlow(code, time, source, opts = {}) {
-        pendingNaoAprovada = { code, time, source: source || "", manual: !!opts.manual };
+        const info = { code, time, source: source || "", manual: !!opts.manual, pedirInformacoes: naoAprovadaInfoOn };
+        pendingNaoAprovada = info;
         const flash = document.getElementById("naoAprovadaFlash");
         const codeEl = document.getElementById("naoAprovadaFlashCode");
         if (codeEl) codeEl.textContent = code;
-        if (flash) { flash.classList.add("show"); setTimeout(() => flash.classList.remove("show"), 2000); }
+        if (flash) flash.classList.add("show");
         try { if (navigator.vibrate) navigator.vibrate([350, 140, 350]); } catch (e) {}
-        setTimeout(() => showNaoAprovadaModal(code), 2050);
+        setTimeout(() => {
+          if (flash) flash.classList.remove("show");
+          if (pendingNaoAprovada !== info) return;
+          if (info.pedirInformacoes) showNaoAprovadaModal(code);
+          else completeNaoAprovada("", "");
+        }, 2000);
       }
       function showNaoAprovadaModal(code) {
         const codeEl = document.getElementById("naoAprovadaCode"); if (codeEl) codeEl.textContent = code;
@@ -5429,35 +6053,37 @@ ${"=".repeat(95)}
         if (source === "collector") { collectorProcessing = false; setTimeout(() => { if (collectorCanFocus()) focusCollectorInput(); }, 150); }
         if (source === "camera") { setTimeout(() => { camCooldown = false; }, 700); }
       }
-      function confirmNaoAprovada() {
+      function completeNaoAprovada(loc, obs) {
         if (!pendingNaoAprovada) return;
-        const locInput = document.getElementById("naoAprovadaLocInput");
-        const loc = locInput ? locInput.value.trim() : "";
-        const obsEl = document.getElementById("naoAprovadaObsInput");
-        const obs = obsEl ? obsEl.value.trim() : "";
-        if (!loc) {
-          const err = document.getElementById("naoAprovadaLocError"); if (err) err.style.display = "block";
-          if (locInput) locInput.focus();
-          return;
-        }
         const info = pendingNaoAprovada;
-        const scanItem = { code: info.code, time: info.time, status: "found", location: loc, observation: obs, situacao: "N", manual: !!info.manual };
-        if (info.source) scanItem.source = info.source;
-        S.checked.add(info.code);
-        S.scanned.unshift(scanItem);
-        const undoBtn = document.getElementById("btnUndo"); if (undoBtn) undoBtn.disabled = false;
-        save(); cloudSyncReading(scanItem);
-        updateStats(); updateHistory(); updateDBUI(); updateReport();
+        if (!S.checked.has(info.code)) {
+          const scanItem = { code: info.code, time: info.time, status: "found", location: loc, observation: obs, situacao: "N", manual: !!info.manual };
+          if (info.source) scanItem.source = info.source;
+          S.checked.add(info.code); S.scanned.unshift(scanItem);
+          const undoBtn = document.getElementById("btnUndo"); if (undoBtn) undoBtn.disabled = false;
+          save(); cloudSyncReading(scanItem);
+          updateStats(); updateHistory(); updateDBUI(); updateReport();
+        }
         if (info.source === "collector") {
           collectorShowBigStatus("green", "✅ LIDA", info.code, 1400);
-          setCollectorLastRead(`✅ ${info.code} conferido (N) com endereço.`, "ok");
-          updateCollectorOverlayCenter("Lida com sucesso", "Bobina não aprovada conferida com endereço.", info.code);
+          setCollectorLastRead(`✅ ${info.code} conferido (N)${loc ? " com endereço." : "."}`, "ok");
+          updateCollectorOverlayCenter("Lida com sucesso", loc ? "Bobina não aprovada conferida com endereço." : "Bobina não aprovada conferida.", info.code);
         } else if (info.source === "camera") {
-          camShowResult("green", `✅ CONFERIDO (N) — "${info.code}" — 📌 ${loc}`, 2200);
+          camUpdateCounters(); camUpdateHistory();
+          camShowResult("green", `✅ CONFERIDO (N) — "${info.code}"${loc ? " — 📌 " + loc : ""}`, 2200);
         }
         document.getElementById("naoAprovadaModal").classList.remove("show");
-        notify(`✅ ${info.code} conferida como N — endereço salvo.`);
+        notify(`✅ ${info.code} conferida como não aprovada.`);
+        const returnToCollector = info.source === "camera" && info.manual && collectorReturnAfterManualCamera;
         releaseNaoAprovadaFlow();
+        if (returnToCollector) setTimeout(() => closeIntegratedScanner(), 350);
+      }
+      function confirmNaoAprovada() {
+        if (!pendingNaoAprovada) return;
+        const locInput = document.getElementById("naoAprovadaLocInput"), loc = locInput ? locInput.value.trim() : "";
+        const obsEl = document.getElementById("naoAprovadaObsInput"), obs = obsEl ? obsEl.value.trim() : "";
+        if (!loc) { const err = document.getElementById("naoAprovadaLocError"); if (err) err.style.display = "block"; if (locInput) locInput.focus(); return; }
+        completeNaoAprovada(loc, obs);
       }
       function cancelNaoAprovada() {
         const code = (pendingNaoAprovada && pendingNaoAprovada.code) || "";
@@ -5468,6 +6094,7 @@ ${"=".repeat(95)}
       function init() {
   setupMobileCopyProtection();
   load();
+  loadNaoAprovadaInfo();
   initCollectorMode();
   updateDBUI();
   updateStats();
@@ -5476,6 +6103,7 @@ ${"=".repeat(95)}
   updateCollectorModeUI();
   renderBobinaAlertList();
   cloudStartBobinaAlertWatcher().catch((e) => console.warn("Falha ao iniciar alertas na nuvem:", e));
+  cloudStartNaoAprovadaInfoWatcher();
   document.getElementById("btnUndo").disabled = !S.scanned.length;
   // Se o localStorage voltou para um ponto antigo após erro/reload, recupera o backup interno em IndexedDB.
   restoreStateBackupIfBetter().catch((e) => console.warn("Falha ao restaurar backup interno:", e));
@@ -5484,6 +6112,7 @@ ${"=".repeat(95)}
     setCollectorLastRead("Coletor ativado.");
   }
   cloudSetStatus(cloudIsConfigured() ? "ok" : "", cloudIsConfigured() ? "☁️ Modo econômico" : "☁️ Nuvem: local");
+  if (S.cloudSessionId && !S.cloudSessionStartSaved && (S.primeiraLeituraEmLocal || (S.scanned || []).length)) cloudRegisterSessionStart(false).catch(() => {});
 }
 
 // Flush ao trocar de aba ou fechar (mobile e desktop)
@@ -5499,5 +6128,5 @@ document.addEventListener("keydown", (e) => {
 
 init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a524df538919cd4e',t:'MTc5MzMwNTEzNw=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a524df538919cd4e',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
