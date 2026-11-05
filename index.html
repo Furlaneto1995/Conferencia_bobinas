@@ -854,7 +854,7 @@
       </div>
       <div class="header">
         <!-- A cada atualização, manter a versão abaixo igual à de sw.js. -->
-        <h1><span class="header-title-icon" aria-hidden="true">📦</span> <span class="header-title-text">Conferência de Bobinas</span> <span class="app-version" aria-label="Versão do aplicativo 23">v23</span></h1>
+        <h1><span class="header-title-icon" aria-hidden="true">📦</span> <span class="header-title-text">Conferência de Bobinas</span> <span class="app-version" aria-label="Versão do aplicativo 24">v24</span></h1>
         <p>Sistema de conferência por código de barras</p>
       </div>
       <div class="section" id="sectionImport">
@@ -935,7 +935,6 @@
               <div class="collector-last-read" id="collectorLastRead">Pronto para iniciar.</div>
             </div>
           </div>
-          <div class="btn-group" style="justify-content: center"><button class="btn btn-outline" onclick="undoLast()" id="btnUndo" disabled>↩️ Desfazer</button><button class="btn btn-outline" onclick="clearScans()">🔄 Reiniciar</button></div>
         </div>
         <div class="card">
           <div class="card-title">📜 Histórico <span style="margin-left: auto; font-size: 0.75em; color: var(--text-muted);" id="hCount">0 leituras</span></div>
@@ -986,7 +985,7 @@
                   <span><strong id="rDetailCount">0</strong> itens</span>
                   <span><strong id="rDetailCheckedCard">0</strong> conferidas</span>
                   <span><strong id="rDetailPendingCard">0</strong> pendentes</span>
-                  <span><strong id="rDetailExtraCard">0</strong> extras</span>
+                  <span><strong id="rDetailExtraCard">0</strong> não previstas</span>
                 </span>
               </span>
               <span class="report-open-pill">Abrir</span>
@@ -1016,7 +1015,7 @@
               <button class="fbtn active" data-filter="all" onclick="filterRpt('all', this)">📋 Todos</button>
               <button class="fbtn" data-filter="checked" onclick="filterRpt('checked', this)">✅ Conferidos</button>
               <button class="fbtn" data-filter="pending" onclick="filterRpt('pending', this)">⏳ Pendentes</button>
-              <button class="fbtn" data-filter="extra" onclick="filterRpt('extra', this)">⚠️ Extras</button>
+              <button class="fbtn" data-filter="extra" onclick="filterRpt('extra', this)">⚠️ Não previstas</button>
               <button class="fbtn" data-filter="naoaprov" onclick="filterRpt('naoaprov', this)">❌ Não Aprovadas</button>
             </div>
           </div>
@@ -1054,6 +1053,10 @@
         <div class="card"><div class="card-title">❌ Informações para não aprovadas</div><div class="card-sub" id="naoInfoDescription">Ligado: pede endereço e observação.</div>
           <div class="collector-toggle-wrap"><div class="collector-toggle-label">Informações</div><button type="button" class="collector-toggle-seg" id="naoInfoOffBtn" onclick="setNaoAprovadaInfo(false)">OFF</button><button type="button" class="collector-toggle-seg" id="naoInfoOnBtn" onclick="setNaoAprovadaInfo(true)">ON</button></div>
           <div class="nao-info-sync" id="naoInfoSyncStatus" role="status" aria-live="polite">🔄 Buscando a configuração geral...</div>
+        </div>
+        <div class="card"><div class="card-title">❌ Informações para não previstas</div><div class="card-sub" id="naoPrevInfoDescription">Ligado: exige localização e as duas fotos.</div>
+          <div class="collector-toggle-wrap"><div class="collector-toggle-label">Informações</div><button type="button" class="collector-toggle-seg" id="naoPrevInfoOffBtn" onclick="setNaoPrevistaInfo(false)">OFF</button><button type="button" class="collector-toggle-seg" id="naoPrevInfoOnBtn" onclick="setNaoPrevistaInfo(true)">ON</button></div>
+          <div class="nao-info-sync" id="naoPrevInfoSyncStatus" role="status" aria-live="polite">🔄 Buscando a configuração geral...</div>
         </div>
         <div class="card"><div class="card-title">🚨 Alerta de Bobina</div><button class="btn btn-outline" onclick="toggleBobinaAlertPanel()">🚨 Abrir Alerta de Bobina</button>
           <div class="bobina-alert-panel" id="bobinaAlertPanel">
@@ -1174,8 +1177,9 @@
               <div class="cam-photo-btn" id="camPhotoBtnBobina" onclick="document.getElementById('camPhotoInputBobina').click()">📷 Tirar foto da bobina<input type="file" id="camPhotoInputBobina" accept="image/*" capture="environment" onchange="camHandlePhoto(event, 'bobina')" /></div>
               <div class="cam-photo-preview" id="camPhotoPreviewBobina"><img id="camPhotoImgBobina" src="" /><div class="photo-preview-actions"><button type="button" class="photo-rotate-action" onclick="rotateCapturedPhoto('cam','bobina',this)">↻ Girar foto</button><button type="button" class="photo-remove-action" onclick="camRemovePhoto('bobina')">✕ Remover</button></div></div>
               <div class="cam-error" id="camPhotoErrorBobina">⚠️ Foto da bobina obrigatória!</div>
+              <div class="cam-error" id="camPhotoSaveError">⚠️ Não foi possível salvar as duas fotos. Verifique o espaço do aparelho e tente novamente.</div>
             </div>
-            <div class="cam-loc-buttons"><button class="cam-loc-btn cam-confirm" onclick="camConfirmLocation()">✅ Confirmar</button><button class="cam-loc-btn cam-cancel" onclick="camCancelLocation()">❌ Cancelar</button></div>
+            <div class="cam-loc-buttons"><button class="cam-loc-btn cam-confirm" onclick="camConfirmLocation()">✅ Confirmar</button><button class="cam-loc-btn cam-cancel" id="camLocCancelBtn" onclick="camCancelLocation()">❌ Cancelar</button></div>
           </div>
         </div>
         <div class="cam-loc-modal" id="camManualModal">
@@ -1239,7 +1243,7 @@
       </div>
     </div></div>
 
-    <div class="modal-bg" id="locModal"><div class="modal" style="border-color: var(--accent-red)"><h2 style="color: var(--accent-red)">⚠️ Bobina Não Prevista</h2><div class="loc-code-display" id="locCodeMain"></div><p id="locModalDesc">Informe a localização desta bobina:</p><div class="extra-category-box" id="locExtraCategoryBox"><div class="extra-category-label">🏷️ Tipo da base da bobina não prevista:</div><div class="extra-category-buttons"><button type="button" class="extra-category-btn" data-cat="peliculas" onclick="setExtraCategory('loc','peliculas')">🎞️ Películas</button><button type="button" class="extra-category-btn" data-cat="extrusao" onclick="setExtraCategory('loc','extrusao')">🏭 Extrusão</button></div><div class="extra-category-error" id="locExtraCategoryError">⚠️ Selecione Películas ou Extrusão.</div></div><input type="text" id="locInputMain" class="loc-input-main" placeholder="Ex: Galpão A, Corredor 3..." onkeydown="if (event.key === 'Enter') confirmLocMain();" autocomplete="off" /><textarea id="locObsMain" class="loc-input-main" placeholder="Observação (opcional)" style="min-height: 76px; resize: vertical; font-family: inherit;"></textarea><div class="loc-photo-section" id="locPhotoSection"><div class="loc-photo-grid"><div><div class="loc-photo-label">🏷️ Foto da etiqueta <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnEtiqueta" onclick="document.getElementById('locPhotoInputEtiqueta').click()">📷 Tirar foto da etiqueta<input type="file" id="locPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'etiqueta')" /></div><div class="loc-photo-preview" id="locPhotoPreviewEtiqueta"><img id="locPhotoImgEtiqueta" src="" /><div class="photo-preview-actions"><button type="button" class="photo-rotate-action" onclick="rotateCapturedPhoto('loc','etiqueta',this)">↻ Girar foto</button><button type="button" class="photo-remove-action" onclick="locRemovePhoto('etiqueta')">✕ Remover</button></div></div><div class="loc-photo-error" id="locPhotoErrorEtiqueta">⚠️ Foto da etiqueta obrigatória!</div></div><div><div class="loc-photo-label">📦 Foto da bobina <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnBobina" onclick="document.getElementById('locPhotoInputBobina').click()">📷 Tirar foto da bobina<input type="file" id="locPhotoInputBobina" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'bobina')" /></div><div class="loc-photo-preview" id="locPhotoPreviewBobina"><img id="locPhotoImgBobina" src="" /><div class="photo-preview-actions"><button type="button" class="photo-rotate-action" onclick="rotateCapturedPhoto('loc','bobina',this)">↻ Girar foto</button><button type="button" class="photo-remove-action" onclick="locRemovePhoto('bobina')">✕ Remover</button></div></div><div class="loc-photo-error" id="locPhotoErrorBobina">⚠️ Foto da bobina obrigatória!</div></div></div></div><div id="locErrorMain" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Localização obrigatória!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmLocMain()">✅ Confirmar</button><button class="btn btn-outline" onclick="cancelLocMain()">Cancelar</button></div></div></div>
+    <div class="modal-bg" id="locModal"><div class="modal" style="border-color: var(--accent-red)"><h2 style="color: var(--accent-red)">⚠️ Bobina Não Prevista</h2><div class="loc-code-display" id="locCodeMain"></div><p id="locModalDesc">Informe a localização desta bobina:</p><div class="extra-category-box" id="locExtraCategoryBox"><div class="extra-category-label">🏷️ Tipo da base da bobina não prevista:</div><div class="extra-category-buttons"><button type="button" class="extra-category-btn" data-cat="peliculas" onclick="setExtraCategory('loc','peliculas')">🎞️ Películas</button><button type="button" class="extra-category-btn" data-cat="extrusao" onclick="setExtraCategory('loc','extrusao')">🏭 Extrusão</button></div><div class="extra-category-error" id="locExtraCategoryError">⚠️ Selecione Películas ou Extrusão.</div></div><input type="text" id="locInputMain" class="loc-input-main" placeholder="Ex: Galpão A, Corredor 3..." onkeydown="if (event.key === 'Enter') confirmLocMain();" autocomplete="off" /><textarea id="locObsMain" class="loc-input-main" placeholder="Observação (opcional)" style="min-height: 76px; resize: vertical; font-family: inherit;"></textarea><div class="loc-photo-section" id="locPhotoSection"><div class="loc-photo-grid"><div><div class="loc-photo-label">🏷️ Foto da etiqueta <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnEtiqueta" onclick="document.getElementById('locPhotoInputEtiqueta').click()">📷 Tirar foto da etiqueta<input type="file" id="locPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'etiqueta')" /></div><div class="loc-photo-preview" id="locPhotoPreviewEtiqueta"><img id="locPhotoImgEtiqueta" src="" /><div class="photo-preview-actions"><button type="button" class="photo-rotate-action" onclick="rotateCapturedPhoto('loc','etiqueta',this)">↻ Girar foto</button><button type="button" class="photo-remove-action" onclick="locRemovePhoto('etiqueta')">✕ Remover</button></div></div><div class="loc-photo-error" id="locPhotoErrorEtiqueta">⚠️ Foto da etiqueta obrigatória!</div></div><div><div class="loc-photo-label">📦 Foto da bobina <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnBobina" onclick="document.getElementById('locPhotoInputBobina').click()">📷 Tirar foto da bobina<input type="file" id="locPhotoInputBobina" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'bobina')" /></div><div class="loc-photo-preview" id="locPhotoPreviewBobina"><img id="locPhotoImgBobina" src="" /><div class="photo-preview-actions"><button type="button" class="photo-rotate-action" onclick="rotateCapturedPhoto('loc','bobina',this)">↻ Girar foto</button><button type="button" class="photo-remove-action" onclick="locRemovePhoto('bobina')">✕ Remover</button></div></div><div class="loc-photo-error" id="locPhotoErrorBobina">⚠️ Foto da bobina obrigatória!</div></div></div></div><div id="locErrorMain" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Localização obrigatória!</div><div id="locPhotoSaveError" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Não foi possível salvar as duas fotos. Verifique o espaço do aparelho e tente novamente.</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmLocMain()">✅ Confirmar</button></div></div></div>
     <div class="photo-modal" id="photoModal"><div style="text-align: center; color: #fff; font-weight: 700; max-width: 100%; max-height: 82vh; overflow: auto;">🏷️ Etiqueta + 📦 Bobina<br /><img id="photoModalImg" src="" /></div><button class="photo-modal-close" onclick="closePhotoModal()">✕ Fechar</button></div>
     <div class="bobina-alert-flash" id="naoAprovadaFlash"><div><div class="bobina-alert-flash-main">⚠️ BOBINA<br/>NÃO APROVADA ⚠️</div><div class="bobina-alert-flash-sub" id="naoAprovadaFlashCode"></div></div></div>
     <div class="modal-bg" id="naoAprovadaModal"><div class="modal" style="border-color: var(--accent-red); border-width: 2px;"><h2 style="color: var(--accent-red)">❌ Bobina Não Aprovada</h2><div class="loc-code-display" id="naoAprovadaCode"></div><p>Esta bobina está marcada como <strong>não aprovada (N)</strong>. Informe o endereço onde ela está:</p><label style="display:block;font-size:.78em;font-weight:700;color:var(--text-secondary);margin-bottom:5px">📍 Endereço / localização <span style="color:var(--accent-red);font-weight:800">*obrigatório</span></label><input type="text" id="naoAprovadaLocInput" class="loc-input-main" placeholder="Ex: Galpão A, Corredor 3..." onkeydown="if (event.key === 'Enter') confirmNaoAprovada();" autocomplete="off" /><label style="display:block;font-size:.78em;font-weight:700;color:var(--text-secondary);margin-bottom:5px">📝 Observação <span style="color:var(--text-muted);font-weight:600">(opcional)</span></label><textarea id="naoAprovadaObsInput" class="loc-input-main" placeholder="Observação (opcional)" style="min-height: 64px; resize: vertical; font-family: inherit;"></textarea><div id="naoAprovadaLocError" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Endereço obrigatório!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmNaoAprovada()">✅ Confirmar</button><button class="btn btn-outline" onclick="cancelNaoAprovada()">Cancelar</button></div></div></div>
@@ -1253,11 +1257,13 @@
         <div>Observação do alerta: <strong id="alertFoundObs" style="color:var(--text-primary)">—</strong></div>
       </div>
       <p style="color: var(--text-secondary); font-size: .88em; margin-bottom: 8px">Informe endereço/localização e tire as fotos para registrar onde a bobina foi encontrada.</p>
+      <div class="extra-category-box" id="alertExtraCategoryBox" style="display:none"><div class="extra-category-label">🏷️ Tipo da base da bobina não prevista:</div><div class="extra-category-buttons"><button type="button" class="extra-category-btn" data-cat="peliculas" onclick="setExtraCategory('alert','peliculas')">🎞️ Películas</button><button type="button" class="extra-category-btn" data-cat="extrusao" onclick="setExtraCategory('alert','extrusao')">🏭 Extrusão</button></div><div class="extra-category-error" id="alertExtraCategoryError">⚠️ Selecione Películas ou Extrusão.</div></div>
       <input type="text" id="alertFoundLocation" class="loc-input-main" placeholder="Endereço/localização onde encontrou" autocomplete="off" />
       <textarea id="alertFoundFoundObs" class="loc-input-main" placeholder="Observação de quem encontrou (opcional)" style="min-height: 76px; resize: vertical; font-family: inherit;"></textarea>
       <div class="loc-photo-section" style="display:block"><div class="loc-photo-grid"><div><div class="loc-photo-label">🏷️ Foto da etiqueta <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="alertPhotoBtnEtiqueta" onclick="document.getElementById('alertPhotoInputEtiqueta').click()">📷 Tirar foto da etiqueta<input type="file" id="alertPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="alertHandlePhoto(event, &quot;etiqueta&quot;)" /></div><div class="loc-photo-preview" id="alertPhotoPreviewEtiqueta"><img id="alertPhotoImgEtiqueta" src="" /><div class="photo-preview-actions"><button type="button" class="photo-rotate-action" onclick="rotateCapturedPhoto('alert','etiqueta',this)">↻ Girar foto</button><button type="button" class="photo-remove-action" onclick="alertRemovePhoto('etiqueta')">✕ Remover</button></div></div><div class="loc-photo-error" id="alertPhotoErrorEtiqueta">⚠️ Foto da etiqueta obrigatória!</div></div><div><div class="loc-photo-label">📦 Foto da bobina <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="alertPhotoBtnBobina" onclick="document.getElementById('alertPhotoInputBobina').click()">📷 Tirar foto da bobina<input type="file" id="alertPhotoInputBobina" accept="image/*" capture="environment" onchange="alertHandlePhoto(event, &quot;bobina&quot;)" /></div><div class="loc-photo-preview" id="alertPhotoPreviewBobina"><img id="alertPhotoImgBobina" src="" /><div class="photo-preview-actions"><button type="button" class="photo-rotate-action" onclick="rotateCapturedPhoto('alert','bobina',this)">↻ Girar foto</button><button type="button" class="photo-remove-action" onclick="alertRemovePhoto('bobina')">✕ Remover</button></div></div><div class="loc-photo-error" id="alertPhotoErrorBobina">⚠️ Foto da bobina obrigatória!</div></div></div></div>
       <div id="alertFoundLocationError" style="color: var(--accent-red); font-size: 0.82em; font-weight: 700; display:none; margin-top: 8px">⚠️ Endereço/localização obrigatória!</div>
-      <div class="btn-group"><button class="btn btn-primary" onclick="confirmAlertFound()">✅ Salvar encontrado</button><button class="btn btn-outline" onclick="cancelAlertFound()">Cancelar</button></div>
+      <div id="alertPhotoSaveError" style="color: var(--accent-red); font-size: 0.82em; font-weight: 700; display:none; margin-top: 8px">⚠️ Não foi possível salvar as duas fotos. Verifique o espaço do aparelho e tente novamente.</div>
+      <div class="btn-group"><button class="btn btn-primary" onclick="confirmAlertFound()">✅ Salvar encontrado</button><button class="btn btn-outline" id="alertFoundCancelBtn" onclick="cancelAlertFound()">Cancelar</button></div>
     </div></div>
 
     <script>
@@ -1506,7 +1512,6 @@ let bobinaAlertCloudReady = false;
         applyStateSnapshot(backup);
         save();
         updateDBUI(); updateStats(); updateHistory(); updateReport(); updateCollectorModeUI();
-        document.getElementById("btnUndo").disabled = !S.scanned.length;
         notify(`✅ Backup interno restaurado: ${oldChecked} → ${S.checked.size} bobinas conferidas.`, "success");
         return true;
       }
@@ -2285,7 +2290,7 @@ let bobinaAlertCloudReady = false;
           if (!res.ok) throw new Error("Falha ao baixar base ativa");
           const content = await res.text();
 
-          resetConferenceData({ keepImportedFile: false });
+          if (!resetConferenceData({ keepImportedFile: false })) return;
 
           currentImportedFile = {
             name: data.nome || "arquivo-base.txt",
@@ -2359,6 +2364,8 @@ let bobinaAlertCloudReady = false;
             fotoUrl: up?.url || "",
             fotoPath: up?.path || "",
             fotoFileName: barcodePhotoFileName(i.code),
+            informacoesSolicitadas: i.informacoesSolicitadas,
+            informacoesPendentes: !!i.informacoesPendentes,
           };
         });
         return {
@@ -2389,6 +2396,7 @@ let bobinaAlertCloudReady = false;
         const items = [];
         for (const item of candidates) {
           const photo = await getPhotoAsync(item.code);
+          if (!photo && item.status === "extra" && item.informacoesSolicitadas === true) throw new Error(`Foto obrigatória da não prevista ${item.code} não encontrada no aparelho.`);
           if (photo) items.push({ ...item, _photo: photo });
         }
         if (!items.length) return uploads;
@@ -2398,6 +2406,7 @@ let bobinaAlertCloudReady = false;
           const item = items[i];
           if (progress) progress.textContent = `Enviando fotos ${i + 1}/${items.length}...`;
           const up = await cloudUploadPhoto(item.code, item._photo, item.categoriaInformada ? item.categoriaKey : "");
+          if (!up?.url && item.status === "extra" && item.informacoesSolicitadas === true) throw new Error(`Não foi possível enviar a foto obrigatória da não prevista ${item.code}. Tente finalizar novamente.`);
           if (up && up.url) uploads[item.code] = up;
         }
         return uploads;
@@ -2419,6 +2428,7 @@ let bobinaAlertCloudReady = false;
         try {
           if (!S.db.length) { notify("Importe uma base antes de finalizar.", "warning"); return false; }
           if (!S.primeiraLeituraEmLocal && !(S.scanned || []).length && !S.horarioLegado) { notify("Leia uma etiqueta antes de finalizar a conferência.", "warning"); return false; }
+          if (blockForPendingNaoPrevista()) return false;
           refreshCoilCategoriesFromLoadedFile();
           if (requireExtraCategoryReview(() => cloudMarkFinished())) return false;
           const sessionId = await cloudEnsureSession();
@@ -2480,6 +2490,7 @@ let bobinaAlertCloudReady = false;
         }
       }
       async function finishConference() {
+        if (blockForPendingNaoPrevista()) return;
         if (!S.checkerName) { showCheckerModal(() => finishConference()); return; }
         if (!confirm("Finalizar esta conferência?")) return;
         const ok = await cloudMarkFinished();
@@ -2664,7 +2675,7 @@ let bobinaAlertCloudReady = false;
       }
       function reportConferenceLabel(row = {}) {
         const key = reportConferenceKey(row);
-        return key === "checked" ? "Conferida" : key === "pending" ? "Não conferida" : key === "extra" ? "Registrada" : "—";
+        return key === "checked" ? "Conferida" : key === "pending" ? "Não conferida" : key === "extra" ? (row.informacoesPendentes ? "Informações pendentes" : "Registrada") : "—";
       }
       function reportBuildCategorySummary(rows = []) {
         const map = new Map();
@@ -2784,6 +2795,8 @@ let bobinaAlertCloudReady = false;
             ["Não aprovadas", cloudSummaryNumber(summary.naoAprovadas, allRows.filter(reportIsNaoAprovada).length)],
             ["Não aprovadas conferidas", naoConferidasLidas], ["Não aprovadas não conferidas", naoConferidas],
           ] });
+          const pendingNaoPrevistas = allRows.filter((row) => reportConferenceKey(row) === "extra" && row.informacoesPendentes === true).length;
+          if (pendingNaoPrevistas) sheets[sheets.length - 1].rows.push(["Não previstas com informações pendentes", pendingNaoPrevistas]);
           if (data.exportPhotoSummary) {
             const photos = data.exportPhotoSummary;
             sheets[sheets.length - 1].rows.push(["Fotos incluídas no ZIP", photos.included || 0], ["Fotos não incluídas", (photos.missingCodes || []).length]);
@@ -3226,7 +3239,7 @@ ${"=".repeat(95)}
               <button class="fbtn active" data-filter="all" onclick="cloudSetSavedFilter('all')">📋 Todos</button>
               <button class="fbtn" data-filter="checked" onclick="cloudSetSavedFilter('checked')">✅ Conferidos</button>
               <button class="fbtn" data-filter="pending" onclick="cloudSetSavedFilter('pending')">⏳ Pendentes</button>
-              <button class="fbtn" data-filter="extra" onclick="cloudSetSavedFilter('extra')">⚠️ Extras</button>
+              <button class="fbtn" data-filter="extra" onclick="cloudSetSavedFilter('extra')">⚠️ Não previstas</button>
               <button class="fbtn" data-filter="naoaprov" onclick="cloudSetSavedFilter('naoaprov')">❌ Não Aprovadas</button>
             </div>
           </div>
@@ -3496,7 +3509,7 @@ ${"=".repeat(95)}
             }
           });
           const opSummary = cloudBuildOpSummaryFromMaps(bobinaMap, checkedMap); const rows = [];
-          Array.from(extraMap.keys()).sort().forEach((code) => { const x = extraMap.get(code) || {}; rows.push({ code, op: "-", peso: "-", situacao: "", lote: x.lote || "", categoriaKey: x.categoriaKey || "", categoria: x.categoria || "", categoriaInformada: !!x.categoriaInformada, status: "⚠️ Não prevista", time: x.time || x.horaLocal || "", location: x.location || "", observation: x.observation || "", hasPhoto: !!x.hasPhoto, fotoUrl: x.fotoUrl || "" }); });
+          Array.from(extraMap.keys()).sort().forEach((code) => { const x = extraMap.get(code) || {}; rows.push({ code, op: "-", peso: "-", situacao: "", lote: x.lote || "", categoriaKey: x.categoriaKey || "", categoria: x.categoria || "", categoriaInformada: !!x.categoriaInformada, informacoesSolicitadas: x.informacoesSolicitadas, informacoesPendentes: !!x.informacoesPendentes, status: "⚠️ Não prevista", time: x.time || x.horaLocal || "", location: x.location || "", observation: x.observation || "", hasPhoto: !!x.hasPhoto, fotoUrl: x.fotoUrl || "" }); });
           Array.from(bobinaMap.keys()).sort((a, b) => String(a).localeCompare(String(b), "pt-BR", { numeric: true })).forEach((code) => { const b = bobinaMap.get(code) || {}; const l = checkedMap.get(code); const catSource = l || b; rows.push({ code, op: b.op || "-", peso: b.peso || "-", situacao: reportSituacao(b), lote: b.lote || "", tipo: b.tipo || "", categoriaKey: catSource.categoriaKey || b.categoriaKey || "", categoria: catSource.categoria || b.categoria || "", categoriaInformada: !!(catSource.categoriaInformada || b.categoriaInformada), status: l ? (l.manual ? "📸 Manual" : "✅ Conferida") : "⏳ Pendente", time: l?.horaLocal || "", location: l?.location || "", observation: l?.observation || "", hasPhoto: !!l?.hasPhoto, fotoUrl: l?.fotoUrl || "" }); });
           const total = bobinaMap.size, conferidos = checkedMap.size, naoPrev = extraMap.size, pendentes = Math.max(0, total - conferidos), pct = total > 0 ? ((conferidos / total) * 100).toFixed(1) : "0.0";
           const starts = confs.map((c) => cloudValueToDate(c.inicio));
@@ -3675,7 +3688,7 @@ ${"=".repeat(95)}
         if (t === "scan") { updateStats(); updateCollectorModeUI(); ensureCheckerName(); if (S.collectorMode && S.collectorActive) setTimeout(focusCollectorInput, 120); }
         if (t === "report") updateReport();
         if (t === "settings") updateCollectorModeUI();
-        if (t === "admin") updateNaoAprovadaInfoUI();
+        if (t === "admin") { updateNaoAprovadaInfoUI(); updateNaoPrevistaInfoUI(); }
         if (t === "import" && !cloudBaseFilesDocs.length) cloudRefreshBaseFiles();
         if (t === "cloud") {
           cloudApplyCloudAccessUI();
@@ -3686,6 +3699,15 @@ ${"=".repeat(95)}
       }
       function showModal(title, msg, fn) { document.getElementById("mTitle").textContent = title; document.getElementById("mMsg").textContent = msg; document.getElementById("modal").classList.add("show"); document.getElementById("mConfirm").onclick = () => { closeModal(); fn(); }; }
       function closeModal() { document.getElementById("modal").classList.remove("show"); }
+      function focusModalInputIfUntouched(modalId, inputId, delay = 250) {
+        setTimeout(() => {
+          const modal = document.getElementById(modalId), input = document.getElementById(inputId), active = document.activeElement;
+          if (!modal || !modal.classList.contains("show") || !input) return;
+          // Não rouba o foco de quem já começou a preencher outro campo ou foto.
+          if (active && modal.contains(active) && /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(active.tagName || "")) return;
+          try { input.focus({ preventScroll: true }); } catch (e) { try { input.focus(); } catch (err) {} }
+        }, delay);
+      }
       function showCheckerModal(cb) { checkerStartCallback = typeof cb === "function" ? cb : null; document.getElementById("checkerInput").value = S.checkerName || ""; document.getElementById("checkerError").style.display = "none"; const btn = document.querySelector("#checkerModal .btn-primary"); if (btn) btn.textContent = checkerStartCallback ? "✅ Iniciar conferência" : "✅ Confirmar operador"; document.getElementById("checkerModal").classList.add("show"); setTimeout(() => document.getElementById("checkerInput").focus(), 300); }
       function closeCheckerModal() { checkerStartCallback = null; document.getElementById("checkerModal").classList.remove("show"); }
       function confirmCheckerName() {
@@ -3713,6 +3735,7 @@ ${"=".repeat(95)}
       dz.addEventListener("drop", (e) => { e.preventDefault(); dz.classList.remove("over"); if (e.dataTransfer.files.length) handleFile({ target: { files: e.dataTransfer.files } }); });
       function newConferenceGeneration() { return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`; }
       function resetConferenceData({ keepImportedFile = false } = {}) {
+  if (blockForPendingNaoPrevista()) return false;
   // BUG 4 CORRIGIDO: flush e cancelamento do listener Firestore
   cloudFlushBuffer();
   if (cloudSessionUnsub) {
@@ -3761,11 +3784,11 @@ ${"=".repeat(95)}
   updateReport();
   hydratePhotoCache();
   updateCollectorModeUI();
-  document.getElementById("btnUndo").disabled = true;
+  return true;
 }
       function clearImportedFile(ev) {
         if (ev) ev.stopPropagation();
-        resetConferenceData({ keepImportedFile: false });
+        if (!resetConferenceData({ keepImportedFile: false })) return;
         notify("Arquivo removido e códigos limpos.", "warning");
       }
       function handleFile(e) {
@@ -3795,6 +3818,7 @@ ${"=".repeat(95)}
       }
       function importRowsComplete(rows, { replaceExisting = true } = {}) {
         if (!rows || !rows.length) return 0;
+        if (replaceExisting && blockForPendingNaoPrevista()) return 0;
         if (replaceExisting) {
           S.meta = {};
           S.db = [];
@@ -3848,7 +3872,6 @@ ${"=".repeat(95)}
         updateStats();
         updateHistory();
         updateReport();
-        document.getElementById("btnUndo").disabled = !S.scanned.length;
         return uniq.length;
       }
       function parseFile(content) {
@@ -3947,7 +3970,7 @@ ${"=".repeat(95)}
       function importByConferenceTypes(cfgList, { replaceExisting = false } = {}) {
         if (!S.fileData || !S.fileLayout) { notify("Arquivo não encontrado para importar.", "error"); return; }
         if (replaceExisting) {
-          resetConferenceData({ keepImportedFile: true });
+          if (!resetConferenceData({ keepImportedFile: true })) return;
         }
         const nextMeta = {};
         const bIdx = S.fileLayout.idx.BARRAS_ORIGEM, eIdx = S.fileLayout.idx.ETAPA, mIdx = S.fileLayout.idx.MATERIAL, tIdx = S.fileLayout.idx.TIPO_BOBINA, dIdx = S.fileLayout.idx.DESCRICAO, opIdx = S.fileLayout.idx.OP, pIdx = S.fileLayout.idx.PESO, sIdx = S.fileLayout.idx.SITUACAO_OP >= 0 ? S.fileLayout.idx.SITUACAO_OP : -1, rlIdx = S.fileLayout.idx.REFERENCIA_LOTE >= 0 ? S.fileLayout.idx.REFERENCIA_LOTE : -1;
@@ -4167,6 +4190,11 @@ ${"=".repeat(95)}
       function handleBobinaAlertScan(code, time, source = "collector") {
         const item = matchBobinaAlert(code);
         if (!item) return false;
+        const scan = getExtraScan(code);
+        if (scan?.informacoesPendentes) {
+          scan.alertaPendente = { id: item.id || "", cloudId: item.cloudId || item.id || "", shortCode: item.shortCode || "", peso: item.peso || "", op: item.op || "", observation: item.observation || "" };
+          save();
+        }
         pendingAlertFound = {
           itemId: item.id,
           cloudId: item.cloudId || item.id,
@@ -4207,9 +4235,13 @@ ${"=".repeat(95)}
         document.getElementById("alertFoundLocation").value = "";
         document.getElementById("alertFoundFoundObs").value = "";
         document.getElementById("alertFoundLocationError").style.display = "none";
+        document.getElementById("alertPhotoSaveError").style.display = "none";
+        const obrigatoria = !!getExtraScan(code)?.informacoesPendentes;
+        const cancel = document.getElementById("alertFoundCancelBtn"); cancel.hidden = obrigatoria; cancel.style.display = obrigatoria ? "none" : "";
+        prepareExtraCategory("alert", code, obrigatoria && shouldAskExtraCategoryForCurrentConference());
         resetAlertPhotoState();
         document.getElementById("alertFoundModal").classList.add("show");
-        setTimeout(() => document.getElementById("alertFoundLocation")?.focus(), 200);
+        focusModalInputIfUntouched("alertFoundModal", "alertFoundLocation", 200);
       }
       function alertHandlePhoto(e, tipo) {
         const file = e.target.files[0]; if (!file) return;
@@ -4239,33 +4271,44 @@ ${"=".repeat(95)}
         if (source === "camera") { setTimeout(() => (camCooldown = false), 700); }
       }
       async function confirmAlertFound() {
-        if (!pendingAlertFound) return;
+        if (!pendingAlertFound || naoPrevistaPhotoSaving) return;
         if (photoRotationInProgress("alert")) { notify("Aguarde a foto terminar de girar.", "warning"); return; }
+        const data = pendingAlertFound;
+        const naoPrevistaPendente = !!getExtraScan(data.fullCode)?.informacoesPendentes;
         const loc = document.getElementById("alertFoundLocation").value.trim();
         const foundObs = document.getElementById("alertFoundFoundObs").value.trim();
         if (!loc) { document.getElementById("alertFoundLocationError").style.display = "block"; document.getElementById("alertFoundLocation").focus(); return; }
+        const categoriaKey = naoPrevistaPendente ? (shouldAskExtraCategoryForCurrentConference() ? validateExtraCategory("alert") : automaticExtraCategoryForCurrentConference(data.fullCode)) : "";
+        if (naoPrevistaPendente && !categoriaKey) return;
         let photoError = false;
         if (!pendingAlertPhotoEtiqueta) { document.getElementById("alertPhotoErrorEtiqueta").style.display = "block"; photoError = true; }
         if (!pendingAlertPhotoBobina) { document.getElementById("alertPhotoErrorBobina").style.display = "block"; photoError = true; }
         if (photoError) return;
-        const data = pendingAlertFound;
-        const savedPhoto = await savePhotosExtra(data.fullCode, pendingAlertPhotoEtiqueta, pendingAlertPhotoBobina);
-        let upload = null;
-        try { const photo = await getPhotoAsync(data.fullCode); if (photo) upload = await cloudUploadBobinaAlertPhoto(data, photo); }
-        catch (e) { console.warn("Foto do alerta não enviada à nuvem:", e); notify("Foto salva localmente, mas não enviada à nuvem.", "warning"); }
-        const item = (S.alertBobinas || []).find((b) => b.id === data.itemId || b.cloudId === data.cloudId);
-        if (item) { item.found = true; item.foundAt = new Date().toISOString(); item.foundTime = new Date().toLocaleTimeString("pt-BR"); item.foundFullCode = data.fullCode; item.foundLocation = loc; item.foundObservation = foundObs; item.foundBy = S.checkerName || ""; item.foundHasPhoto = !!savedPhoto; item.foundPhotoUrl = upload?.url || ""; item.foundPhotoPath = upload?.path || ""; }
-        (S.scanned || []).forEach((s) => { if (s && String(s.code) === String(data.fullCode)) { s.location = s.location || loc; s.observation = s.observation || foundObs; s.hasPhoto = s.hasPhoto || !!savedPhoto; s.alertFound = true; } });
-        if (data.shouldRegisterExtra && !S.extras.includes(data.fullCode)) {
-          const scanItem = { code: data.fullCode, time: data.time, status: "not-found", location: loc, observation: foundObs, hasPhoto: !!savedPhoto, source: "alert", alertFound: true };
-          S.extras.push(data.fullCode); S.scanned.unshift(scanItem); cloudSyncReading(scanItem);
-        }
-        save(); renderBobinaAlertList(); updateStats(); updateHistory(); updateDBUI(); updateReport(); camUpdateCounters?.(); camUpdateHistory?.();
-        if (item) cloudMarkBobinaAlertFound(item, data, { location: loc, observation: foundObs, hasPhoto: !!savedPhoto, photoUrl: upload?.url || "", photoPath: upload?.path || "" });
-        document.getElementById("alertFoundModal").classList.remove("show"); resetAlertPhotoState();
-        notify("Bobina procurada registrada como encontrada."); releaseAlertScanFlow();
+        if (naoPrevistaPendente) naoPrevistaPhotoSaving = true;
+        try {
+          const savedPhoto = await savePhotosExtra(data.fullCode, pendingAlertPhotoEtiqueta, pendingAlertPhotoBobina, { requireBoth: naoPrevistaPendente });
+          if (naoPrevistaPendente && !savedPhoto) { document.getElementById("alertPhotoSaveError").style.display = "block"; return; }
+          document.getElementById("alertPhotoSaveError").style.display = "none";
+          let upload = null;
+          try { const photo = await getPhotoAsync(data.fullCode); if (photo) upload = await cloudUploadBobinaAlertPhoto(data, photo); }
+          catch (e) { console.warn("Foto do alerta não enviada à nuvem:", e); notify("Foto salva localmente, mas não enviada à nuvem.", "warning"); }
+          const item = (S.alertBobinas || []).find((b) => b.id === data.itemId || b.cloudId === data.cloudId);
+          if (item) { item.found = true; item.foundAt = new Date().toISOString(); item.foundTime = new Date().toLocaleTimeString("pt-BR"); item.foundFullCode = data.fullCode; item.foundLocation = loc; item.foundObservation = foundObs; item.foundBy = S.checkerName || ""; item.foundHasPhoto = !!savedPhoto; item.foundPhotoUrl = upload?.url || ""; item.foundPhotoPath = upload?.path || ""; }
+          (S.scanned || []).forEach((s) => { if (s && String(s.code) === String(data.fullCode)) { s.location = s.location || loc; s.observation = s.observation || foundObs; s.hasPhoto = s.hasPhoto || !!savedPhoto; s.alertFound = true; } });
+          if (naoPrevistaPendente && !completeNaoPrevistaRecord(data.fullCode, { location: loc, observation: foundObs, categoriaKey, hasPhoto: savedPhoto })) { notify("Não foi possível concluir a não prevista. Tente novamente.", "error"); return; }
+          if (data.shouldRegisterExtra && !S.extras.includes(data.fullCode)) {
+            const scanItem = { code: data.fullCode, time: data.time, status: "not-found", location: loc, observation: foundObs, hasPhoto: !!savedPhoto, source: "alert", alertFound: true };
+            S.extras.push(data.fullCode); S.scanned.unshift(scanItem); cloudSyncReading(scanItem);
+          }
+          save(); renderBobinaAlertList(); updateStats(); updateHistory(); updateDBUI(); updateReport(); camUpdateCounters?.(); camUpdateHistory?.();
+          if (item) cloudMarkBobinaAlertFound(item, data, { location: loc, observation: foundObs, hasPhoto: !!savedPhoto, photoUrl: upload?.url || "", photoPath: upload?.path || "" });
+          document.getElementById("alertFoundModal").classList.remove("show"); resetAlertPhotoState();
+          notify("Bobina procurada registrada como encontrada."); releaseAlertScanFlow();
+          if (getPendingNaoPrevista()) reopenPendingNaoPrevista();
+        } finally { if (naoPrevistaPendente) naoPrevistaPhotoSaving = false; }
       }
       function cancelAlertFound() {
+        if (pendingAlertFound && getExtraScan(pendingAlertFound.fullCode)?.informacoesPendentes) { blockForPendingNaoPrevista(); return; }
         document.getElementById("alertFoundModal").classList.remove("show"); resetAlertPhotoState(); releaseAlertScanFlow();
       }
 
@@ -4289,7 +4332,7 @@ ${"=".repeat(95)}
       function removeDB(c) { S.db = S.db.filter((x) => x !== c); S.checked.delete(c); save(); updateDBUI(); updateStats(); }
       function confirmClear() {
         showModal("🗑️ Limpar bobinas", "Remover todas as bobinas e limpar a conferência atual?", () => {
-          resetConferenceData({ keepImportedFile: true });
+          if (!resetConferenceData({ keepImportedFile: true })) return;
           notify("Bobinas removidas.");
         });
       }
@@ -4553,15 +4596,70 @@ if (S.collectorMode) {
         notify("Conferência iniciada no modo coletor.");
       }
       async function startConference() {
+        if (blockForPendingNaoPrevista()) return;
         if (S.db.length === 0) { notify("Importe os dados primeiro!", "error"); return; }
         if (!ensureCheckerName(() => startConference())) return;
         if (S.collectorMode) startCollectorConference();
         else openCamera(true);
         cloudSetStatus("ok", S.cloudSessionStartSaved ? "☁️ Conferência registrada" : "☁️ Aguardando primeira leitura");
       }
+      function getPendingNaoPrevista() {
+        const scans = (S.scanned || []).filter((item) => item && item.status === "not-found" && item.informacoesPendentes === true);
+        return scans.length ? scans[scans.length - 1] : null;
+      }
+      function registerNaoPrevistaOnRead(code, time, source, { manual = false } = {}) {
+        const value = String(code || "");
+        if (!value || S.db.includes(value) || S.checked.has(value) || S.extras.includes(value)) return null;
+        const needsInfo = !!naoPrevistaInfoOn;
+        const scan = { code: value, time: time || new Date().toLocaleTimeString("pt-BR"), status: "not-found", location: "", observation: "", hasPhoto: false, hasPhotoEtiqueta: false, hasPhotoBobina: false, source: source || "", manual: !!manual, categoriaKey: "", categoria: "", categoriaInformada: false, informacoesSolicitadas: needsInfo, informacoesPendentes: needsInfo, lidaEmLocal: new Date().toISOString() };
+        S.extras.push(value); S.scanned.unshift(scan);
+        // Primeiro salva o registro; o formulário e as fotos vêm depois.
+        save(); cloudSyncReading(scan);
+        updateStats(); updateHistory(); updateDBUI(); updateReport();
+        if (document.getElementById("camCntExtra")) { camUpdateCounters(); camUpdateHistory(); }
+        return scan;
+      }
+      function reopenPendingNaoPrevista() {
+        const scan = getPendingNaoPrevista();
+        if (!scan) return false;
+        if (pendingAlertFound && String(pendingAlertFound.fullCode) === String(scan.code)) return true;
+        if (pendingExtraMain && String(pendingExtraMain.code) === String(scan.code) && document.getElementById("locModal")?.classList.contains("show")) return true;
+        if (camPendingExtra && String(camPendingExtra.code) === String(scan.code) && document.getElementById("camLocModal")?.classList.contains("show")) return true;
+        if (pendingNaoAprovada) return true;
+        if (document.getElementById("appMenu")?.classList.contains("show")) closeAppMenu(false);
+        if (scan.alertaPendente) {
+          const saved = scan.alertaPendente;
+          const item = (S.alertBobinas || []).find((b) => b.id === saved.id || (saved.cloudId && b.cloudId === saved.cloudId)) || saved;
+          pendingAlertFound = { itemId: saved.id, cloudId: saved.cloudId, shortCode: saved.shortCode, fullCode: scan.code, time: scan.time, source: "recovery", existsInBase: false, alreadyChecked: false, alreadyExtra: true, shouldRegisterExtra: false };
+          showAlertFoundModal(item, scan.code); return true;
+        }
+        showLocModal(scan.code, scan.time, "recovery");
+        return true;
+      }
+      function blockForPendingNaoPrevista() {
+        if (!getPendingNaoPrevista()) return false;
+        reopenPendingNaoPrevista();
+        notify("Complete a localização e as duas fotos da não prevista para continuar.", "warning");
+        return true;
+      }
+      function completeNaoPrevistaRecord(code, { location, observation, categoriaKey, hasPhoto }) {
+        const scan = getExtraScan(code);
+        if (!scan || scan.informacoesPendentes !== true || !hasPhoto) return false;
+        scan.location = location; scan.observation = observation || "";
+        scan.hasPhoto = true; scan.hasPhotoEtiqueta = true; scan.hasPhotoBobina = true;
+        scan.categoriaKey = categoriaKey || ""; scan.categoria = categoriaKey ? coilCategoryLabel(categoriaKey) : "";
+        scan.categoriaInformada = !!categoriaKey; scan.informacoesPendentes = false;
+        delete scan.alertaPendente;
+        scan.informacoesConcluidasEmLocal = new Date().toISOString();
+        save(); cloudSyncReading(scan);
+        updateStats(); updateHistory(); updateDBUI(); updateReport();
+        if (document.getElementById("camCntExtra")) { camUpdateCounters(); camUpdateHistory(); }
+        return true;
+      }
       function processCollectorCode(rawCode) {
   // BUG 2 CORRIGIDO: trava anti duplo disparo
   if (collectorProcessing) return;
+  if (blockForPendingNaoPrevista()) return;
   collectorProcessing = true;
 
   const code = normalizeCollectorCode(rawCode);
@@ -4581,14 +4679,16 @@ if (S.collectorMode) {
     return;
   }
 
+  const wasChecked = S.checked.has(code), wasNaoPrevista = S.extras.includes(code), inBase = S.db.includes(code);
   recordConferenceReading();
+  const newNaoPrevista = !inBase && !wasChecked && !wasNaoPrevista ? registerNaoPrevistaOnRead(code, time, "collector") : null;
   if (handleBobinaAlertScan(code, time, "collector")) {
     setCollectorLastRead(`🚨 ${code} é uma bobina em alerta.`, "err");
     updateCollectorOverlayCenter("🚨 Alerta de bobina", "Bobina procurada encontrada.", code);
     return;
   }
 
-  if (S.checked.has(code)) {
+  if (wasChecked) {
     collectorShowBigStatus("yellow", "⚠️ JÁ LIDA", code, 1500);
     setCollectorLastRead(`⚠️ ${code} já conferido.`, "warn");
     updateCollectorOverlayCenter("Já lida", "Esta bobina já foi conferida.", code);
@@ -4597,7 +4697,7 @@ if (S.collectorMode) {
     return;
   }
 
-  if (S.extras.includes(code)) {
+  if (wasNaoPrevista) {
     collectorShowBigStatus("yellow", "⚠️ JÁ REGISTRADA", code, 1600);
     setCollectorLastRead(`⚠️ ${code} já registrado como não prevista.`, "warn");
     updateCollectorOverlayCenter("Já registrada", "Já registrada como não prevista.", code);
@@ -4606,7 +4706,7 @@ if (S.collectorMode) {
     return;
   }
 
-  if (S.db.includes(code)) {
+  if (inBase) {
     if (isNaoAprovadaCode(code)) {
       collectorShowBigStatus("red", "⚠️ NÃO APROVADA", code, 1200);
       setCollectorLastRead(`⚠️ ${code} é bobina NÃO APROVADA. ${naoAprovadaInfoOn ? "Informe o endereço." : "Será conferida sem pedir dados."}`, "warn");
@@ -4620,7 +4720,6 @@ if (S.collectorMode) {
     save();
     cloudSyncReading(scanItem);
     updateStats(); updateHistory(); updateDBUI(); updateReport();
-    document.getElementById("btnUndo").disabled = false;
     collectorShowBigStatus("green", "✅ LIDA", code, 1400);
     setCollectorLastRead(`✅ ${code} conferido.`, "ok");
     updateCollectorOverlayCenter("Lida com sucesso", "Bobina prevista conferida com sucesso.", code);
@@ -4629,12 +4728,18 @@ if (S.collectorMode) {
     return;
   }
 
-  // Não prevista
+  // A não prevista já foi salva acima, antes de abrir qualquer formulário.
   collectorShowBigStatus("red", "⚠️ NÃO PREVISTA", code, 1200);
-  setCollectorLastRead(`⚠️ ${code} não prevista. Informe a localização.`, "warn");
-  updateCollectorOverlayCenter("Bobina não prevista", "Abrindo o fluxo de localização e fotos.", code);
-  collectorProcessing = false;
-  showLocModal(code, time, "collector");
+  if (newNaoPrevista?.informacoesPendentes) {
+    setCollectorLastRead(`⚠️ ${code} registrada. Informe localização e fotos.`, "warn");
+    updateCollectorOverlayCenter("Bobina não prevista", "Informe a localização e tire as duas fotos.", code);
+    showLocModal(code, time, "collector");
+  } else {
+    collectorProcessing = false;
+    setCollectorLastRead(`⚠️ ${code} registrada como não prevista.`, "warn");
+    updateCollectorOverlayCenter("Não prevista registrada", "Leitura salva neste aparelho.", code);
+    setTimeout(() => { if (collectorCanFocus()) focusCollectorInput(); }, 120);
+  }
 }
       function handleCollectorRead(rawValue = null) {
   const input = document.getElementById("collectorInput");
@@ -4745,6 +4850,10 @@ if (S.collectorMode) {
           if (e.newValue === "on" || e.newValue === "off") { naoAprovadaInfoOn = e.newValue === "on"; naoInfoHasGlobalCache = true; }
           updateNaoAprovadaInfoUI(); return;
         }
+        if (e.key === NAO_PREVISTA_INFO_KEY) {
+          if (e.newValue === "on" || e.newValue === "off") { naoPrevistaInfoOn = e.newValue === "on"; naoPrevInfoHasGlobalCache = true; }
+          updateNaoPrevistaInfoUI(); return;
+        }
         if (e.key !== "bob3") return;
         try {
           const incoming = e.newValue ? JSON.parse(e.newValue) : null;
@@ -4792,7 +4901,7 @@ if (S.collectorMode) {
     if (s.status === "found") {
       html += `<div class="h-item found"><span>✅</span><strong>${esc(s.code)}</strong><span style="margin-left:auto">OK</span><small>${esc(s.time || "")}</small></div>`;
     } else {
-      html += `<div class="h-item extra"><span>⚠️</span><strong>${esc(s.code)}</strong><span>${s.location ? "📌 " + esc(s.location) : ""}</span><span>${s.hasPhoto ? "📸" : ""}</span><span style="margin-left:auto">Extra</span><small>${esc(s.time || "")}</small></div>`;
+      html += `<div class="h-item extra"><span>⚠️</span><strong>${esc(s.code)}</strong><span>${s.location ? "📌 " + esc(s.location) : ""}</span><span>${s.hasPhoto ? "📸" : ""}</span><span style="margin-left:auto">${s.informacoesPendentes ? "Não prevista · informações pendentes" : "Não prevista"}</span><small>${esc(s.time || "")}</small></div>`;
     }
   });
   // Preserva o elemento .empty e substitui o restante
@@ -4812,18 +4921,6 @@ if (S.collectorMode) {
     if (overlayEmpty) overlayBox.appendChild(overlayEmpty);
   }
 }
-      function undoLast() {
-        if (!S.scanned.length) return; const last = S.scanned.shift(); if (last.status === "found") S.checked.delete(last.code); else if (last.status === "not-found") { const i = S.extras.indexOf(last.code); if (i > -1) S.extras.splice(i, 1); removeSavedPhoto(last.code) }
-        document.getElementById("btnUndo").disabled = !S.scanned.length; save(); updateStats(); updateHistory(); updateDBUI(); notify(`↩️ Desfeito: ${last.code}`);
-      }
-      function clearScans() {
-        showModal("🔄 Reiniciar", "Limpar leituras mas manter banco de dados?", () => {
-          S.scanned.forEach((scan) => { if (scan && scan.hasPhoto) removeSavedPhoto(scan.code); });
-          S.scanned = []; S.checked = new Set(); S.extras = [];
-          S.cloudSessionId = ""; S.cloudSessionStartSaved = false; S.primeiraLeituraEmLocal = ""; S.ultimaLeituraEmLocal = ""; S.horarioLegado = false; S.estadoGeracao = newConferenceGeneration();
-          save(); updateStats(); updateHistory(); updateDBUI(); document.getElementById("btnUndo").disabled = true; notify("Conferência reiniciada!");
-        });
-      }
       function getOP(code) { return S.meta && S.meta[code] && S.meta[code].op ? S.meta[code].op : "-"; }
       function getPeso(code) { return S.meta && S.meta[code] && S.meta[code].peso ? S.meta[code].peso : "-"; }
       function normalizeCategoryText(v) {
@@ -5036,6 +5133,9 @@ if (S.collectorMode) {
         // Em conferência mista, não prevista precisa de confirmação manual.
         return [...new Set(S.extras || [])].filter((code) => {
           const scan = getExtraScan(code);
+          // Quando o administrador desliga as informações, não pedir categoria
+          // depois na exportação ou finalização; pendências permanecem registradas.
+          if (scan && (scan.informacoesSolicitadas === false || scan.informacoesPendentes === true)) return false;
           return !(scan && scan.categoriaKey);
         });
       }
@@ -5105,7 +5205,7 @@ if (S.collectorMode) {
         [...new Set(S.extras)].forEach((code) => {
           const scan = S.scanned.find((s) => s.code === code && s.status === "not-found");
           const categoriaKey = scan?.categoriaKey || "";
-          items.push({ code, op: "-", peso: "-", status: "extra", manual: false, time: scan ? scan.time : "-", location: scan?.location || "-", observation: scan?.observation || "", hasPhoto: scan?.hasPhoto || false, categoriaKey, categoria: categoriaKey ? coilCategoryLabel(categoriaKey) : "", categoriaInformada: !!scan?.categoriaKey });
+          items.push({ code, op: "-", peso: "-", status: "extra", manual: !!scan?.manual, time: scan ? scan.time : "-", location: scan?.location || "-", observation: scan?.observation || "", hasPhoto: !!scan?.hasPhoto, categoriaKey, categoria: categoriaKey ? coilCategoryLabel(categoriaKey) : "", categoriaInformada: scan?.categoriaInformada === false ? false : !!scan?.categoriaKey, informacoesSolicitadas: scan?.informacoesSolicitadas, informacoesPendentes: !!scan?.informacoesPendentes });
         });
         S.db.forEach((code) => {
           const chk = S.checked.has(code), scan = S.scanned.find((s) => s.code === code && s.status === "found");
@@ -5428,18 +5528,25 @@ ${"=".repeat(95)}
         ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height); drawContain(ctx, etq, 0, labelH, maxW, etqH); drawContain(ctx, bob, 0, labelH + etqH + labelH, maxW, bobH); ctx.fillStyle = "rgba(0,0,0,.75)"; ctx.fillRect(0, 0, maxW, labelH); ctx.fillRect(0, labelH + etqH, maxW, labelH); ctx.fillStyle = "#fff"; ctx.font = "bold 22px Arial"; ctx.fillText("ETIQUETA • " + code, 16, 28); ctx.fillText("BOBINA • " + code, 16, labelH + etqH + 28);
         return canvas.toDataURL("image/jpeg", 0.72);
       }
-      async function savePhotosExtra(code, photoEtiqueta, photoBobina) {
-        const key = String(code || "");
+      async function savePhotosExtra(code, photoEtiqueta, photoBobina, { requireBoth = false } = {}) {
+        const key = String(code || ""), previousPhoto = photoMemoryCache[key];
+        if (requireBoth && (!photoEtiqueta || !photoBobina)) return false;
         try {
           const combined = await combinePhotosHalf(key, photoEtiqueta, photoBobina);
-          photoMemoryCache[key] = combined;
           const savedIndexed = await photoStoreSet(key, combined);
           let savedLocal = false;
           try { localStorage.setItem("photo_" + key, combined); savedLocal = !!localStorage.getItem("photo_" + key); } catch (e) { console.warn("localStorage sem espaço para foto:", e); }
           if (!savedIndexed && !savedLocal) throw new Error("Falha ao salvar foto combinada");
+          photoMemoryCache[key] = combined;
           return true;
         } catch (e) {
           console.error("Erro ao salvar foto:", e);
+          // Para não previstas com informações obrigatórias, nunca considerar
+          // somente a etiqueta ou uma foto apenas em memória como concluídas.
+          if (requireBoth) {
+            if (previousPhoto) photoMemoryCache[key] = previousPhoto; else delete photoMemoryCache[key];
+            return false;
+          }
           try {
             photoMemoryCache[key] = photoEtiqueta;
             const savedIndexed = await photoStoreSet(key, photoEtiqueta);
@@ -5455,7 +5562,11 @@ ${"=".repeat(95)}
         if (typeof Html5Qrcode === "undefined") { notify("Biblioteca da câmera não carregou.", "error"); return; }
         document.getElementById("scannerOverlay").classList.add("show"); document.body.style.overflow = "hidden"; camUpdateCounters(); camUpdateHistory(); camCooldown = false; camEnableVolumeZoom();
         const scanW = Math.min(Math.floor(window.innerWidth * 0.94), 720), scanH = Math.min(Math.floor(window.innerHeight * 0.24), 240);
-        const onSuccess = (text) => { if (camCooldown || document.getElementById("appMenu")?.classList.contains("show")) return; camCooldown = true; camProcessScan(String(text).trim()); if (!camPendingExtra && !pendingNaoAprovada) setTimeout(() => (camCooldown = false), CAM_SCAN_DELAY_MS); };
+        const onSuccess = (text) => {
+          if (camCooldown || getPendingNaoPrevista() || pendingAlertFound || document.getElementById("appMenu")?.classList.contains("show")) return;
+          camCooldown = true; camProcessScan(String(text).trim());
+          if (!camPendingExtra && !pendingNaoAprovada && !pendingAlertFound && !getPendingNaoPrevista()) setTimeout(() => { if (!getPendingNaoPrevista() && !pendingAlertFound) camCooldown = false; }, CAM_SCAN_DELAY_MS);
+        };
         const onError = () => {};
         async function cleanupScannerInstance() { if (camScanner) { try { await camScanner.stop(); } catch (e) {} try { camScanner.clear(); } catch (e) {} camScanner = null; } }
         async function tryStart(cameraConfig) {
@@ -5553,12 +5664,15 @@ ${"=".repeat(95)}
       function camProcessScan(code) {
         const time = new Date().toLocaleTimeString("pt-BR"), err = document.getElementById("camErrorOverlay"), warn = document.getElementById("camWarnOverlay");
         if (!/^(500|700)\d{8,10}$/.test(code)) return;
-        if (pendingNaoAprovada) return;
+        if (pendingNaoAprovada || pendingAlertFound) return;
+        if (blockForPendingNaoPrevista()) return;
+        const wasChecked = S.checked.has(code), wasNaoPrevista = S.extras.includes(code), inBase = S.db.includes(code);
         recordConferenceReading();
+        const newNaoPrevista = !inBase && !wasChecked && !wasNaoPrevista ? registerNaoPrevistaOnRead(code, time, "camera") : null;
         if (handleBobinaAlertScan(code, time, "camera")) { camFlash("red"); camShowBigStatus("red", "🚨 ALERTA", code, 1700); camShowResult("red", `🚨 ALERTA — bobina procurada "${code}" encontrada`, 2400); camVibrate("notfound"); camBeep("notfound"); return; }
-        if (S.checked.has(code)) { camFlash("yellow"); camShowBigStatus("yellow", "⚠️ JÁ LIDA", code, 1500); camShowResult("yellow", `⚠️ "${code}" — já conferido`, 1500); camVibrate("already"); camBeep("warning"); return; }
-        if (S.extras.includes(code)) { camFlash("yellow"); camShowBigStatus("yellow", "⚠️ JÁ REGISTRADA", code, 1700); warn.classList.add("show"); setTimeout(() => warn.classList.remove("show"), 2000); camShowResult("yellow", `⚠️ "${code}" — já registrado como não prevista`, 2500); camVibrate("already"); camBeep("warning"); return; }
-        if (S.db.includes(code)) {
+        if (wasChecked) { camFlash("yellow"); camShowBigStatus("yellow", "⚠️ JÁ LIDA", code, 1500); camShowResult("yellow", `⚠️ "${code}" — já conferido`, 1500); camVibrate("already"); camBeep("warning"); return; }
+        if (wasNaoPrevista) { camFlash("yellow"); camShowBigStatus("yellow", "⚠️ JÁ REGISTRADA", code, 1700); warn.classList.add("show"); setTimeout(() => warn.classList.remove("show"), 2000); camShowResult("yellow", `⚠️ "${code}" — já registrado como não prevista`, 2500); camVibrate("already"); camBeep("warning"); return; }
+        if (inBase) {
           if (isNaoAprovadaCode(code)) {
             camFlash("red"); camShowBigStatus("red", "⚠️ NÃO APROVADA", code, 1600); camShowResult("red", `⚠️ NÃO APROVADA — "${code}" — ${naoAprovadaInfoOn ? "informe o endereço" : "será conferida sem pedir dados"}`, 2400); camVibrate("notfound"); camBeep("notfound");
             camCooldown = true;
@@ -5567,11 +5681,17 @@ ${"=".repeat(95)}
           }
           S.checked.add(code); const scanItem = { code, time, status: "found" }; S.scanned.unshift(scanItem); camFlash("green"); camShowBigStatus("green", "✅ LIDA", code, 1450); camShowResult("green", `✅ CONFERIDO — "${code}"`, 1800); camVibrate("found"); camBeep("found"); save(); cloudSyncReading(scanItem); camUpdateCounters(); camUpdateHistory(); updateStats(); updateHistory(); updateDBUI();
         } else {
-          camFlash("red"); camShowBigStatus("red", "⚠️ NÃO PREVISTA", code, 1200); camVibrate("notfound"); camBeep("notfound"); camPendingExtra = { code, time }; camCooldown = true; camShowLocationModal(code);
+          camFlash("red"); camShowBigStatus("red", "⚠️ NÃO PREVISTA", code, 1200); camVibrate("notfound"); camBeep("notfound");
+          if (newNaoPrevista?.informacoesPendentes) {
+            camPendingExtra = { code, time }; camCooldown = true; camShowLocationModal(code);
+          } else {
+            camShowResult("red", `⚠️ "${code}" — não prevista registrada`, 2400);
+            setTimeout(() => { if (!getPendingNaoPrevista() && !pendingAlertFound) camCooldown = false; }, CAM_SCAN_DELAY_MS);
+          }
         }
       }
-      function camOpenManualModal() { camCooldown = true; document.getElementById("camManualModal").classList.add("show"); document.getElementById("camManualSearch").value = ""; document.getElementById("camManualBobinas").style.display = "none"; document.getElementById("camManualOps").style.display = "grid"; camRenderManualOps(""); setTimeout(() => document.getElementById("camManualSearch").focus(), 200); }
-      function camCloseManualModal() { document.getElementById("camManualModal").classList.remove("show"); setTimeout(() => (camCooldown = false), 300); }
+      function camOpenManualModal() { if (blockForPendingNaoPrevista()) return; camCooldown = true; document.getElementById("camManualModal").classList.add("show"); document.getElementById("camManualSearch").value = ""; document.getElementById("camManualBobinas").style.display = "none"; document.getElementById("camManualOps").style.display = "grid"; camRenderManualOps(""); setTimeout(() => document.getElementById("camManualSearch").focus(), 200); }
+      function camCloseManualModal() { document.getElementById("camManualModal").classList.remove("show"); setTimeout(() => { if (!getPendingNaoPrevista() && !pendingAlertFound) camCooldown = false; }, 300); }
       function camPendingByOp() { const map = {}; S.db.forEach((code) => { if (S.checked.has(code)) return; const op = getOP(code) || "-"; if (!map[op]) map[op] = []; map[op].push(code); }); return map; }
       function camRenderManualOps(q = "") {
         const box = document.getElementById("camManualOps"), map = camPendingByOp(); const ops = Object.keys(map).filter((op) => op.toLowerCase().includes(String(q).toLowerCase())).sort();
@@ -5585,6 +5705,7 @@ ${"=".repeat(95)}
       function camBackManualOps() { document.getElementById("camManualBobinas").style.display = "none"; document.getElementById("camManualOps").style.display = "grid"; }
       function camSelectManualBobina(code) { camCloseManualModal(); camManualSelectedCode = null; camPendingExtra = null; camMarkManualFound(code); }
       function camMarkManualFound(code) {
+        if (blockForPendingNaoPrevista()) return;
         const time = new Date().toLocaleTimeString("pt-BR");
         recordConferenceReading();
         if (isNaoAprovadaCode(code) && !S.checked.has(code)) {
@@ -5602,14 +5723,23 @@ ${"=".repeat(95)}
         else setTimeout(() => (camCooldown = false), 300);
       }
       function camManualNotExpected() {
-        camCloseManualModal(); const code = "MANUAL-NP-" + new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14); camPendingExtra = { code, time: new Date().toLocaleTimeString("pt-BR") }; camManualSelectedCode = null; camShowLocationModal(code, "extra"); camCooldown = true;
+        if (blockForPendingNaoPrevista()) return;
+        camCloseManualModal();
+        const code = "MANUAL-NP-" + new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 17) + "-" + Math.random().toString(36).slice(2, 7), time = new Date().toLocaleTimeString("pt-BR");
+        recordConferenceReading();
+        const scan = registerNaoPrevistaOnRead(code, time, "camera", { manual: true });
+        camManualSelectedCode = null;
+        if (scan?.informacoesPendentes) { camPendingExtra = { code, time }; camCooldown = true; camShowLocationModal(code, "extra"); }
+        else { camPendingExtra = null; camShowResult("red", `⚠️ "${code}" — não prevista registrada`, 2400); }
       }
       function camShowLocationModal(code, mode = "extra") {
-        camManualMode = mode; document.getElementById("camLocModal").classList.add("show"); document.getElementById("camLocCode").textContent = code; document.getElementById("camLocInput").value = ""; document.getElementById("camObsInput").value = ""; document.getElementById("camLocError").style.display = "none"; document.getElementById("camPhotoErrorEtiqueta").style.display = "none"; document.getElementById("camPhotoErrorBobina").style.display = "none";
+        camManualMode = mode; document.getElementById("camLocModal").classList.add("show"); document.getElementById("camLocCode").textContent = code; document.getElementById("camLocInput").value = ""; document.getElementById("camObsInput").value = ""; document.getElementById("camLocError").style.display = "none"; document.getElementById("camPhotoErrorEtiqueta").style.display = "none"; document.getElementById("camPhotoErrorBobina").style.display = "none"; document.getElementById("camPhotoSaveError").style.display = "none";
         prepareExtraCategory("cam", code, mode !== "manualFound" && shouldAskExtraCategoryForCurrentConference());
-        document.getElementById("camLocHeader").textContent = mode === "manualFound" ? "📸 CONFERÊNCIA MANUAL" : "⚠️ BOBINA NÃO PREVISTA"; document.getElementById("camLocHeader").style.color = mode === "manualFound" ? "#3b82f6" : "#ef4444"; document.getElementById("camLocLabel").textContent = mode === "manualFound" ? "📌 Observação/localização (opcional):" : "📌 Informe a localização:"; document.getElementById("camLocInput").placeholder = mode === "manualFound" ? "Opcional" : "Ex: A2, E17, 240..."; camRemovePhoto("etiqueta"); camRemovePhoto("bobina"); setTimeout(() => document.getElementById("camLocInput").focus(), 300);
+        const cancel = document.getElementById("camLocCancelBtn"); cancel.hidden = mode !== "manualFound"; cancel.style.display = mode === "manualFound" ? "" : "none";
+        document.getElementById("camLocHeader").textContent = mode === "manualFound" ? "📸 CONFERÊNCIA MANUAL" : "⚠️ BOBINA NÃO PREVISTA"; document.getElementById("camLocHeader").style.color = mode === "manualFound" ? "#3b82f6" : "#ef4444"; document.getElementById("camLocLabel").textContent = mode === "manualFound" ? "📌 Observação/localização (opcional):" : "📌 Informe a localização:"; document.getElementById("camLocInput").placeholder = mode === "manualFound" ? "Opcional" : "Ex: A2, E17, 240..."; camRemovePhoto("etiqueta"); camRemovePhoto("bobina"); focusModalInputIfUntouched("camLocModal", "camLocInput", 300);
       }
       async function camConfirmLocation() {
+        if (naoPrevistaPhotoSaving) return;
         if (photoRotationInProgress("cam")) { notify("Aguarde a foto terminar de girar.", "warning"); return; }
         const input = document.getElementById("camLocInput"), loc = input.value.trim(), obs = document.getElementById("camObsInput").value.trim(); let hasError = false; let categoriaKey = "";
         if (camManualMode !== "manualFound") { categoriaKey = shouldAskExtraCategoryForCurrentConference() ? validateExtraCategory("cam") : automaticExtraCategoryForCurrentConference(camPendingExtra?.code); if (!categoriaKey) hasError = true; }
@@ -5624,16 +5754,27 @@ ${"=".repeat(95)}
           if (!savedPhoto) notify("Foto não foi salva. Não vai sair no exportador.", "warning");
           camShowResult("green", `📸 MANUAL — "${code}"`); save(); cloudSyncReading(S.scanned[0]); camUpdateCounters(); camUpdateHistory(); updateStats(); updateHistory(); updateDBUI(); camManualSelectedCode = null;
         } else if (camPendingExtra) {
-          const savedPhoto = await savePhotosExtra(camPendingExtra.code, camCurrentPhotoEtiqueta, camCurrentPhotoBobina);
-          S.extras.push(camPendingExtra.code); S.scanned.unshift({ code: camPendingExtra.code, time: camPendingExtra.time, status: "not-found", location: loc, observation: obs, hasPhoto: savedPhoto, hasPhotoEtiqueta: savedPhoto, hasPhotoBobina: savedPhoto, categoriaKey, categoria: coilCategoryLabel(categoriaKey), categoriaInformada: true });
-          if (!savedPhoto) notify("Foto não foi salva. Não vai sair no exportador.", "warning");
-          camShowResult("red", `⚠️ "${camPendingExtra.code}" — 📌 ${loc} 🏷️`); save(); cloudSyncReading(S.scanned[0]); camUpdateCounters(); camUpdateHistory(); updateStats(); updateHistory(); updateDBUI(); camPendingExtra = null;
+          const code = camPendingExtra.code;
+          if (!getExtraScan(code)?.informacoesPendentes) { notify("Esta não prevista já foi concluída ou não está mais disponível.", "warning"); return; }
+          naoPrevistaPhotoSaving = true;
+          let savedPhoto = false;
+          try { savedPhoto = await savePhotosExtra(code, camCurrentPhotoEtiqueta, camCurrentPhotoBobina, { requireBoth: true }); }
+          finally { naoPrevistaPhotoSaving = false; }
+          if (!savedPhoto) { document.getElementById("camPhotoSaveError").style.display = "block"; notify("Não foi possível salvar as duas fotos. Verifique o espaço do aparelho e tente novamente.", "error"); return; }
+          document.getElementById("camPhotoSaveError").style.display = "none";
+          if (!completeNaoPrevistaRecord(code, { location: loc, observation: obs, categoriaKey, hasPhoto: savedPhoto })) { notify("Não foi possível concluir a não prevista. Tente novamente.", "error"); return; }
+          camShowResult("red", `⚠️ "${code}" — 📌 ${loc} 🏷️`); camPendingExtra = null;
         }
         camCurrentPhotoEtiqueta = null; camCurrentPhotoBobina = null; camManualMode = "extra"; document.getElementById("camLocModal").classList.remove("show");
+        if (getPendingNaoPrevista()) { reopenPendingNaoPrevista(); return; }
         if (collectorReturnAfterManualCamera) setTimeout(() => closeIntegratedScanner(), 700);
         else setTimeout(() => (camCooldown = false), 1000);
       }
-      function camCancelLocation() { camPendingExtra = null; camManualSelectedCode = null; camManualMode = "extra"; camCurrentPhotoEtiqueta = null; camCurrentPhotoBobina = null; document.getElementById("camLocModal").classList.remove("show"); if (collectorReturnAfterManualCamera) setTimeout(() => closeIntegratedScanner(), 300); else setTimeout(() => (camCooldown = false), 500); }
+      function camCancelLocation() {
+        if (camManualMode !== "manualFound" && getPendingNaoPrevista()) { blockForPendingNaoPrevista(); return; }
+        camPendingExtra = null; camManualSelectedCode = null; camManualMode = "extra"; camCurrentPhotoEtiqueta = null; camCurrentPhotoBobina = null; document.getElementById("camLocModal").classList.remove("show");
+        if (collectorReturnAfterManualCamera) setTimeout(() => closeIntegratedScanner(), 300); else setTimeout(() => (camCooldown = false), 500);
+      }
       function camHandlePhoto(e, tipo) {
         const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = function (ev) {
           const data = ev.target.result; const isBobina = tipo === "bobina"; if (isBobina) camCurrentPhotoBobina = data; else camCurrentPhotoEtiqueta = data;
@@ -5732,62 +5873,56 @@ ${"=".repeat(95)}
         if (input) input.value = "";
       }
       function showLocModal(code, time, source = "manual") {
-        const requirePhotos = source === "collector";
-        pendingExtraMain = { code, time, source, requirePhotos };
+        const scan = getExtraScan(code);
+        pendingExtraMain = { code, time, source, requirePhotos: true };
         document.getElementById("locModal").classList.add("show");
         document.getElementById("locCodeMain").textContent = code;
-        document.getElementById("locInputMain").value = "";
-        document.getElementById("locObsMain").value = "";
+        document.getElementById("locInputMain").value = scan?.location || "";
+        document.getElementById("locObsMain").value = scan?.observation || "";
         document.getElementById("locErrorMain").style.display = "none";
+        document.getElementById("locPhotoSaveError").style.display = "none";
         const askCategory = shouldAskExtraCategoryForCurrentConference();
         document.getElementById("locModalDesc").textContent = askCategory
-          ? (requirePhotos ? "Informe o tipo da base, a localização e tire as fotos da etiqueta e da bobina." : "Informe o tipo da base e a localização desta bobina:")
-          : (requirePhotos ? "Informe a localização e tire as fotos da etiqueta e da bobina." : "Informe a localização desta bobina:");
+          ? "A leitura já foi registrada. Informe o tipo da base, a localização e tire as fotos da etiqueta e da bobina."
+          : "A leitura já foi registrada. Informe a localização e tire as fotos da etiqueta e da bobina.";
         prepareExtraCategory("loc", code, askCategory);
-        document.getElementById("locPhotoSection").style.display = requirePhotos ? "block" : "none";
+        if (askCategory && scan?.categoriaInformada && scan?.categoriaKey) setExtraCategory("loc", scan.categoriaKey);
+        document.getElementById("locPhotoSection").style.display = "block";
         resetLocPhotoState();
-        setTimeout(() => document.getElementById("locInputMain").focus(), 300);
+        focusModalInputIfUntouched("locModal", "locInputMain", 300);
       }
       async function confirmLocMain() {
+        if (naoPrevistaPhotoSaving || !pendingExtraMain) return;
         if (photoRotationInProgress("loc")) { notify("Aguarde a foto terminar de girar.", "warning"); return; }
+        const code = pendingExtraMain.code;
+        if (!getExtraScan(code)?.informacoesPendentes) { notify("Esta não prevista já foi concluída ou não está mais disponível.", "warning"); return; }
         const loc = document.getElementById("locInputMain").value.trim();
         const obs = document.getElementById("locObsMain").value.trim();
         if (!loc) { document.getElementById("locErrorMain").style.display = "block"; document.getElementById("locInputMain").focus(); return; }
-        const requirePhotos = !!pendingExtraMain?.requirePhotos;
-        const categoriaKey = shouldAskExtraCategoryForCurrentConference() ? validateExtraCategory("loc") : automaticExtraCategoryForCurrentConference(pendingExtraMain?.code);
+        document.getElementById("locErrorMain").style.display = "none";
+        const categoriaKey = shouldAskExtraCategoryForCurrentConference() ? validateExtraCategory("loc") : automaticExtraCategoryForCurrentConference(code);
         if (!categoriaKey) return;
         let photoError = false;
-        if (requirePhotos && !pendingExtraMainPhotoEtiqueta) { document.getElementById("locPhotoErrorEtiqueta").style.display = "block"; photoError = true; }
-        if (requirePhotos && !pendingExtraMainPhotoBobina) { document.getElementById("locPhotoErrorBobina").style.display = "block"; photoError = true; }
+        if (!pendingExtraMainPhotoEtiqueta) { document.getElementById("locPhotoErrorEtiqueta").style.display = "block"; photoError = true; }
+        if (!pendingExtraMainPhotoBobina) { document.getElementById("locPhotoErrorBobina").style.display = "block"; photoError = true; }
         if (photoError) return;
-        if (pendingExtraMain) {
-          if (!S.primeiraLeituraEmLocal && !S.horarioLegado && !(S.scanned || []).length) recordConferenceReading();
-          let savedPhoto = false;
-          if (requirePhotos) {
-            savedPhoto = await savePhotosExtra(pendingExtraMain.code, pendingExtraMainPhotoEtiqueta, pendingExtraMainPhotoBobina);
-            if (!savedPhoto) notify("Foto não foi salva. Não vai sair no exportador.", "warning");
-          }
-          const scanItem = { code: pendingExtraMain.code, time: pendingExtraMain.time, status: "not-found", location: loc, observation: obs, hasPhoto: savedPhoto, source: pendingExtraMain.source || "manual", categoriaKey, categoria: coilCategoryLabel(categoriaKey), categoriaInformada: true };
-          S.extras.push(pendingExtraMain.code);
-          S.scanned.unshift(scanItem);
-          document.getElementById("btnUndo").disabled = false;
-          save();
-          cloudSyncReading(scanItem);
-          updateStats(); updateHistory(); updateDBUI(); updateReport();
-          pendingExtraMain = null;
-        }
-        resetLocPhotoState();
-          document.getElementById("locModal").classList.remove("show");
-  // BUG 3 CORRIGIDO: delay maior para garantir que modal fechou
-  setTimeout(() => { if (collectorCanFocus()) focusCollectorInput(); }, 400);
-}
+        naoPrevistaPhotoSaving = true;
+        let savedPhoto = false;
+        try { savedPhoto = await savePhotosExtra(code, pendingExtraMainPhotoEtiqueta, pendingExtraMainPhotoBobina, { requireBoth: true }); }
+        finally { naoPrevistaPhotoSaving = false; }
+        if (!savedPhoto) { document.getElementById("locPhotoSaveError").style.display = "block"; notify("Não foi possível salvar as duas fotos. Verifique o espaço do aparelho e tente novamente.", "error"); return; }
+        document.getElementById("locPhotoSaveError").style.display = "none";
+        if (!completeNaoPrevistaRecord(code, { location: loc, observation: obs, categoriaKey, hasPhoto: savedPhoto })) { notify("Não foi possível concluir a não prevista. Tente novamente.", "error"); return; }
+        pendingExtraMain = null; collectorProcessing = false;
+        resetLocPhotoState(); document.getElementById("locModal").classList.remove("show");
+        if (getPendingNaoPrevista()) { reopenPendingNaoPrevista(); return; }
+        setTimeout(() => { if (collectorCanFocus()) focusCollectorInput(); }, 400);
+      }
       function cancelLocMain() {
-  pendingExtraMain = null;
-  resetLocPhotoState();
-  document.getElementById("locModal").classList.remove("show");
-  // BUG 3 CORRIGIDO: delay maior
-  setTimeout(() => { if (collectorCanFocus()) focusCollectorInput(); }, 400);
-}
+        if (getPendingNaoPrevista()) { blockForPendingNaoPrevista(); return; }
+        pendingExtraMain = null; resetLocPhotoState(); document.getElementById("locModal").classList.remove("show");
+        setTimeout(() => { if (collectorCanFocus()) focusCollectorInput(); }, 400);
+      }
       function normalizeSituacaoValue(v) {
         const s = String(v || "").trim().toUpperCase();
         if (!s) return "";
@@ -6049,6 +6184,139 @@ ${"=".repeat(95)}
       document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible" && !naoInfoUnsubscribe && navigator.onLine !== false) cloudStartNaoAprovadaInfoWatcher();
       });
+
+      // Configuração independente para não previstas, compartilhada entre aparelhos.
+      const NAO_PREVISTA_INFO_KEY = "bobinas_nao_prevista_global_v1";
+      const NAO_PREVISTA_INFO_DOC_ID = "configuracao_nao_previstas";
+      const NAO_PREVISTA_INFO_FIELD = "informacoesNaoPrevistas";
+      let naoPrevistaInfoOn = true, naoPrevInfoHasGlobalCache = false, naoPrevInfoStorageAvailable = true;
+      let naoPrevInfoSyncState = "connecting", naoPrevInfoSaving = false;
+      let naoPrevInfoUnsubscribe = null, naoPrevInfoStartPromise = null;
+      let naoPrevInfoRetryTimer = null, naoPrevInfoWatcherGeneration = 0;
+      let naoPrevistaPhotoSaving = false;
+
+      function loadNaoPrevistaInfo() {
+        try {
+          const saved = localStorage.getItem(NAO_PREVISTA_INFO_KEY);
+          naoPrevInfoHasGlobalCache = saved === "on" || saved === "off";
+          naoPrevistaInfoOn = saved !== "off";
+        } catch (e) { naoPrevistaInfoOn = true; naoPrevInfoStorageAvailable = false; }
+        naoPrevInfoSyncState = navigator.onLine === false ? "offline" : "connecting";
+        updateNaoPrevistaInfoUI();
+      }
+      function updateNaoPrevistaInfoUI() {
+        const on = document.getElementById("naoPrevInfoOnBtn"), off = document.getElementById("naoPrevInfoOffBtn"), desc = document.getElementById("naoPrevInfoDescription"), status = document.getElementById("naoPrevInfoSyncStatus");
+        if (on) { on.classList.toggle("active-on", naoPrevistaInfoOn); on.setAttribute("aria-pressed", String(naoPrevistaInfoOn)); on.disabled = naoPrevInfoSaving; }
+        if (off) { off.classList.toggle("active-off", !naoPrevistaInfoOn); off.setAttribute("aria-pressed", String(!naoPrevistaInfoOn)); off.disabled = naoPrevInfoSaving; }
+        if (desc) desc.textContent = naoPrevistaInfoOn ? "Ligado: exige localização e as duas fotos." : "Desligado: registra a não prevista sem pedir informações.";
+        if (status) {
+          const local = naoPrevInfoHasGlobalCache ? "Usando a última configuração recebida neste aparelho." : "Sem histórico: padrão ligado até receber a configuração geral.";
+          let text;
+          if (naoPrevInfoSaving) text = "🔄 Salvando a configuração geral...";
+          else if (navigator.onLine === false || naoPrevInfoSyncState === "offline") text = "📴 Sem internet. " + local;
+          else if (naoPrevInfoSyncState === "synced") text = "";
+          else if (naoPrevInfoSyncState === "error") text = "⚠️ Não foi possível confirmar a configuração geral. " + local;
+          else text = "🔄 Buscando a configuração geral. " + local;
+          if (!naoPrevInfoStorageAvailable) text += (text ? " " : "⚠️ ") + "Não foi possível guardar a opção para uso offline.";
+          status.textContent = text; status.hidden = !text;
+        }
+      }
+      function naoPrevInfoApplyConfirmed(value) {
+        naoPrevistaInfoOn = value; naoPrevInfoHasGlobalCache = true;
+        try { localStorage.setItem(NAO_PREVISTA_INFO_KEY, value ? "on" : "off"); naoPrevInfoStorageAvailable = true; }
+        catch (e) { naoPrevInfoStorageAvailable = false; console.warn("Não foi possível guardar a configuração das não previstas:", e); }
+      }
+      function naoPrevInfoScheduleRetry() {
+        if (naoPrevInfoRetryTimer || navigator.onLine === false) return;
+        naoPrevInfoRetryTimer = setTimeout(() => { naoPrevInfoRetryTimer = null; cloudStartNaoPrevistaInfoWatcher(); }, 30000);
+      }
+      function naoPrevInfoHandleSnapshot(snap) {
+        if (!snap || !snap.metadata || snap.metadata.hasPendingWrites) return;
+        if (snap.metadata.fromCache) {
+          naoPrevInfoSyncState = navigator.onLine === false ? "offline" : "connecting";
+          updateNaoPrevistaInfoUI(); return;
+        }
+        const data = snap.exists ? (snap.data() || {}) : null;
+        const value = data ? data[NAO_PREVISTA_INFO_FIELD] : true;
+        if (typeof value !== "boolean") { console.warn("Configuração geral de não previstas inválida."); naoPrevInfoSyncState = "error"; updateNaoPrevistaInfoUI(); return; }
+        naoPrevInfoApplyConfirmed(value); naoPrevInfoSyncState = "synced"; updateNaoPrevistaInfoUI();
+      }
+      function cloudStartNaoPrevistaInfoWatcher() {
+        if (naoPrevInfoUnsubscribe) return Promise.resolve(true);
+        if (naoPrevInfoStartPromise) return naoPrevInfoStartPromise;
+        if (navigator.onLine === false) { naoPrevInfoSyncState = "offline"; updateNaoPrevistaInfoUI(); return Promise.resolve(false); }
+        const generation = ++naoPrevInfoWatcherGeneration;
+        const job = (async () => {
+          try {
+            if (!(await naoInfoPrepareCloud())) throw new Error("Nuvem indisponível ou sem autenticação.");
+            if (generation !== naoPrevInfoWatcherGeneration) return false;
+            let ended = false;
+            const ref = cloudDb.collection("arquivos_base").doc(NAO_PREVISTA_INFO_DOC_ID);
+            const stop = ref.onSnapshot({ includeMetadataChanges: true }, (snap) => {
+              if (generation === naoPrevInfoWatcherGeneration) naoPrevInfoHandleSnapshot(snap);
+            }, (error) => {
+              if (generation !== naoPrevInfoWatcherGeneration) return;
+              ended = true; naoPrevInfoUnsubscribe = null;
+              naoPrevInfoSyncState = navigator.onLine === false ? "offline" : "error";
+              console.warn("Falha ao acompanhar a configuração de não previstas:", error);
+              updateNaoPrevistaInfoUI(); naoPrevInfoScheduleRetry();
+            });
+            if (ended || generation !== naoPrevInfoWatcherGeneration) { try { stop(); } catch (e) {} return false; }
+            naoPrevInfoUnsubscribe = stop; return true;
+          } catch (error) {
+            if (generation === naoPrevInfoWatcherGeneration) {
+              naoPrevInfoSyncState = navigator.onLine === false ? "offline" : "error";
+              console.warn("Configuração de não previstas indisponível:", error);
+              updateNaoPrevistaInfoUI(); naoPrevInfoScheduleRetry();
+            }
+            return false;
+          }
+        })();
+        naoPrevInfoStartPromise = job;
+        job.finally(() => { if (naoPrevInfoStartPromise === job) naoPrevInfoStartPromise = null; });
+        return job;
+      }
+      function naoPrevInfoReconnect() {
+        if (navigator.onLine === false) { naoPrevInfoSyncState = "offline"; updateNaoPrevistaInfoUI(); return; }
+        if (naoPrevInfoRetryTimer) { clearTimeout(naoPrevInfoRetryTimer); naoPrevInfoRetryTimer = null; }
+        if (naoPrevInfoUnsubscribe) { ++naoPrevInfoWatcherGeneration; try { naoPrevInfoUnsubscribe(); } catch (e) {} naoPrevInfoUnsubscribe = null; }
+        naoPrevInfoSyncState = "connecting"; updateNaoPrevistaInfoUI();
+        if (naoPrevInfoStartPromise) naoPrevInfoStartPromise.finally(() => { if (!naoPrevInfoUnsubscribe && navigator.onLine !== false) cloudStartNaoPrevistaInfoWatcher(); });
+        else cloudStartNaoPrevistaInfoWatcher();
+      }
+      async function setNaoPrevistaInfo(enabled) {
+        if (!cloudIsAdmin()) { notify("Abra o modo administrador para alterar esta opção.", "warning"); return; }
+        if (naoPrevInfoSaving) return;
+        if (navigator.onLine === false) { notify("Conecte o aparelho à internet para alterar a opção em todos os aparelhos.", "warning"); return; }
+        naoPrevInfoSaving = true; updateNaoPrevistaInfoUI();
+        try {
+          if (!(await naoInfoPrepareCloud())) throw new Error("Nuvem indisponível ou sem autenticação.");
+          const token = await naoInfoAwait(firebase.auth().currentUser.getIdToken(), 12000, "Sem resposta da autenticação.");
+          const controller = typeof AbortController === "function" ? new AbortController() : null;
+          const cancelTimer = controller ? setTimeout(() => controller.abort(), 12000) : null;
+          let response;
+          try {
+            const url = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(FIREBASE_CONFIG.projectId)}/databases/(default)/documents/arquivos_base/${encodeURIComponent(NAO_PREVISTA_INFO_DOC_ID)}?updateMask.fieldPaths=${encodeURIComponent(NAO_PREVISTA_INFO_FIELD)}`;
+            response = await naoInfoAwait(fetch(url, {
+              method: "PATCH", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ fields: { [NAO_PREVISTA_INFO_FIELD]: { booleanValue: !!enabled } } }),
+              cache: "no-store", ...(controller ? { signal: controller.signal } : {}),
+            }), 15000, "Sem resposta ao salvar a configuração.");
+          } finally { if (cancelTimer) clearTimeout(cancelTimer); }
+          if (!response.ok) throw new Error("Falha ao salvar a configuração (" + response.status + ").");
+          naoPrevInfoReconnect(); notify("✅ Configuração salva. Os aparelhos conectados serão atualizados.");
+        } catch (error) {
+          console.warn("Não foi possível confirmar a configuração de não previstas:", error);
+          naoPrevInfoSyncState = navigator.onLine === false ? "offline" : "error";
+          notify("Não foi possível confirmar a alteração. Verifique a conexão e tente novamente.", "error");
+        } finally { naoPrevInfoSaving = false; updateNaoPrevistaInfoUI(); }
+      }
+      window.addEventListener("offline", () => { naoPrevInfoSyncState = "offline"; updateNaoPrevistaInfoUI(); });
+      window.addEventListener("online", naoPrevInfoReconnect);
+      window.addEventListener("focus", () => { if (!naoPrevInfoUnsubscribe && navigator.onLine !== false) cloudStartNaoPrevistaInfoWatcher(); });
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible" && !naoPrevInfoUnsubscribe && navigator.onLine !== false) cloudStartNaoPrevistaInfoWatcher();
+      });
       function showNaoAprovadaFlow(code, time, source, opts = {}) {
         const info = { code, time, source: source || "", manual: !!opts.manual, pedirInformacoes: naoAprovadaInfoOn };
         pendingNaoAprovada = info;
@@ -6070,7 +6338,7 @@ ${"=".repeat(95)}
         const obs = document.getElementById("naoAprovadaObsInput"); if (obs) obs.value = "";
         const err = document.getElementById("naoAprovadaLocError"); if (err) err.style.display = "none";
         document.getElementById("naoAprovadaModal").classList.add("show");
-        setTimeout(() => { if (loc) loc.focus(); }, 250);
+        focusModalInputIfUntouched("naoAprovadaModal", "naoAprovadaLocInput", 250);
       }
       function releaseNaoAprovadaFlow() {
         const source = (pendingNaoAprovada && pendingNaoAprovada.source) || "";
@@ -6085,7 +6353,6 @@ ${"=".repeat(95)}
           const scanItem = { code: info.code, time: info.time, status: "found", location: loc, observation: obs, situacao: "N", manual: !!info.manual };
           if (info.source) scanItem.source = info.source;
           S.checked.add(info.code); S.scanned.unshift(scanItem);
-          const undoBtn = document.getElementById("btnUndo"); if (undoBtn) undoBtn.disabled = false;
           save(); cloudSyncReading(scanItem);
           updateStats(); updateHistory(); updateDBUI(); updateReport();
         }
@@ -6120,6 +6387,7 @@ ${"=".repeat(95)}
   setupMobileCopyProtection();
   load();
   loadNaoAprovadaInfo();
+  loadNaoPrevistaInfo();
   initCollectorMode();
   updateDBUI();
   updateStats();
@@ -6129,9 +6397,11 @@ ${"=".repeat(95)}
   renderBobinaAlertList();
   cloudStartBobinaAlertWatcher().catch((e) => console.warn("Falha ao iniciar alertas na nuvem:", e));
   cloudStartNaoAprovadaInfoWatcher();
-  document.getElementById("btnUndo").disabled = !S.scanned.length;
+  cloudStartNaoPrevistaInfoWatcher();
+  // A leitura já fica salva antes do formulário e retorna quando o app reabre.
+  setTimeout(() => reopenPendingNaoPrevista(), 0);
   // Se o localStorage voltou para um ponto antigo após erro/reload, recupera o backup interno em IndexedDB.
-  restoreStateBackupIfBetter().catch((e) => console.warn("Falha ao restaurar backup interno:", e));
+  restoreStateBackupIfBetter().then(() => reopenPendingNaoPrevista()).catch((e) => console.warn("Falha ao restaurar backup interno:", e));
   // BUG 1 CORRIGIDO: não tenta reativar o coletor automaticamente
   if (S.collectorMode) {
     setCollectorLastRead("Coletor ativado.");
@@ -6153,5 +6423,5 @@ document.addEventListener("keydown", (e) => {
 
 init();
     </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a55e3486793df1f9',t:'MTc5MzkwNjMxNQ=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a55e3486793df1f9',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
