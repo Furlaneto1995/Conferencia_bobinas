@@ -854,7 +854,7 @@
       </div>
       <div class="header">
         <!-- A cada atualização, manter a versão abaixo igual à de sw.js. -->
-        <h1><span class="header-title-icon" aria-hidden="true">📦</span> <span class="header-title-text">Conferência de Bobinas</span> <span class="app-version" aria-label="Versão do aplicativo 24">v24</span></h1>
+        <h1><span class="header-title-icon" aria-hidden="true">📦</span> <span class="header-title-text">Conferência de Bobinas</span> <span class="app-version" aria-label="Versão do aplicativo 25">v25</span></h1>
         <p>Sistema de conferência por código de barras</p>
       </div>
       <div class="section" id="sectionImport">
@@ -2491,7 +2491,7 @@ let bobinaAlertCloudReady = false;
       }
       async function finishConference() {
         if (blockForPendingNaoPrevista()) return;
-        if (!S.checkerName) { showCheckerModal(() => finishConference()); return; }
+        if (!hasCheckerName()) { notify("Inicie a conferência e informe o nome do operador antes de finalizar.", "warning"); return; }
         if (!confirm("Finalizar esta conferência?")) return;
         const ok = await cloudMarkFinished();
         notify(ok ? "Conferência finalizada." : "Não foi possível finalizar.", ok ? "success" : "warning");
@@ -3685,7 +3685,7 @@ ${"=".repeat(95)}
         document.querySelectorAll(".section").forEach((s) => s.classList.remove("active"));
         const tabEl = document.getElementById("tab" + t.charAt(0).toUpperCase() + t.slice(1)); if (tabEl) tabEl.classList.add("active");
         const sectionEl = document.getElementById("section" + t.charAt(0).toUpperCase() + t.slice(1)); if (sectionEl) sectionEl.classList.add("active");
-        if (t === "scan") { updateStats(); updateCollectorModeUI(); ensureCheckerName(); if (S.collectorMode && S.collectorActive) setTimeout(focusCollectorInput, 120); }
+        if (t === "scan") { updateStats(); updateCollectorModeUI(); if (S.collectorMode && S.collectorActive) setTimeout(focusCollectorInput, 120); }
         if (t === "report") updateReport();
         if (t === "settings") updateCollectorModeUI();
         if (t === "admin") { updateNaoAprovadaInfoUI(); updateNaoPrevistaInfoUI(); }
@@ -3708,7 +3708,7 @@ ${"=".repeat(95)}
           try { input.focus({ preventScroll: true }); } catch (e) { try { input.focus(); } catch (err) {} }
         }, delay);
       }
-      function showCheckerModal(cb) { checkerStartCallback = typeof cb === "function" ? cb : null; document.getElementById("checkerInput").value = S.checkerName || ""; document.getElementById("checkerError").style.display = "none"; const btn = document.querySelector("#checkerModal .btn-primary"); if (btn) btn.textContent = checkerStartCallback ? "✅ Iniciar conferência" : "✅ Confirmar operador"; document.getElementById("checkerModal").classList.add("show"); setTimeout(() => document.getElementById("checkerInput").focus(), 300); }
+      function showCheckerModal(cb) { checkerStartCallback = typeof cb === "function" ? cb : null; document.getElementById("checkerInput").value = S.checkerName || ""; document.getElementById("checkerError").style.display = "none"; const btn = document.querySelector("#checkerModal .btn-primary"); if (btn) btn.textContent = checkerStartCallback ? "✅ Iniciar conferência" : "✅ Confirmar operador"; document.getElementById("checkerModal").classList.add("show"); focusModalInputIfUntouched("checkerModal", "checkerInput", 300); }
       function closeCheckerModal() { checkerStartCallback = null; document.getElementById("checkerModal").classList.remove("show"); }
       function confirmCheckerName() {
         const name = document.getElementById("checkerInput").value.trim();
@@ -3719,7 +3719,8 @@ ${"=".repeat(95)}
         if (document.getElementById("rCheckerName")) document.getElementById("rCheckerName").textContent = name;
         const cb = checkerStartCallback; checkerStartCallback = null; notify("Conferente: " + name); if (cb) cb(); return true;
       }
-      function ensureCheckerName(cb) { if (S.checkerName) return true; showCheckerModal(cb); return false; }
+      function hasCheckerName() { return !!String(S.checkerName || "").trim(); }
+      function ensureCheckerName(cb) { if (hasCheckerName()) return true; showCheckerModal(cb); return false; }
       function setSep(s, btn) { S.sep = s; document.querySelectorAll(".sep-btn").forEach((b) => b.classList.remove("active")); btn.classList.add("active"); }
       function parseCodes(txt, sep) { let lines; if (sep === "newline") lines = txt.split(/\r?\n/); else if (sep === "tab") lines = txt.split(/\t/); else lines = txt.split(sep); return lines.map((l) => l.trim()).filter(Boolean); }
       function importText() {
@@ -3761,6 +3762,7 @@ ${"=".repeat(95)}
   S.meta = {};
   S.coilCategories = {};
   S.confType = "";
+  S.checkerName = "";
   S.cloudSessionId = "";
   S.cloudSessionStartSaved = false;
   S.primeiraLeituraEmLocal = "";
@@ -3825,6 +3827,7 @@ ${"=".repeat(95)}
           S.scanned = [];
           S.checked = new Set();
           S.extras = [];
+          S.checkerName = "";
           S.cloudSessionId = "";
           S.cloudSessionStartSaved = false;
           S.primeiraLeituraEmLocal = "";
@@ -3960,12 +3963,11 @@ ${"=".repeat(95)}
       function syncCurrentConferenceToCloud() {
         // Modo econômico: importar/carregar base NÃO grava no servidor.
         // O servidor só recebe dados quando o operador clica em "Finalizar".
-        // Cada nova importação/conferência deve pedir o operador do aparelho.
-        S.checkerName = "";
+        // A importação não pede nem apaga o operador já definido nesta conferência.
+        // A pergunta acontece somente quando o operador tocar em Iniciar.
         save();
-        if (document.getElementById("rCheckerName")) document.getElementById("rCheckerName").textContent = "—";
+        if (document.getElementById("rCheckerName")) document.getElementById("rCheckerName").textContent = S.checkerName || "—";
         cloudSetStatus("ok", "☁️ Modo econômico: salva ao finalizar");
-        setTimeout(() => showCheckerModal(), 180);
       }
       function importByConferenceTypes(cfgList, { replaceExisting = false } = {}) {
         if (!S.fileData || !S.fileLayout) { notify("Arquivo não encontrado para importar.", "error"); return; }
@@ -4371,6 +4373,7 @@ ${"=".repeat(95)}
       }
       async function collectorOpenManualPhoto() {
         if (!S.db.length) { notify("Importe os dados primeiro!", "error"); return; }
+        if (!hasCheckerName()) { notify("Toque em Iniciar conferência para informar o nome do operador.", "warning"); return; }
         collectorReturnAfterManualCamera = true;
         S.collectorActive = false;
         save();
@@ -4581,6 +4584,7 @@ if (S.collectorMode) {
       }
       function startCollectorConference() {
         if (S.db.length === 0) { notify("Importe os dados primeiro!", "error"); return; }
+        if (!hasCheckerName()) { notify("Toque em Iniciar conferência para informar o nome do operador.", "warning"); return; }
         if (S.collectorActive) {
           setCollectorLastRead("Coletor já está pronto para leitura.", "ok");
           setTimeout(focusCollectorInput, 80);
@@ -4600,7 +4604,7 @@ if (S.collectorMode) {
         if (S.db.length === 0) { notify("Importe os dados primeiro!", "error"); return; }
         if (!ensureCheckerName(() => startConference())) return;
         if (S.collectorMode) startCollectorConference();
-        else openCamera(true);
+        else openCamera();
         cloudSetStatus("ok", S.cloudSessionStartSaved ? "☁️ Conferência registrada" : "☁️ Aguardando primeira leitura");
       }
       function getPendingNaoPrevista() {
@@ -4840,9 +4844,9 @@ if (S.collectorMode) {
     }
   }, true);
 }
-      function openCamera(skipChecker = false) {
+      function openCamera() {
         if (S.db.length === 0) { notify("Importe os dados primeiro!", "error"); return; }
-        if (!skipChecker && !ensureCheckerName(() => startConference())) return;
+        if (!hasCheckerName()) { notify("Toque em Iniciar conferência para informar o nome do operador.", "warning"); return; }
         startIntegratedScanner();
       }
       window.addEventListener("storage", function (e) {
@@ -5559,6 +5563,7 @@ ${"=".repeat(95)}
       async function startIntegratedScanner() {
         load();
         if (S.db.length === 0) { notify("Nenhum dado importado!", "error"); return; }
+        if (!hasCheckerName()) { notify("Toque em Iniciar conferência para informar o nome do operador.", "warning"); return; }
         if (typeof Html5Qrcode === "undefined") { notify("Biblioteca da câmera não carregou.", "error"); return; }
         document.getElementById("scannerOverlay").classList.add("show"); document.body.style.overflow = "hidden"; camUpdateCounters(); camUpdateHistory(); camCooldown = false; camEnableVolumeZoom();
         const scanW = Math.min(Math.floor(window.innerWidth * 0.94), 720), scanH = Math.min(Math.floor(window.innerHeight * 0.24), 240);
@@ -6423,5 +6428,5 @@ document.addEventListener("keydown", (e) => {
 
 init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a55e3486793df1f9',t:'MTc5MzkwNjMxNQ=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a55e3486793df1f9',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
