@@ -861,7 +861,7 @@
       </div>
       <div class="header">
         <!-- A cada atualização, manter a versão abaixo igual à de sw.js. -->
-        <h1><span class="header-title-icon" aria-hidden="true">📦</span> <span class="header-title-text">Conferência de Bobinas</span> <span class="app-version" aria-label="Versão do aplicativo 28">v28</span></h1>
+        <h1><span class="header-title-icon" aria-hidden="true">📦</span> <span class="header-title-text">Conferência de Bobinas</span> <span class="app-version" aria-label="Versão do aplicativo 29">v29</span></h1>
         <p>Sistema de conferência por código de barras</p>
       </div>
       <div class="section" id="sectionImport">
@@ -1219,11 +1219,11 @@
 
     <div class="modal-bg" id="modal"><div class="modal"><h2 id="mTitle">⚠️</h2><p id="mMsg"></p><div class="btn-group"><button class="btn btn-danger" id="mConfirm">Confirmar</button><button class="btn btn-outline" onclick="closeModal()">Cancelar</button></div></div></div>
     <div class="modal-bg" id="categoryChoiceModal" role="dialog" aria-modal="true" aria-labelledby="categoryChoiceTitle"><div class="modal" id="categoryChoicePanel" tabindex="-1">
-      <h2 id="categoryChoiceTitle">🏷️ Tipo da bobina</h2>
+      <h2 id="categoryChoiceTitle">🏷️ Tipo da não prevista</h2>
       <div class="loc-code-display" id="categoryChoiceCode">—</div>
-      <p id="categoryChoiceMessage">Escolha a categoria desta bobina:</p>
+      <p id="categoryChoiceMessage">Não prevista já registrada. Escolha a categoria para continuar:</p>
       <div class="btn-group"><button type="button" class="btn btn-primary" id="categoryChoicePeliculas" onclick="chooseManualCategory('peliculas')">🎞️ Películas</button><button type="button" class="btn btn-primary" id="categoryChoiceExtrusao" onclick="chooseManualCategory('extrusao')">🏭 Extrusão</button></div>
-      <div class="btn-group"><button type="button" class="btn btn-outline" id="categoryChoiceCancel" onclick="cancelManualCategory()">Cancelar</button></div>
+      <div class="btn-group"><button type="button" class="btn btn-outline" id="categoryChoiceCancel" hidden onclick="cancelManualCategory()">Cancelar</button></div>
     </div></div>
     <div class="modal-bg" id="checkerModal"><div class="modal"><h2>👤 Operador</h2><p>Informe o nome do operador desta conferência:</p><input type="text" id="checkerInput" class="loc-input-main" placeholder="Digite o nome do operador" onkeydown="if (event.key === 'Enter') confirmCheckerName();" autocomplete="name" /><div id="checkerError" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Nome obrigatório!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmCheckerName()">✅ Iniciar conferência</button><button class="btn btn-outline" onclick="closeCheckerModal()">Cancelar</button></div></div></div>
     <div class="modal-bg" id="confTypeModal"><div class="modal" style="max-height: calc(100dvh - 32px); overflow: auto"><h2>📋 Tipo de Conferência</h2><p style="margin-bottom: 10px">Marque o que deve aparecer na conferência:</p><div style="display: grid; grid-template-columns: 1fr; gap: 8px">
@@ -4971,7 +4971,8 @@ ${"=".repeat(95)}
         document.getElementById("alertPhotoSaveError").style.display = "none";
         const scan = getExtraScan(code), obrigatoria = !!(scan?.informacoesPendentes || scan?.categoriaPendente);
         const cancel = document.getElementById("alertFoundCancelBtn"); cancel.hidden = obrigatoria; cancel.style.display = obrigatoria ? "none" : "";
-        prepareExtraCategory("alert", code, !!scan?.categoriaPendente || requiresManualCategoryForCode(code));
+        const naoPrevista = !!scan || !!pendingAlertFound?.shouldRegisterExtra;
+        prepareExtraCategory("alert", code, !!scan?.categoriaPendente || (naoPrevista && requiresManualCategoryForCode(code)));
         resetAlertPhotoState();
         document.getElementById("alertFoundModal").classList.add("show");
         focusModalInputIfUntouched("alertFoundModal", "alertFoundLocation", 200);
@@ -5011,7 +5012,7 @@ ${"=".repeat(95)}
         const loc = document.getElementById("alertFoundLocation").value.trim();
         const foundObs = document.getElementById("alertFoundFoundObs").value.trim();
         if (!loc) { document.getElementById("alertFoundLocationError").style.display = "block"; document.getElementById("alertFoundLocation").focus(); return; }
-        const askCategory = categoriaPendente || requiresManualCategoryForCode(data.fullCode);
+        const askCategory = categoriaPendente || ((!!extraScan || !!data.shouldRegisterExtra) && requiresManualCategoryForCode(data.fullCode));
         const categoriaKey = askCategory ? validateExtraCategory("alert") : "";
         if (askCategory && !categoriaKey) return;
         let photoError = false;
@@ -5031,7 +5032,6 @@ ${"=".repeat(95)}
           (S.scanned || []).forEach((s) => { if (s && String(s.code) === String(data.fullCode)) { s.location = s.location || loc; s.observation = s.observation || foundObs; s.hasPhoto = s.hasPhoto || !!savedPhoto; s.alertFound = true; } });
           if (naoPrevistaPendente && !completeNaoPrevistaRecord(data.fullCode, { location: loc, observation: foundObs, categoriaKey, hasPhoto: savedPhoto })) { notify("Não foi possível concluir a não prevista. Tente novamente.", "error"); return; }
           if (!naoPrevistaPendente && extraScan && categoriaKey) { setExtraScanCategory(data.fullCode, categoriaKey); delete extraScan.alertaPendente; }
-          if (!extraScan && data.existsInBase && categoriaKey) { const expected = resolveExpectedBarcode(data.fullCode).code || data.fullCode; setManualCategoryForCode(expected, categoriaKey, { persist: false }); }
           if (data.shouldRegisterExtra && !S.extras.includes(data.fullCode)) {
             const scanItem = { code: data.fullCode, time: data.time, status: "not-found", location: loc, observation: foundObs, hasPhoto: !!savedPhoto, source: "alert", alertFound: true, ...(categoriaKey ? { categoriaKey, categoria: coilCategoryLabel(categoriaKey), categoriaInformada: true } : {}) };
             S.extras.push(data.fullCode); S.scanned.unshift(scanItem); if (categoriaKey) setManualCategoryForCode(data.fullCode, categoriaKey, { persist: false }); cloudSyncReading(scanItem);
@@ -5344,14 +5344,13 @@ if (S.collectorMode) {
         cloudSetStatus("ok", S.cloudSessionStartSaved ? "☁️ Conferência registrada" : "☁️ Aguardando primeira leitura");
       }
       function requestManualCategory(choice) {
-        if (!choice || !choice.code) return false;
+        if (!choice || choice.kind !== "extra" || !choice.code) return false;
         if (pendingCategoryChoice && document.getElementById("categoryChoiceModal")?.classList.contains("show")) return false;
         pendingCategoryChoice = { ...choice };
         const modal = document.getElementById("categoryChoiceModal"), cancel = document.getElementById("categoryChoiceCancel");
         document.getElementById("categoryChoiceCode").textContent = String(choice.code);
-        document.getElementById("categoryChoiceMessage").textContent = choice.kind === "extra" ? "Não prevista já registrada. Escolha a categoria para continuar:" : "Escolha a categoria desta bobina:";
-        const mandatory = choice.kind === "extra";
-        cancel.hidden = mandatory; cancel.style.display = mandatory ? "none" : "";
+        document.getElementById("categoryChoiceMessage").textContent = "Não prevista já registrada. Escolha a categoria para continuar:";
+        cancel.hidden = true; cancel.style.display = "none";
         const collectorInput = document.getElementById("collectorInput");
         if (collectorInput && document.activeElement === collectorInput) { collectorInput.value = ""; collectorInput.blur(); }
         clearTimeout(collectorReadTimer); collectorReadTimer = null; clearTimeout(collectorKeyTimer); collectorKeyTimer = null; collectorKeyBuffer = "";
@@ -5393,48 +5392,23 @@ if (S.collectorMode) {
       }
       function chooseManualCategory(cat) {
         const choice = pendingCategoryChoice, category = cat === "peliculas" ? "peliculas" : cat === "extrusao" ? "extrusao" : "";
-        if (!choice || !category) return;
-        if (choice.kind === "extra") {
-          const scan = getExtraScan(choice.code);
-          if (!scan || scan.categoriaPendente !== true) { notify("Esta não prevista não está mais pendente.", "warning"); return; }
-          setExtraScanCategory(choice.code, category);
-          delete scan.alertaPendente; save();
-          pendingCategoryChoice = null; document.getElementById("categoryChoiceModal").classList.remove("show");
-          updateStats(); updateHistory(); updateDBUI(); updateReport();
-          if (choice.source === "collector") setCollectorLastRead(`⚠️ ${choice.code} registrada como não prevista.`, "warn");
-          if (choice.source === "camera") camShowResult("red", `⚠️ "${choice.code}" — não prevista registrada`, 2400);
-          releaseCategorySource(choice.source);
-          if (getPendingNaoPrevista()) reopenPendingNaoPrevista();
-          return;
-        }
+        if (!choice || choice.kind !== "extra" || !category) return;
+        const scan = getExtraScan(choice.code);
+        if (!scan || scan.categoriaPendente !== true) { notify("Esta não prevista não está mais pendente.", "warning"); return; }
+        setExtraScanCategory(choice.code, category);
+        delete scan.alertaPendente; save();
         pendingCategoryChoice = null; document.getElementById("categoryChoiceModal").classList.remove("show");
-        if (choice.kind === "naoAprovada") {
-          if (!pendingNaoAprovada) { releaseCategorySource(choice.source); return; }
-          setManualCategoryForCode(choice.expectedCode, category, { persist: false });
-          completeNaoAprovada(choice.location || "", choice.observation || "");
-          return;
-        }
-        if (choice.kind === "legacy") {
-          setManualCategoryForCode(choice.expectedCode, category);
-          updateStats(); updateHistory(); updateDBUI(); updateReport();
-          notify("Categoria salva para a bobina já conferida.");
-          releaseCategorySource(choice.source, !!choice.manual);
-          return;
-        }
-        finishExpectedRead(choice, category);
+        updateStats(); updateHistory(); updateDBUI(); updateReport();
+        if (choice.source === "collector") setCollectorLastRead(`⚠️ ${choice.code} registrada como não prevista.`, "warn");
+        if (choice.source === "camera") camShowResult("red", `⚠️ "${choice.code}" — não prevista registrada`, 2400);
+        releaseCategorySource(choice.source);
+        if (getPendingNaoPrevista()) reopenPendingNaoPrevista();
       }
-      function cancelManualCategory() {
-        const choice = pendingCategoryChoice;
-        if (!choice || choice.kind === "extra") return;
-        pendingCategoryChoice = null; document.getElementById("categoryChoiceModal").classList.remove("show");
-        if (choice.kind === "naoAprovada") { notify(`⚠️ ${choice.code} não conferida. Leia novamente se necessário.`, "warning"); releaseNaoAprovadaFlow(); return; }
-        notify(choice.kind === "legacy" ? "Categoria não alterada; a bobina continua conferida." : "Categoria não escolhida. A bobina não foi conferida.", "warning");
-        releaseCategorySource(choice.source, !!choice.manual);
-      }
+      function cancelManualCategory() { if (pendingCategoryChoice) notify("Escolha a categoria da não prevista para continuar.", "warning"); }
       function blockForPendingCategoryChoice() {
         if (!pendingCategoryChoice) return false;
         document.getElementById("categoryChoiceModal")?.classList.add("show");
-        notify("Escolha a categoria ou cancele a leitura para continuar.", "warning");
+        notify("Escolha Películas ou Extrusão para continuar.", "warning");
         return true;
       }
       function getPendingNaoPrevista() {
@@ -5539,10 +5513,6 @@ if (S.collectorMode) {
   }
 
   if (wasChecked) {
-    if (requiresManualCategoryForCode(expectedCode) && !manualCategoryForCode(expectedCode)) {
-      requestManualCategory({ kind: "legacy", code, expectedCode, time, source: "collector" });
-      return;
-    }
     collectorShowBigStatus("yellow", "⚠️ JÁ LIDA", code, 1500);
     setCollectorLastRead(`⚠️ ${code} já conferido.`, "warn");
     updateCollectorOverlayCenter("Já lida", "Esta bobina já foi conferida.", code);
@@ -5575,7 +5545,6 @@ if (S.collectorMode) {
     }
     const category = manualCategoryForCode(expectedCode);
     const choice = { kind: "expected", code, expectedCode, time, source: "collector" };
-    if (requiresManualCategoryForCode(expectedCode) && !category) { requestManualCategory(choice); return; }
     finishExpectedRead(choice, category);
     return;
   }
@@ -6455,7 +6424,6 @@ ${"=".repeat(95)}
         const newNaoPrevista = !inBase && !wasChecked && !wasNaoPrevista ? registerNaoPrevistaOnRead(code, time, "camera") : null;
         if (handleBobinaAlertScan(code, time, "camera")) { camFlash("red"); camShowBigStatus("red", "🚨 ALERTA", code, 1700); camShowResult("red", `🚨 ALERTA — bobina procurada "${code}" encontrada`, 2400); camVibrate("notfound"); camBeep("notfound"); return; }
         if (wasChecked) {
-          if (requiresManualCategoryForCode(expectedCode) && !manualCategoryForCode(expectedCode)) { camCooldown = true; requestManualCategory({ kind: "legacy", code, expectedCode, time, source: "camera" }); return; }
           camFlash("yellow"); camShowBigStatus("yellow", "⚠️ JÁ LIDA", code, 1500); camShowResult("yellow", `⚠️ "${code}" — já conferido`, 1500); camVibrate("already"); camBeep("warning"); return;
         }
         if (wasNaoPrevista) {
@@ -6471,7 +6439,6 @@ ${"=".repeat(95)}
             return;
           }
           const category = manualCategoryForCode(expectedCode), choice = { kind: "expected", code, expectedCode, time, source: "camera" };
-          if (requiresManualCategoryForCode(expectedCode) && !category) { camCooldown = true; requestManualCategory(choice); return; }
           finishExpectedRead(choice, category);
         } else {
           camFlash("red"); camShowBigStatus("red", "⚠️ NÃO PREVISTA", code, 1200); camVibrate("notfound"); camBeep("notfound");
@@ -6510,7 +6477,6 @@ ${"=".repeat(95)}
           return;
         }
         const category = manualCategoryForCode(code), choice = { kind: "expected", code, expectedCode: code, time, source: "camera", manual: true };
-        if (requiresManualCategoryForCode(code) && !category) { camCooldown = true; requestManualCategory(choice); return; }
         finishExpectedRead(choice, category);
       }
       function camManualNotExpected() {
@@ -6526,7 +6492,7 @@ ${"=".repeat(95)}
       }
       function camShowLocationModal(code, mode = "extra") {
         camManualMode = mode; document.getElementById("camLocModal").classList.add("show"); document.getElementById("camLocCode").textContent = code; document.getElementById("camLocInput").value = ""; document.getElementById("camObsInput").value = ""; document.getElementById("camLocError").style.display = "none"; document.getElementById("camPhotoErrorEtiqueta").style.display = "none"; document.getElementById("camPhotoErrorBobina").style.display = "none"; document.getElementById("camPhotoSaveError").style.display = "none";
-        prepareExtraCategory("cam", code, requiresManualCategoryForCode(code));
+        prepareExtraCategory("cam", code, mode !== "manualFound" && requiresManualCategoryForCode(code));
         const cancel = document.getElementById("camLocCancelBtn"); cancel.hidden = mode !== "manualFound"; cancel.style.display = mode === "manualFound" ? "" : "none";
         document.getElementById("camLocHeader").textContent = mode === "manualFound" ? "📸 CONFERÊNCIA MANUAL" : "⚠️ BOBINA NÃO PREVISTA"; document.getElementById("camLocHeader").style.color = mode === "manualFound" ? "#3b82f6" : "#ef4444"; document.getElementById("camLocLabel").textContent = mode === "manualFound" ? "📌 Observação/localização (opcional):" : "📌 Informe a localização:"; document.getElementById("camLocInput").placeholder = mode === "manualFound" ? "Opcional" : "Ex: A2, E17, 240..."; camRemovePhoto("etiqueta"); camRemovePhoto("bobina"); focusModalInputIfUntouched("camLocModal", "camLocInput", 300);
       }
@@ -6535,8 +6501,8 @@ ${"=".repeat(95)}
         if (photoRotationInProgress("cam")) { notify("Aguarde a foto terminar de girar.", "warning"); return; }
         const input = document.getElementById("camLocInput"), loc = input.value.trim(), obs = document.getElementById("camObsInput").value.trim(); let hasError = false; let categoriaKey = "";
         const categoryCode = camManualMode === "manualFound" ? camManualSelectedCode : camPendingExtra?.code;
-        const askCategory = requiresManualCategoryForCode(categoryCode);
-        categoriaKey = askCategory ? validateExtraCategory("cam") : "";
+        const askCategory = camManualMode !== "manualFound" && requiresManualCategoryForCode(categoryCode);
+        categoriaKey = askCategory ? validateExtraCategory("cam") : (camManualMode === "manualFound" ? manualCategoryForCode(categoryCode) : "");
         if (askCategory && !categoriaKey) hasError = true;
         if (camManualMode !== "manualFound" && !loc) { document.getElementById("camLocError").style.display = "block"; input.focus(); hasError = true; } else document.getElementById("camLocError").style.display = "none";
         if (!camCurrentPhotoEtiqueta) { document.getElementById("camPhotoErrorEtiqueta").style.display = "block"; hasError = true; } else document.getElementById("camPhotoErrorEtiqueta").style.display = "none";
@@ -6824,7 +6790,7 @@ ${"=".repeat(95)}
         const on = document.getElementById("naoInfoOnBtn"), off = document.getElementById("naoInfoOffBtn"), desc = document.getElementById("naoInfoDescription"), status = document.getElementById("naoInfoSyncStatus");
         if (on) { on.classList.toggle("active-on", naoAprovadaInfoOn); on.setAttribute("aria-pressed", String(naoAprovadaInfoOn)); on.disabled = naoInfoSaving; }
         if (off) { off.classList.toggle("active-off", !naoAprovadaInfoOn); off.setAttribute("aria-pressed", String(!naoAprovadaInfoOn)); off.disabled = naoInfoSaving; }
-        if (desc) desc.textContent = naoAprovadaInfoOn ? "Ligado: pede endereço obrigatório e observação opcional." : "Desligado: não pede endereço. Em Bases e Capas, pede a categoria.";
+        if (desc) desc.textContent = naoAprovadaInfoOn ? "Ligado: pede endereço obrigatório e observação opcional." : "Desligado: mostra o alerta e confere sem pedir dados.";
         if (status) {
           const local = naoInfoHasGlobalCache ? "Usando a última configuração recebida neste aparelho." : "Sem histórico: padrão ligado até receber a configuração geral.";
           let text;
@@ -7176,14 +7142,7 @@ ${"=".repeat(95)}
         if (source === "camera") { setTimeout(() => { camCooldown = false; }, 700); }
       }
       function beginNaoAprovadaCompletion(loc, obs) {
-        const info = pendingNaoAprovada;
-        if (!info) return;
-        const category = manualCategoryForCode(info.code);
-        if (requiresManualCategoryForCode(info.code) && !category) {
-          document.getElementById("naoAprovadaModal").classList.remove("show");
-          requestManualCategory({ kind: "naoAprovada", code: info.readCode || info.code, expectedCode: info.code, source: info.source, manual: info.manual, location: loc, observation: obs });
-          return;
-        }
+        if (!pendingNaoAprovada) return;
         completeNaoAprovada(loc, obs);
       }
       function completeNaoAprovada(loc, obs) {
