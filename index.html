@@ -366,6 +366,7 @@
       .empty p { font-size: 0.82em; }
       .modal-bg { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.4); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); padding: 16px; }
       #locModal { z-index: 6100; }
+      #categoryChoiceModal { z-index: 6500; }
       .modal-bg.show { display: flex; }
       .modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 22px; max-width: 400px; width: 100%; animation: popIn 0.3s ease; box-shadow: var(--shadow-lg); }
       .modal h2 { margin-bottom: 8px; display: flex; align-items: center; gap: 8px; color: var(--text-primary); font-size: 1.1em; }
@@ -860,7 +861,7 @@
       </div>
       <div class="header">
         <!-- A cada atualização, manter a versão abaixo igual à de sw.js. -->
-        <h1><span class="header-title-icon" aria-hidden="true">📦</span> <span class="header-title-text">Conferência de Bobinas</span> <span class="app-version" aria-label="Versão do aplicativo 26">v26</span></h1>
+        <h1><span class="header-title-icon" aria-hidden="true">📦</span> <span class="header-title-text">Conferência de Bobinas</span> <span class="app-version" aria-label="Versão do aplicativo 28">v28</span></h1>
         <p>Sistema de conferência por código de barras</p>
       </div>
       <div class="section" id="sectionImport">
@@ -1060,7 +1061,7 @@
           <div class="collector-toggle-wrap"><div class="collector-toggle-label">Informações</div><button type="button" class="collector-toggle-seg" id="naoInfoOffBtn" onclick="setNaoAprovadaInfo(false)">OFF</button><button type="button" class="collector-toggle-seg" id="naoInfoOnBtn" onclick="setNaoAprovadaInfo(true)">ON</button></div>
           <div class="nao-info-sync" id="naoInfoSyncStatus" role="status" aria-live="polite">🔄 Buscando a configuração geral...</div>
         </div>
-        <div class="card"><div class="card-title">❌ Informações para não previstas</div><div class="card-sub" id="naoPrevInfoDescription">Ligado: exige localização e as duas fotos.</div>
+        <div class="card"><div class="card-title">❌ Informações para não previstas</div><div class="card-sub" id="naoPrevInfoDescription">Ligado: exige localização e as duas fotos; em Bases e Capas, pede a categoria.</div>
           <div class="collector-toggle-wrap"><div class="collector-toggle-label">Informações</div><button type="button" class="collector-toggle-seg" id="naoPrevInfoOffBtn" onclick="setNaoPrevistaInfo(false)">OFF</button><button type="button" class="collector-toggle-seg" id="naoPrevInfoOnBtn" onclick="setNaoPrevistaInfo(true)">ON</button></div>
           <div class="nao-info-sync" id="naoPrevInfoSyncStatus" role="status" aria-live="polite">🔄 Buscando a configuração geral...</div>
         </div>
@@ -1167,7 +1168,7 @@
             <div class="cam-loc-header" id="camLocHeader">⚠️ BOBINA NÃO PREVISTA</div>
             <div class="cam-loc-code" id="camLocCode"></div>
             <div class="extra-category-box" id="camExtraCategoryBox">
-              <div class="extra-category-label">🏷️ Tipo da base da bobina não prevista:</div>
+              <div class="extra-category-label">🏷️ Tipo da bobina:</div>
               <div class="extra-category-buttons">
                 <button type="button" class="extra-category-btn" data-cat="peliculas" onclick="setExtraCategory('cam','peliculas')">🎞️ Películas</button>
                 <button type="button" class="extra-category-btn" data-cat="extrusao" onclick="setExtraCategory('cam','extrusao')">🏭 Extrusão</button>
@@ -1217,12 +1218,17 @@
     </div>
 
     <div class="modal-bg" id="modal"><div class="modal"><h2 id="mTitle">⚠️</h2><p id="mMsg"></p><div class="btn-group"><button class="btn btn-danger" id="mConfirm">Confirmar</button><button class="btn btn-outline" onclick="closeModal()">Cancelar</button></div></div></div>
+    <div class="modal-bg" id="categoryChoiceModal" role="dialog" aria-modal="true" aria-labelledby="categoryChoiceTitle"><div class="modal" id="categoryChoicePanel" tabindex="-1">
+      <h2 id="categoryChoiceTitle">🏷️ Tipo da bobina</h2>
+      <div class="loc-code-display" id="categoryChoiceCode">—</div>
+      <p id="categoryChoiceMessage">Escolha a categoria desta bobina:</p>
+      <div class="btn-group"><button type="button" class="btn btn-primary" id="categoryChoicePeliculas" onclick="chooseManualCategory('peliculas')">🎞️ Películas</button><button type="button" class="btn btn-primary" id="categoryChoiceExtrusao" onclick="chooseManualCategory('extrusao')">🏭 Extrusão</button></div>
+      <div class="btn-group"><button type="button" class="btn btn-outline" id="categoryChoiceCancel" onclick="cancelManualCategory()">Cancelar</button></div>
+    </div></div>
     <div class="modal-bg" id="checkerModal"><div class="modal"><h2>👤 Operador</h2><p>Informe o nome do operador desta conferência:</p><input type="text" id="checkerInput" class="loc-input-main" placeholder="Digite o nome do operador" onkeydown="if (event.key === 'Enter') confirmCheckerName();" autocomplete="name" /><div id="checkerError" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Nome obrigatório!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmCheckerName()">✅ Iniciar conferência</button><button class="btn btn-outline" onclick="closeCheckerModal()">Cancelar</button></div></div></div>
     <div class="modal-bg" id="confTypeModal"><div class="modal" style="max-height: calc(100dvh - 32px); overflow: auto"><h2>📋 Tipo de Conferência</h2><p style="margin-bottom: 10px">Marque o que deve aparecer na conferência:</p><div style="display: grid; grid-template-columns: 1fr; gap: 8px">
       <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="bases_todas" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">Bases - Todas</span><small style="color: var(--text-muted)">Etapa 20</small></label>
-      <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="bases_peliculas" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">Bases - Películas</span><small style="color: var(--text-muted)">BOPP/PP/PET</small></label>
       <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="capas_todas" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">Capas - Todas</span><small style="color: var(--text-muted)">Etapa 30-39</small></label>
-      <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="capas_peliculas" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">Capas - Películas</span><small style="color: var(--text-muted)">Capa BOPP/PP</small></label>
       <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="refiladeira" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">Refiladeira - Todos</span><small style="color: var(--text-muted)">Etapa 40-49</small></label>
       <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="refiladeira_fundo" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">Refiladeira - Fundo</span><small style="color: var(--text-muted)">40-49 · sem tipo/lote</small></label>
       <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="cs" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">C&S</span><small style="color: var(--text-muted)">Etapa 50-59</small></label>
@@ -1254,7 +1260,7 @@
       </div>
     </div></div>
 
-    <div class="modal-bg" id="locModal"><div class="modal" style="border-color: var(--accent-red)"><h2 style="color: var(--accent-red)">⚠️ Bobina Não Prevista</h2><div class="loc-code-display" id="locCodeMain"></div><p id="locModalDesc">Informe a localização desta bobina:</p><div class="extra-category-box" id="locExtraCategoryBox"><div class="extra-category-label">🏷️ Tipo da base da bobina não prevista:</div><div class="extra-category-buttons"><button type="button" class="extra-category-btn" data-cat="peliculas" onclick="setExtraCategory('loc','peliculas')">🎞️ Películas</button><button type="button" class="extra-category-btn" data-cat="extrusao" onclick="setExtraCategory('loc','extrusao')">🏭 Extrusão</button></div><div class="extra-category-error" id="locExtraCategoryError">⚠️ Selecione Películas ou Extrusão.</div></div><input type="text" id="locInputMain" class="loc-input-main" placeholder="Ex: Galpão A, Corredor 3..." onkeydown="if (event.key === 'Enter') confirmLocMain();" autocomplete="off" /><textarea id="locObsMain" class="loc-input-main" placeholder="Observação (opcional)" style="min-height: 76px; resize: vertical; font-family: inherit;"></textarea><div class="loc-photo-section" id="locPhotoSection"><div class="loc-photo-grid"><div><div class="loc-photo-label">🏷️ Foto da etiqueta <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnEtiqueta" onclick="document.getElementById('locPhotoInputEtiqueta').click()">📷 Tirar foto da etiqueta<input type="file" id="locPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'etiqueta')" /></div><div class="loc-photo-preview" id="locPhotoPreviewEtiqueta"><img id="locPhotoImgEtiqueta" src="" /><div class="photo-preview-actions"><button type="button" class="photo-rotate-action" onclick="rotateCapturedPhoto('loc','etiqueta',this)">↻ Girar foto</button><button type="button" class="photo-remove-action" onclick="locRemovePhoto('etiqueta')">✕ Remover</button></div></div><div class="loc-photo-error" id="locPhotoErrorEtiqueta">⚠️ Foto da etiqueta obrigatória!</div></div><div><div class="loc-photo-label">📦 Foto da bobina <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnBobina" onclick="document.getElementById('locPhotoInputBobina').click()">📷 Tirar foto da bobina<input type="file" id="locPhotoInputBobina" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'bobina')" /></div><div class="loc-photo-preview" id="locPhotoPreviewBobina"><img id="locPhotoImgBobina" src="" /><div class="photo-preview-actions"><button type="button" class="photo-rotate-action" onclick="rotateCapturedPhoto('loc','bobina',this)">↻ Girar foto</button><button type="button" class="photo-remove-action" onclick="locRemovePhoto('bobina')">✕ Remover</button></div></div><div class="loc-photo-error" id="locPhotoErrorBobina">⚠️ Foto da bobina obrigatória!</div></div></div></div><div id="locErrorMain" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Localização obrigatória!</div><div id="locPhotoSaveError" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Não foi possível salvar as duas fotos. Verifique o espaço do aparelho e tente novamente.</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmLocMain()">✅ Confirmar</button></div></div></div>
+    <div class="modal-bg" id="locModal"><div class="modal" style="border-color: var(--accent-red)"><h2 style="color: var(--accent-red)">⚠️ Bobina Não Prevista</h2><div class="loc-code-display" id="locCodeMain"></div><p id="locModalDesc">Informe a localização desta bobina:</p><div class="extra-category-box" id="locExtraCategoryBox"><div class="extra-category-label">🏷️ Tipo da bobina:</div><div class="extra-category-buttons"><button type="button" class="extra-category-btn" data-cat="peliculas" onclick="setExtraCategory('loc','peliculas')">🎞️ Películas</button><button type="button" class="extra-category-btn" data-cat="extrusao" onclick="setExtraCategory('loc','extrusao')">🏭 Extrusão</button></div><div class="extra-category-error" id="locExtraCategoryError">⚠️ Selecione Películas ou Extrusão.</div></div><input type="text" id="locInputMain" class="loc-input-main" placeholder="Ex: Galpão A, Corredor 3..." onkeydown="if (event.key === 'Enter') confirmLocMain();" autocomplete="off" /><textarea id="locObsMain" class="loc-input-main" placeholder="Observação (opcional)" style="min-height: 76px; resize: vertical; font-family: inherit;"></textarea><div class="loc-photo-section" id="locPhotoSection"><div class="loc-photo-grid"><div><div class="loc-photo-label">🏷️ Foto da etiqueta <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnEtiqueta" onclick="document.getElementById('locPhotoInputEtiqueta').click()">📷 Tirar foto da etiqueta<input type="file" id="locPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'etiqueta')" /></div><div class="loc-photo-preview" id="locPhotoPreviewEtiqueta"><img id="locPhotoImgEtiqueta" src="" /><div class="photo-preview-actions"><button type="button" class="photo-rotate-action" onclick="rotateCapturedPhoto('loc','etiqueta',this)">↻ Girar foto</button><button type="button" class="photo-remove-action" onclick="locRemovePhoto('etiqueta')">✕ Remover</button></div></div><div class="loc-photo-error" id="locPhotoErrorEtiqueta">⚠️ Foto da etiqueta obrigatória!</div></div><div><div class="loc-photo-label">📦 Foto da bobina <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnBobina" onclick="document.getElementById('locPhotoInputBobina').click()">📷 Tirar foto da bobina<input type="file" id="locPhotoInputBobina" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'bobina')" /></div><div class="loc-photo-preview" id="locPhotoPreviewBobina"><img id="locPhotoImgBobina" src="" /><div class="photo-preview-actions"><button type="button" class="photo-rotate-action" onclick="rotateCapturedPhoto('loc','bobina',this)">↻ Girar foto</button><button type="button" class="photo-remove-action" onclick="locRemovePhoto('bobina')">✕ Remover</button></div></div><div class="loc-photo-error" id="locPhotoErrorBobina">⚠️ Foto da bobina obrigatória!</div></div></div></div><div id="locErrorMain" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Localização obrigatória!</div><div id="locPhotoSaveError" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Não foi possível salvar as duas fotos. Verifique o espaço do aparelho e tente novamente.</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmLocMain()">✅ Confirmar</button></div></div></div>
     <div class="photo-modal" id="photoModal"><div style="text-align: center; color: #fff; font-weight: 700; max-width: 100%; max-height: 82vh; overflow: auto;">🏷️ Etiqueta + 📦 Bobina<br /><img id="photoModalImg" src="" /></div><button class="photo-modal-close" onclick="closePhotoModal()">✕ Fechar</button></div>
     <div class="bobina-alert-flash" id="naoAprovadaFlash"><div><div class="bobina-alert-flash-main">⚠️ BOBINA<br/>NÃO APROVADA ⚠️</div><div class="bobina-alert-flash-sub" id="naoAprovadaFlashCode"></div></div></div>
     <div class="modal-bg" id="naoAprovadaModal"><div class="modal" style="border-color: var(--accent-red); border-width: 2px;"><h2 style="color: var(--accent-red)">❌ Bobina Não Aprovada</h2><div class="loc-code-display" id="naoAprovadaCode"></div><p>Esta bobina está marcada como <strong>não aprovada (N)</strong>. Informe o endereço onde ela está:</p><label style="display:block;font-size:.78em;font-weight:700;color:var(--text-secondary);margin-bottom:5px">📍 Endereço / localização <span style="color:var(--accent-red);font-weight:800">*obrigatório</span></label><input type="text" id="naoAprovadaLocInput" class="loc-input-main" placeholder="Ex: Galpão A, Corredor 3..." onkeydown="if (event.key === 'Enter') confirmNaoAprovada();" autocomplete="off" /><label style="display:block;font-size:.78em;font-weight:700;color:var(--text-secondary);margin-bottom:5px">📝 Observação <span style="color:var(--text-muted);font-weight:600">(opcional)</span></label><textarea id="naoAprovadaObsInput" class="loc-input-main" placeholder="Observação (opcional)" style="min-height: 64px; resize: vertical; font-family: inherit;"></textarea><div id="naoAprovadaLocError" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Endereço obrigatório!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmNaoAprovada()">✅ Confirmar</button><button class="btn btn-outline" onclick="cancelNaoAprovada()">Cancelar</button></div></div></div>
@@ -1268,7 +1274,7 @@
         <div>Observação do alerta: <strong id="alertFoundObs" style="color:var(--text-primary)">—</strong></div>
       </div>
       <p style="color: var(--text-secondary); font-size: .88em; margin-bottom: 8px">Informe endereço/localização e tire as fotos para registrar onde a bobina foi encontrada.</p>
-      <div class="extra-category-box" id="alertExtraCategoryBox" style="display:none"><div class="extra-category-label">🏷️ Tipo da base da bobina não prevista:</div><div class="extra-category-buttons"><button type="button" class="extra-category-btn" data-cat="peliculas" onclick="setExtraCategory('alert','peliculas')">🎞️ Películas</button><button type="button" class="extra-category-btn" data-cat="extrusao" onclick="setExtraCategory('alert','extrusao')">🏭 Extrusão</button></div><div class="extra-category-error" id="alertExtraCategoryError">⚠️ Selecione Películas ou Extrusão.</div></div>
+      <div class="extra-category-box" id="alertExtraCategoryBox" style="display:none"><div class="extra-category-label">🏷️ Tipo da bobina:</div><div class="extra-category-buttons"><button type="button" class="extra-category-btn" data-cat="peliculas" onclick="setExtraCategory('alert','peliculas')">🎞️ Películas</button><button type="button" class="extra-category-btn" data-cat="extrusao" onclick="setExtraCategory('alert','extrusao')">🏭 Extrusão</button></div><div class="extra-category-error" id="alertExtraCategoryError">⚠️ Selecione Películas ou Extrusão.</div></div>
       <input type="text" id="alertFoundLocation" class="loc-input-main" placeholder="Endereço/localização onde encontrou" autocomplete="off" />
       <textarea id="alertFoundFoundObs" class="loc-input-main" placeholder="Observação de quem encontrou (opcional)" style="min-height: 76px; resize: vertical; font-family: inherit;"></textarea>
       <div class="loc-photo-section" style="display:block"><div class="loc-photo-grid"><div><div class="loc-photo-label">🏷️ Foto da etiqueta <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="alertPhotoBtnEtiqueta" onclick="document.getElementById('alertPhotoInputEtiqueta').click()">📷 Tirar foto da etiqueta<input type="file" id="alertPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="alertHandlePhoto(event, &quot;etiqueta&quot;)" /></div><div class="loc-photo-preview" id="alertPhotoPreviewEtiqueta"><img id="alertPhotoImgEtiqueta" src="" /><div class="photo-preview-actions"><button type="button" class="photo-rotate-action" onclick="rotateCapturedPhoto('alert','etiqueta',this)">↻ Girar foto</button><button type="button" class="photo-remove-action" onclick="alertRemovePhoto('etiqueta')">✕ Remover</button></div></div><div class="loc-photo-error" id="alertPhotoErrorEtiqueta">⚠️ Foto da etiqueta obrigatória!</div></div><div><div class="loc-photo-label">📦 Foto da bobina <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="alertPhotoBtnBobina" onclick="document.getElementById('alertPhotoInputBobina').click()">📷 Tirar foto da bobina<input type="file" id="alertPhotoInputBobina" accept="image/*" capture="environment" onchange="alertHandlePhoto(event, &quot;bobina&quot;)" /></div><div class="loc-photo-preview" id="alertPhotoPreviewBobina"><img id="alertPhotoImgBobina" src="" /><div class="photo-preview-actions"><button type="button" class="photo-rotate-action" onclick="rotateCapturedPhoto('alert','bobina',this)">↻ Girar foto</button><button type="button" class="photo-remove-action" onclick="alertRemovePhoto('bobina')">✕ Remover</button></div></div><div class="loc-photo-error" id="alertPhotoErrorBobina">⚠️ Foto da bobina obrigatória!</div></div></div></div>
@@ -1280,7 +1286,7 @@
     <script>
       let S = {
         db: [], scanned: [], checked: new Set(), extras: [], sep: "newline", fileData: null,
-        fileLayout: null, meta: {}, coilCategories: {}, alertBobinas: [], confType: "", filter: "all", rptSearch: "",
+        fileLayout: null, meta: {}, referenceAliases: {}, coilCategories: {}, manualCategories: {}, alertBobinas: [], confType: "", filter: "all", rptSearch: "",
         checkerName: "", cloudSessionId: "", cloudSessionStartSaved: false, primeiraLeituraEmLocal: "", ultimaLeituraEmLocal: "", horarioLegado: false, estadoGeracao: "", collectorMode: false, collectorActive: false,
       };
       let reportPanelMode = "ops";
@@ -1289,7 +1295,7 @@
       let stateBackupLatest = null;
       let stateBackupWriting = false;
       let stateBackupWarnAt = 0;
-      let lastLoadedStateSavedAt = 0;
+      let lastLoadedStateSavedAt = 0, lastStateSaveAttemptAt = 0;
       let currentImportedFile = {
         name: "",
         content: "",
@@ -1297,6 +1303,7 @@
         mimeType: "text/plain",
       };
       let pendingExtraMain = null;
+      let pendingCategoryChoice = null;
 let pendingAlertFound = null;
 let pendingAlertPhotoEtiqueta = null;
 let pendingAlertPhotoBobina = null;
@@ -1362,7 +1369,9 @@ let bobinaAlertCloudReady = false;
           checked: Array.from(S.checked || []),
           extras: S.extras || [],
           meta: S.meta || {},
+          referenceAliases: S.referenceAliases || {},
           coilCategories: S.coilCategories || {},
+          manualCategories: S.manualCategories || {},
           alertBobinas: S.alertBobinas || [],
           confType: S.confType || "",
           checkerName: S.checkerName || "",
@@ -1384,7 +1393,9 @@ let bobinaAlertCloudReady = false;
         S.checked = new Set(s.checked || []);
         S.extras = s.extras || [];
         S.meta = s.meta || {};
+        S.referenceAliases = s.referenceAliases && typeof s.referenceAliases === "object" ? s.referenceAliases : aliasesFromConferenceMeta(S.meta, S.db);
         S.coilCategories = s.coilCategories || {};
+        S.manualCategories = { ...manualCategoriesFromScans(S.scanned), ...(s.manualCategories && typeof s.manualCategories === "object" ? s.manualCategories : {}) };
         S.alertBobinas = s.alertBobinas || [];
         S.confType = s.confType || "";
         S.checkerName = s.checkerName || "";
@@ -1498,6 +1509,7 @@ let bobinaAlertCloudReady = false;
       }
       function save() {
         const snapshot = makeStateSnapshot();
+        lastStateSaveAttemptAt = snapshot.savedAt;
         stateBackupSet(snapshot);
         try {
           localStorage.setItem("bob3", JSON.stringify(snapshot));
@@ -1517,13 +1529,16 @@ let bobinaAlertCloudReady = false;
         const currentHasBase = current.db && current.db.length;
         const compatible = statesCompatible(current, backup);
         const sameGeneration = !current.estadoGeracao || current.estadoGeracao === backup.estadoGeracao;
-        const shouldRestore = backupHasBase && sameGeneration && ((!currentHasBase) || (compatible && stateProgressScore(backup) > stateProgressScore(current)));
+        const backupScore = stateProgressScore(backup), currentScore = stateProgressScore(current);
+        const newerSameProgress = backupScore === currentScore && Number(backup.savedAt || 0) > Math.max(lastLoadedStateSavedAt, lastStateSaveAttemptAt);
+        const shouldRestore = backupHasBase && sameGeneration && ((!currentHasBase) || (compatible && (backupScore > currentScore || newerSameProgress)));
         if (!shouldRestore) return false;
         const oldChecked = S.checked.size;
         applyStateSnapshot(backup);
+        if (pendingCategoryChoice?.kind === "extra" && !getExtraScan(pendingCategoryChoice.code)?.categoriaPendente) { pendingCategoryChoice = null; document.getElementById("categoryChoiceModal")?.classList.remove("show"); }
         save();
         updateDBUI(); updateStats(); updateHistory(); updateReport(); updateCollectorModeUI();
-        notify(`✅ Backup interno restaurado: ${oldChecked} → ${S.checked.size} bobinas conferidas.`, "success");
+        notify(oldChecked === S.checked.size ? "✅ Backup interno mais recente restaurado." : `✅ Backup interno restaurado: ${oldChecked} → ${S.checked.size} bobinas conferidas.`, "success");
         return true;
       }
       function download(content, name, type) {
@@ -2363,6 +2378,7 @@ let bobinaAlertCloudReady = false;
             categoriaKey,
             categoria: categoriaKey ? coilCategoryLabel(categoriaKey) : "",
             categoriaInformada,
+            categoriaManualMode: !!i.categoriaManualMode,
             status,
             situacao: reportSituacao(i),
             lote: i.lote || "",
@@ -2439,7 +2455,7 @@ let bobinaAlertCloudReady = false;
         try {
           if (!S.db.length) { notify("Importe uma base antes de finalizar.", "warning"); return false; }
           if (!S.primeiraLeituraEmLocal && !(S.scanned || []).length && !S.horarioLegado) { notify("Leia uma etiqueta antes de finalizar a conferência.", "warning"); return false; }
-          if (blockForPendingNaoPrevista()) return false;
+          if (blockForPendingNaoPrevista() || blockForPendingCategoryChoice()) return false;
           refreshCoilCategoriesFromLoadedFile();
           if (requireExtraCategoryReview(() => cloudMarkFinished())) return false;
           const sessionId = await cloudEnsureSession();
@@ -2501,7 +2517,7 @@ let bobinaAlertCloudReady = false;
         }
       }
       async function finishConference() {
-        if (blockForPendingNaoPrevista()) return;
+        if (blockForPendingNaoPrevista() || blockForPendingCategoryChoice()) return;
         if (!hasCheckerName()) { notify("Inicie a conferência e informe o nome do operador antes de finalizar.", "warning"); return; }
         if (!confirm("Finalizar esta conferência?")) return;
         const ok = await cloudMarkFinished();
@@ -2663,7 +2679,7 @@ let bobinaAlertCloudReady = false;
       }
       function reportCategoryLabel(row = {}) {
         const key = reportCategoryKey(row);
-        if (reportIsNaoAprovada(row)) return key ? coilCategoryLabel(key) : "Sem categoria";
+        if (row.categoriaManualMode === true || reportIsNaoAprovada(row)) return key ? coilCategoryLabel(key) : "Sem categoria";
         const tipo = normalizeCategoryText(row.tipo || row.tipoBobina || "");
         if (tipo.startsWith("IMPRESS")) return "Impressa";
         if (tipo.startsWith("LAMINAD")) return "Laminada";
@@ -3012,6 +3028,7 @@ ${"=".repeat(95)}
         const local = !confId;
         if (local) {
           if (!S.db.length && !S.extras.length) { notify("Não há conferência para exportar.", "warning"); return; }
+          if (blockForPendingNaoPrevista() || blockForPendingCategoryChoice()) return;
           refreshCoilCategoriesFromLoadedFile();
           if (requireExtraCategoryReview(() => exportUnifiedReport(""))) return;
         }
@@ -3747,7 +3764,7 @@ ${"=".repeat(95)}
       dz.addEventListener("drop", (e) => { e.preventDefault(); dz.classList.remove("over"); if (e.dataTransfer.files.length) handleFile({ target: { files: e.dataTransfer.files } }); });
       function newConferenceGeneration() { return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`; }
       function resetConferenceData({ keepImportedFile = false } = {}) {
-  if (blockForPendingNaoPrevista()) return false;
+  if (blockForPendingNaoPrevista() || blockForPendingCategoryChoice()) return false;
   // BUG 4 CORRIGIDO: flush e cancelamento do listener Firestore
   cloudFlushBuffer();
   if (cloudSessionUnsub) {
@@ -3771,7 +3788,11 @@ ${"=".repeat(95)}
   }
   const modal = document.getElementById("confTypeModal"); if (modal) modal.classList.remove("show");
   S.meta = {};
+  S.referenceAliases = {};
   S.coilCategories = {};
+  S.manualCategories = {};
+  pendingCategoryChoice = null;
+  document.getElementById("categoryChoiceModal")?.classList.remove("show");
   S.confType = "";
   S.checkerName = "";
   S.cloudSessionId = "";
@@ -3834,6 +3855,8 @@ ${"=".repeat(95)}
         if (replaceExisting && blockForPendingNaoPrevista()) return 0;
         if (replaceExisting) {
           S.meta = {};
+          S.referenceAliases = {};
+          S.manualCategories = {};
           S.db = [];
           S.scanned = [];
           S.checked = new Set();
@@ -3848,15 +3871,18 @@ ${"=".repeat(95)}
         }
         const maxC = Math.max(...rows.map((r) => r.length));
         const special = detectSpecialLayout(rows);
-        const nextMeta = {};
+        const nextMeta = {}, nextAliases = Object.create(null);
         const codes = [];
         if (special) {
           const bIdx = special.idx.BARRAS_ORIGEM, opIdx = special.idx.OP, eIdx = special.idx.ETAPA, mIdx = special.idx.MATERIAL, tIdx = special.idx.TIPO_BOBINA, dIdx = special.idx.DESCRICAO, pIdx = special.idx.PESO, sIdx = special.idx.SITUACAO_OP >= 0 ? special.idx.SITUACAO_OP : -1, rlIdx = special.idx.REFERENCIA_LOTE >= 0 ? special.idx.REFERENCIA_LOTE : -1;
           rows.slice(1).forEach((r) => {
             const code = rowHeaderCode(r, special);
             if (!code) return;
+            const direct = bIdx >= 0 ? String(r[bIdx] || "").trim() : "";
+            const ref = rlIdx >= 0 ? String(r[rlIdx] || "").trim() : "";
             codes.push(code);
-            nextMeta[code] = { op: String(r[opIdx] || "").trim(), etapa: String(r[eIdx] || "").trim(), material: String(r[mIdx] || "").trim(), tipoBobina: tIdx >= 0 ? String(r[tIdx] || "").trim() : "", descricao: dIdx >= 0 ? String(r[dIdx] || "").trim() : "", peso: String(r[pIdx] || "").trim(), situacao: sIdx >= 0 ? String(r[sIdx] || "").trim() : "", referenciaLote: rlIdx >= 0 ? String(r[rlIdx] || "").trim() : "" };
+            referenceLabelCodes(ref).forEach((alias) => addReferenceAlias(nextAliases, alias, code));
+            nextMeta[code] = { op: String(r[opIdx] || "").trim(), etapa: String(r[eIdx] || "").trim(), material: String(r[mIdx] || "").trim(), tipoBobina: tIdx >= 0 ? String(r[tIdx] || "").trim() : "", descricao: dIdx >= 0 ? String(r[dIdx] || "").trim() : "", peso: String(r[pIdx] || "").trim(), situacao: sIdx >= 0 ? String(r[sIdx] || "").trim() : "", referenciaLote: ref, barcodeSource: direct ? "barcode" : "reference" };
           });
         } else if (maxC <= 1) {
           rows.forEach((r) => { const code = String(r[0] || "").trim(); if (code) codes.push(code); });
@@ -3878,6 +3904,7 @@ ${"=".repeat(95)}
         S.fileData = rows;
         S.fileLayout = special || null;
         S.meta = nextMeta;
+        S.referenceAliases = nextAliases;
         S.coilCategories = special ? buildCoilCategoryMapFromRows(rows, special) : {};
         S.db = uniq;
         S.confType = "Arquivo completo";
@@ -3957,7 +3984,7 @@ ${"=".repeat(95)}
         showConferenceTypeModal(S.fileLayout, "change");
       }
       function conferenceTypeConfigs() {
-        return { bases_todas: { label: "Bases - Todas", etapas: [20] }, bases_peliculas: { label: "Bases - Películas", etapas: [20], materialTerms: ["BOPP", "PP", "PET"] }, capas_todas: { label: "Capas - Todas", etapaMin: 30, etapaMax: 39 }, capas_peliculas: { label: "Capas - Películas", etapaMin: 30, etapaMax: 39, capaPeliculaOnly: true }, refiladeira: { label: "Refiladeira - Todos", etapaMin: 40, etapaMax: 49 }, refiladeira_fundo: { label: "Refiladeira - Fundo", etapaMin: 40, etapaMax: 49, fundoOnly: true }, cs: { label: "C&S", etapaMin: 50, etapaMax: 59 } };
+        return { bases_todas: { label: "Bases - Todas", etapas: [20] }, capas_todas: { label: "Capas - Todas", etapaMin: 30, etapaMax: 39 }, refiladeira: { label: "Refiladeira - Todos", etapaMin: 40, etapaMax: 49 }, refiladeira_fundo: { label: "Refiladeira - Fundo", etapaMin: 40, etapaMax: 49, fundoOnly: true }, cs: { label: "C&S", etapaMin: 50, etapaMax: 59 } };
       }
       function setAllConferenceChecks(v) { document.querySelectorAll(".conf-check").forEach((c) => (c.checked = v)); }
       function importSelectedConferenceTypes() {
@@ -3982,32 +4009,66 @@ ${"=".repeat(95)}
       }
       function importByConferenceTypes(cfgList, { replaceExisting = false } = {}) {
         if (!S.fileData || !S.fileLayout) { notify("Arquivo não encontrado para importar.", "error"); return; }
-        if (replaceExisting) {
-          if (!resetConferenceData({ keepImportedFile: true })) return;
-        }
-        const nextMeta = {};
+        if (replaceExisting && !resetConferenceData({ keepImportedFile: true })) return;
+        const nextMeta = {}, nextAliases = Object.create(null);
         const bIdx = S.fileLayout.idx.BARRAS_ORIGEM, eIdx = S.fileLayout.idx.ETAPA, mIdx = S.fileLayout.idx.MATERIAL, tIdx = S.fileLayout.idx.TIPO_BOBINA, dIdx = S.fileLayout.idx.DESCRICAO, opIdx = S.fileLayout.idx.OP, pIdx = S.fileLayout.idx.PESO, sIdx = S.fileLayout.idx.SITUACAO_OP >= 0 ? S.fileLayout.idx.SITUACAO_OP : -1, rlIdx = S.fileLayout.idx.REFERENCIA_LOTE >= 0 ? S.fileLayout.idx.REFERENCIA_LOTE : -1;
         S.coilCategories = buildCoilCategoryMapFromRows(S.fileData, S.fileLayout);
-        const rows = S.fileData.slice(1); const codes = []; let matched = 0;
-        rows.forEach((r) => {
-          const etapaTxt = String(r[eIdx] || "").trim(); const m = etapaTxt.match(/\d+/); const etapa = m ? parseInt(m[0], 10) : NaN; const material = String(r[mIdx] || "").toUpperCase();
+        const rows = S.fileData.slice(1); const codes = []; let matched = 0, hasReferenceCollision = false;
+        const reservedDirects = new Set(rows.map((row) => String(row[bIdx] || "").trim()).filter(Boolean));
+        const knownReferences = new Map(), referenceOwners = new Map();
+        const refKey = (op, ref) => JSON.stringify([String(op || "").trim(), String(ref || "").trim()]);
+        rows.forEach((row) => {
+          const ref = rlIdx >= 0 ? String(row[rlIdx] || "").trim() : "";
+          const owner = JSON.stringify([String(row[opIdx] || "").trim(), ref, String(row[bIdx] || "").trim()]);
+          referenceLabelCodes(ref).forEach((alias) => {
+            if (!referenceOwners.has(alias)) referenceOwners.set(alias, new Set());
+            referenceOwners.get(alias).add(owner);
+          });
+        });
+        if (!replaceExisting) (S.db || []).forEach((code) => {
+          const meta = S.meta && S.meta[code];
+          if (meta?.barcodeSource === "reference" && meta.referenciaLote) knownReferences.set(refKey(meta.op, meta.referenciaLote), code);
+          else reservedDirects.add(String(code));
+        });
+        rows.forEach((r, rowIndex) => {
+          const etapaTxt = String(r[eIdx] || "").trim(); const m = etapaTxt.match(/\d+/); const etapa = m ? parseInt(m[0], 10) : NaN;
           const tipoBobinaTxt = tIdx >= 0 ? String(r[tIdx] || "").trim() : "";
           const refLoteTxt = rlIdx >= 0 ? String(r[rlIdx] || "").trim() : "";
           const ok = cfgList.some((cfg) => {
             const etapaOk = cfg.etapaMin != null ? (etapa >= cfg.etapaMin && etapa <= cfg.etapaMax) : new Set((cfg.etapas || []).map(Number)).has(etapa);
             if (!etapaOk) return false;
-            const terms = (cfg.materialTerms || []).map((t) => String(t).toUpperCase());
-            if (terms.length && !terms.some((t) => material.includes(t))) return false;
             if (cfg.fundoOnly && (tipoBobinaTxt || refLoteTxt)) return false;
-            if (cfg.capaPeliculaOnly && !isCapaPeliculaMaterial(material)) return false;
             return true;
           });
-          if (!ok) return; matched++; const code = String(r[bIdx] || "").trim() || loteRefToLabelCode(refLoteTxt); if (code) { codes.push(code); nextMeta[code] = { op: String(r[opIdx] || "").trim(), etapa: String(r[eIdx] || "").trim(), material: String(r[mIdx] || "").trim(), tipoBobina: tIdx >= 0 ? String(r[tIdx] || "").trim() : "", descricao: dIdx >= 0 ? String(r[dIdx] || "").trim() : "", peso: String(r[pIdx] || "").trim(), situacao: sIdx >= 0 ? String(r[sIdx] || "").trim() : "", referenciaLote: refLoteTxt }; }
+          if (!ok) return;
+          matched++;
+          const direct = String(r[bIdx] || "").trim(), op = String(r[opIdx] || "").trim();
+          const alternatives = referenceLabelCodes(refLoteTxt);
+          let code = direct;
+          if (!code && alternatives.length) {
+            const key = refKey(op, refLoteTxt);
+            code = knownReferences.get(key) || alternatives.find((value) => !reservedDirects.has(value) && !nextMeta[value]) || "";
+            if (!code) { code = `REF:${refLoteTxt}:${op}:${rowIndex}`; hasReferenceCollision = true; }
+            if (alternatives.some((value) => reservedDirects.has(value))) hasReferenceCollision = true;
+            knownReferences.set(key, code);
+          }
+          if (code) {
+            codes.push(code);
+            alternatives.forEach((alias) => {
+              if ((referenceOwners.get(alias)?.size || 0) > 1 || (reservedDirects.has(alias) && alias !== direct)) { nextAliases[alias] = AMBIGUOUS_REFERENCE_ALIAS; hasReferenceCollision = true; }
+              else addReferenceAlias(nextAliases, alias, code);
+            });
+            const meta = { op, etapa: String(r[eIdx] || "").trim(), material: String(r[mIdx] || "").trim(), tipoBobina: tIdx >= 0 ? String(r[tIdx] || "").trim() : "", descricao: dIdx >= 0 ? String(r[dIdx] || "").trim() : "", peso: String(r[pIdx] || "").trim(), situacao: sIdx >= 0 ? String(r[sIdx] || "").trim() : "", referenciaLote: refLoteTxt, barcodeSource: direct ? "barcode" : "reference" };
+            if (!nextMeta[code] || direct || nextMeta[code].barcodeSource !== "barcode") nextMeta[code] = meta;
+          }
         });
         const uniq = [...new Set(codes)]; const labels = cfgList.map((c) => c.label).join(", "); if (!uniq.length) { notify(`Nenhum código encontrado para: ${labels}.`, "warning"); return; }
         S.meta = replaceExisting ? nextMeta : { ...S.meta, ...nextMeta };
         S.db = replaceExisting ? uniq : [...new Set([...S.db, ...uniq])];
-        S.confType = labels; save(); syncCurrentConferenceToCloud(); updateDBUI(); closeConferenceTypeModal(); updateImportActionButtons(); notify(`✅ ${uniq.length} códigos únicos importados de ${matched} linhas filtradas. Duplicados foram ignorados.`);
+        S.referenceAliases = replaceExisting ? nextAliases : mergeReferenceAliases({ ...(S.referenceAliases || {}) }, nextAliases);
+        S.confType = labels; save(); syncCurrentConferenceToCloud(); updateDBUI(); closeConferenceTypeModal(); updateImportActionButtons();
+        const ambiguous = hasReferenceCollision || Object.values(S.referenceAliases).some((alias) => alias === AMBIGUOUS_REFERENCE_ALIAS);
+        notify(ambiguous ? "⚠️ Há referências que correspondem a mais de uma bobina. Confira a planilha antes da leitura." : `✅ ${uniq.length} códigos únicos importados de ${matched} linhas filtradas. Duplicados foram ignorados.`, ambiguous ? "warning" : "success");
       }
       function previewCol() {
         const ci = parseInt(document.getElementById("colSelect").value); const hh = document.getElementById("hasHeader").checked; const rows = S.fileData || [], box = document.getElementById("previewBox"); if (!rows.length) return;
@@ -4023,6 +4084,7 @@ ${"=".repeat(95)}
         const uniq = [...new Set(codes)]; S.db = [...new Set([...S.db, ...uniq])]; S.confType = S.confType || "Importação por arquivo"; save(); syncCurrentConferenceToCloud(); updateDBUI(); document.getElementById("colSel").style.display = "none"; notify(`✅ ${uniq.length} códigos importados!`);
       }
       const ALERT_QUEUE_PREFIX = "bobinas_alerta_pendente_v1:";
+      const ALERT_REFERENCE_RULES_VERSION = 1;
       let bobinaAlertMode = "op", alertQueueCounter = 0;
       let alertQueueFallback = new Map(), alertRemoteCache = null, alertGeneralCache = null, alertActiveCache = null;
       let alertSyncJob = null, alertSyncRetryTimer = null, alertWatchStartPromise = null, alertActiveUnsub = null, alertActiveStartPromise = null;
@@ -4107,17 +4169,67 @@ ${"=".repeat(95)}
         if (!Array.isArray(rows) || !rows.length) throw new Error("A planilha está vazia.");
         const header = rows[0].map(normalizeHeader), opIdx = header.indexOf("OP"), barcodeIdx = header.indexOf("BARRAS_ORIGEM"), refIdx = header.indexOf("REFERENCIA_LOTE");
         if (opIdx < 0 || (barcodeIdx < 0 && refIdx < 0)) throw new Error("A planilha precisa ter as colunas OP e BARRAS_ORIGEM ou REFERENCIA_LOTE.");
-        const index = new Map();
-        rows.slice(1).forEach((row) => {
+        const index = new Map(), dataRows = rows.slice(1);
+        const reservedDirects = new Set(dataRows.map((row) => barcodeIdx >= 0 ? String(row[barcodeIdx] || "").trim() : "").filter(Boolean));
+        const referenceOwners = new Map();
+        dataRows.forEach((row) => {
+          const op = String(row[opIdx] || "").trim().replace(/^(\d+)\.0+$/, "$1");
+          const ref = refIdx >= 0 ? String(row[refIdx] || "").trim() : "";
+          const direct = barcodeIdx >= 0 ? String(row[barcodeIdx] || "").trim() : "";
+          const owner = JSON.stringify([op, ref, direct]);
+          referenceLabelCodes(ref).forEach((alias) => {
+            if (!referenceOwners.has(alias)) referenceOwners.set(alias, new Set());
+            referenceOwners.get(alias).add(owner);
+          });
+        });
+        dataRows.forEach((row, rowIndex) => {
           const op = String(row[opIdx] || "").trim().replace(/^(\d+)\.0+$/, "$1");
           if (!op) return;
           const direct = barcodeIdx >= 0 ? String(row[barcodeIdx] || "").trim() : "";
-          const code = direct || (refIdx >= 0 ? loteRefToLabelCode(row[refIdx]) : "");
-          if (!/^(500|700)\d{8,10}$/.test(code)) return;
-          if (!index.has(op)) index.set(op, new Set());
-          index.get(op).add(code);
+          const ref = refIdx >= 0 ? String(row[refIdx] || "").trim() : "";
+          if (direct && !/^\d+$/.test(direct)) return;
+          const alternatives = referenceLabelCodes(ref);
+          if (!direct && !alternatives.length) return;
+          if (!index.has(op)) {
+            const group = new Set(); group.referenceAliases = {}; group.directCodes = new Set(); group.referenceKeys = new Map();
+            index.set(op, group);
+          }
+          const group = index.get(op);
+          let code = direct;
+          if (!code) {
+            code = group.referenceKeys.get(ref) || alternatives.find((value) => !reservedDirects.has(value) && !group.has(value)) || `REF:${ref}:${op}:${rowIndex}`;
+            group.referenceKeys.set(ref, code);
+          }
+          group.add(code);
+          if (direct) group.directCodes.add(direct);
+          alternatives.forEach((alias) => {
+            if ((referenceOwners.get(alias)?.size || 0) > 1 || (reservedDirects.has(alias) && alias !== direct)) group.referenceAliases[alias] = AMBIGUOUS_REFERENCE_ALIAS;
+            else addReferenceAlias(group.referenceAliases, alias, code);
+          });
         });
         return index;
+      }
+      function alertAliasMap(value) {
+        const clean = {};
+        if (!value || typeof value !== "object" || Array.isArray(value)) return clean;
+        Object.entries(value).forEach(([alias, code]) => { if (/^(500|700)\d+$/.test(alias) && typeof code === "string") clean[alias] = code; });
+        return clean;
+      }
+      function alertAliasMapsEqual(a, b) {
+        const left = alertAliasMap(a), right = alertAliasMap(b);
+        const keys = [...new Set([...Object.keys(left), ...Object.keys(right)])];
+        return keys.every((key) => left[key] === right[key]);
+      }
+      function alertTargetForCode(item, fullCode) {
+        const code = String(fullCode || ""), codes = (item.codigos || []).map(String), direct = (item.directCodes || []).map(String);
+        if (direct.includes(code) && codes.includes(code)) return code;
+        const alias = (item.referenceAliases || {})[code];
+        if (alias === AMBIGUOUS_REFERENCE_ALIAS) return "";
+        if (codes.includes(code)) return code;
+        return alias && codes.includes(String(alias)) ? String(alias) : "";
+      }
+      function alertFoundCodeForTarget(item, target) {
+        return (item.encontrados || []).map(String).find((code) => alertTargetForCode(item, code) === String(target)) || "";
       }
       async function alertIndexForDescriptor(descriptor) {
         const version = String(descriptor?.version || ""), url = String(descriptor?.url || "");
@@ -4171,6 +4283,9 @@ ${"=".repeat(95)}
           op: String(d.op || ""), peso: d.peso || "", observation: d.observation || "",
           codigos: Array.isArray(d.codigos) ? [...new Set(d.codigos.map(String))] : [],
           baseVersion: String(d.baseVersion || ""),
+          referenceAliases: alertAliasMap(d.referenceAliases),
+          directCodes: Array.isArray(d.directCodes) ? [...new Set(d.directCodes.map(String))] : [],
+          aliasRulesVersion: Number(d.aliasRulesVersion || 0), aliasBaseVersion: String(d.aliasBaseVersion || ""),
           encontrados: Array.isArray(d.encontrados) ? [...new Set(d.encontrados.map(String))] : [],
           encontradosDetalhes: d.encontradosDetalhes && typeof d.encontradosDetalhes === "object" ? { ...d.encontradosDetalhes } : {},
           createdAt: d.createdAtLocal || d.createdAt || "", createdBy: d.createdBy || "",
@@ -4225,7 +4340,7 @@ ${"=".repeat(95)}
         });
       }
       function alertClone(item = {}) {
-        const copy = { ...item, codigos: Array.isArray(item.codigos) ? [...item.codigos] : [], encontrados: Array.isArray(item.encontrados) ? [...item.encontrados] : [], encontradosDetalhes: item.encontradosDetalhes && typeof item.encontradosDetalhes === "object" ? { ...item.encontradosDetalhes } : {} };
+        const copy = { ...item, codigos: Array.isArray(item.codigos) ? [...item.codigos] : [], referenceAliases: alertAliasMap(item.referenceAliases), directCodes: Array.isArray(item.directCodes) ? [...item.directCodes] : [], encontrados: Array.isArray(item.encontrados) ? [...item.encontrados] : [], encontradosDetalhes: item.encontradosDetalhes && typeof item.encontradosDetalhes === "object" ? { ...item.encontradosDetalhes } : {} };
         delete copy.pendingSync; return copy;
       }
       function alertApplyFound(item, record = {}) {
@@ -4267,7 +4382,16 @@ ${"=".repeat(95)}
             if (op.action === "found") alertApplyFound(item, op.payload || {});
             else if (op.action === "photo") alertApplyPhoto(item, op.payload || {});
             else if (op.action === "remove") item.removed = true;
-            else if (op.action === "targets" && alertKind(item) === "op") { item.codigos = Array.isArray(op.payload?.codigos) ? [...op.payload.codigos] : []; item.baseVersion = String(op.payload?.baseVersion || ""); }
+            else if (op.action === "targets" && alertKind(item) === "op") {
+              item.codigos = Array.isArray(op.payload?.codigos) ? [...op.payload.codigos] : [];
+              item.baseVersion = String(op.payload?.baseVersion || "");
+              if (op.payload?.aliasRulesVersion) {
+                item.referenceAliases = alertAliasMap(op.payload.referenceAliases);
+                item.directCodes = Array.isArray(op.payload.directCodes) ? [...op.payload.directCodes] : [];
+                item.aliasRulesVersion = Number(op.payload.aliasRulesVersion);
+                item.aliasBaseVersion = String(op.payload.aliasBaseVersion || "");
+              }
+            }
           }
           if (item && !op.confirmed) item.pendingSync = true;
         });
@@ -4281,7 +4405,10 @@ ${"=".repeat(95)}
           let reflected = false;
           if (op.action === "create") reflected = !item.removed;
           else if (op.action === "remove") reflected = !!item.removed;
-          else if (op.action === "found") reflected = alertKind(item) === "op" ? (item.encontrados || []).includes(String(op.payload?.fullCode || "")) : !!item.found;
+          else if (op.action === "found") {
+            const code = String(op.payload?.fullCode || ""), target = alertKind(item) === "op" ? alertTargetForCode(item, code) : "";
+            reflected = alertKind(item) === "op" ? (item.encontrados || []).includes(code) || (!!target && !!alertFoundCodeForTarget(item, target)) : !!item.found;
+          }
           else if (op.action === "photo") {
             const expected = String(op.payload?.foundPhotoUrl || ""), code = String(op.payload?.fullCode || "");
             const actual = alertKind(item) === "op" ? (item.encontradosDetalhes || {})[code]?.foundPhotoUrl : item.foundPhotoUrl;
@@ -4290,6 +4417,10 @@ ${"=".repeat(95)}
           else if (op.action === "targets") {
             const expected = [...(op.payload?.codigos || [])].map(String).sort(), actual = [...(item.codigos || [])].map(String).sort();
             reflected = item.baseVersion === String(op.payload?.baseVersion || "") && JSON.stringify(expected) === JSON.stringify(actual);
+            if (reflected && op.payload?.aliasRulesVersion) {
+              const expectedDirect = [...(op.payload.directCodes || [])].map(String).sort(), actualDirect = [...(item.directCodes || [])].map(String).sort();
+              reflected = Number(item.aliasRulesVersion || 0) === Number(op.payload.aliasRulesVersion) && String(item.aliasBaseVersion || "") === String(op.payload.aliasBaseVersion || "") && alertAliasMapsEqual(item.referenceAliases, op.payload.referenceAliases) && JSON.stringify(expectedDirect) === JSON.stringify(actualDirect);
+            }
           }
           if (reflected) alertQueueRemove(op.qid);
         });
@@ -4395,6 +4526,8 @@ ${"=".repeat(95)}
           shortCode: String(item.shortCode || ""), codigoCompleto: String(item.codigoCompleto || ""),
           op: String(item.op || ""), peso: String(item.peso || ""), observation: String(item.observation || ""),
           codigos: Array.isArray(item.codigos) ? item.codigos : [], baseVersion: String(item.baseVersion || ""),
+          referenceAliases: alertAliasMap(item.referenceAliases), directCodes: Array.isArray(item.directCodes) ? item.directCodes : [],
+          aliasRulesVersion: Number(item.aliasRulesVersion || 0), aliasBaseVersion: String(item.aliasBaseVersion || ""),
           encontrados: [], encontradosDetalhes: {}, status: "procurando", found: false, removed: false,
           createdBy: String(item.createdBy || ""), createdAtLocal: item.createdAt || new Date().toISOString(),
           createdAt: firebase.firestore.FieldValue.serverTimestamp(), updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -4440,6 +4573,12 @@ ${"=".repeat(95)}
             if (!baseSnap?.exists || alertBaseVersion(active) !== String(op.payload?.baseVersion || "")) return { discarded: "base-changed", baseData: active, data: raw };
             const codigos = Array.isArray(op.payload?.codigos) ? [...new Set(op.payload.codigos.map(String))] : [];
             const patch = { codigos, baseVersion: String(op.payload.baseVersion), updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+            if (op.payload?.aliasRulesVersion) {
+              patch.referenceAliases = alertAliasMap(op.payload.referenceAliases);
+              patch.directCodes = Array.isArray(op.payload.directCodes) ? [...new Set(op.payload.directCodes.map(String))] : [];
+              patch.aliasRulesVersion = Number(op.payload.aliasRulesVersion);
+              patch.aliasBaseVersion = String(op.payload.aliasBaseVersion || "");
+            }
             tx.set(ref, patch, { merge: true }); return { data: { ...raw, ...patch } };
           }
           if (op.action === "found") {
@@ -4447,7 +4586,8 @@ ${"=".repeat(95)}
             if (!code) return { discarded: "invalid", data: raw };
             if (alertKind(raw) === "op") {
               const encontrados = Array.isArray(raw.encontrados) ? raw.encontrados.map(String) : [];
-              if (encontrados.includes(code)) return { data: raw };
+              const target = alertTargetForCode(raw, code), existing = target ? alertFoundCodeForTarget(raw, target) : "";
+              if (encontrados.includes(code) || existing) return { data: raw, alreadyFoundCode: existing || code };
               const detalhes = { ...(raw.encontradosDetalhes || {}), [code]: { ...record, fullCode: code } };
               const patch = { encontrados: [...new Set([...encontrados, code])], encontradosDetalhes: detalhes, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
               tx.set(ref, patch, { merge: true }); return { data: { ...raw, ...patch } };
@@ -4505,6 +4645,11 @@ ${"=".repeat(95)}
                 if (op.payload?.item) op.payload.item.generation = op.generation;
                 notify("Já havia um alerta ativo; ele foi preservado.", "warning");
               }
+              if (op.action === "found" && result?.alreadyFoundCode && String(result.alreadyFoundCode) !== String(op.payload?.fullCode || "")) {
+                const duplicateCode = String(op.payload?.fullCode || "");
+                alertQueueRead().filter((entry) => entry.action === "photo" && entry.alertId === op.alertId && entry.generation === op.generation && String(entry.payload?.fullCode || "") === duplicateCode && !entry.confirmed).forEach((entry) => alertQueueRemove(entry.qid));
+                notify("Esta bobina já foi localizada por outro aparelho.", "warning");
+              }
               if (result?.discarded) {
                 if (result.discarded === "base-changed") {
                   const data = result.baseData || {};
@@ -4547,6 +4692,13 @@ ${"=".repeat(95)}
         const remaining = alertQueueRead().find((entry) => entry.qid === op.qid);
         if (remaining && !remaining.confirmed) alertScheduleRetry();
       }
+      function alertNeedsBaseRefresh(item, descriptor) {
+        if (!item || alertKind(item) !== "op" || item.removed) return false;
+        if (String(item.baseVersion || "") !== descriptor.version || Number(item.aliasRulesVersion || 0) !== ALERT_REFERENCE_RULES_VERSION || String(item.aliasBaseVersion || "") !== descriptor.version) return true;
+        // Um aparelho antigo pode atualizar somente os códigos e deixar os apelidos intactos.
+        const codes = new Set((item.codigos || []).map(String));
+        return Object.values(alertAliasMap(item.referenceAliases)).some((target) => target !== AMBIGUOUS_REFERENCE_ALIAS && !codes.has(target)) || (item.directCodes || []).some((code) => !codes.has(String(code)));
+      }
       function scheduleAlertBaseRefresh() {
         if (alertBaseRefreshJob) { alertBaseRefreshAgain = true; return alertBaseRefreshJob; }
         if (navigator.onLine === false || !alertBaseDescriptor?.version || !alertBaseDescriptor?.url) return Promise.resolve(false);
@@ -4555,15 +4707,17 @@ ${"=".repeat(95)}
             do {
               alertBaseRefreshAgain = false;
               const descriptor = { ...alertBaseDescriptor };
-              const groups = (S.alertBobinas || []).filter((item) => alertKind(item) === "op" && !item.removed && String(item.baseVersion || "") !== descriptor.version);
+              const groups = (S.alertBobinas || []).filter((item) => alertNeedsBaseRefresh(item, descriptor));
               if (!groups.length) continue;
               const index = await alertIndexForDescriptor(descriptor);
               if (!alertBaseDescriptor || alertBaseDescriptor.version !== descriptor.version || alertBaseDescriptor.url !== descriptor.url) { alertBaseRefreshAgain = true; continue; }
               for (const group of groups) {
                 const live = (S.alertBobinas || []).find((item) => String(item.cloudId || item.id) === String(group.cloudId || group.id));
-                if (!live || live.removed || String(live.baseVersion || "") === descriptor.version) continue;
-                const codigos = [...(index.get(String(live.op || "")) || [])].sort();
-                alertQueueAdd("targets", live, { baseVersion: descriptor.version, codigos });
+                if (!alertNeedsBaseRefresh(live, descriptor)) continue;
+                const op = String(live.op || "").trim().replace(/^(\d+)\.0+$/, "$1"), source = index.get(op);
+                const codigos = [...(source || [])].sort();
+                const referenceAliases = alertAliasMap(source?.referenceAliases), directCodes = [...(source?.directCodes || [])].sort();
+                alertQueueAdd("targets", live, { baseVersion: descriptor.version, codigos, referenceAliases, directCodes, aliasRulesVersion: ALERT_REFERENCE_RULES_VERSION, aliasBaseVersion: descriptor.version });
               }
               rebuildBobinaAlerts(); flushAlertQueue();
             } while (alertBaseRefreshAgain);
@@ -4677,14 +4831,17 @@ ${"=".repeat(95)}
         if (existing) { notify(mode === "op" ? "Já existe um alerta para esta OP." : "Essa bobina já está cadastrada no alerta.", "warning"); return; }
         if (addBtn) { addBtn.disabled = true; addBtn.textContent = mode === "op" ? "🔄 Consultando planilha..." : "🔄 Salvando..."; }
         try {
-          let codigos = [], baseVersion = "", source = "";
+          let codigos = [], baseVersion = "", source = "", referenceAliases = {}, directCodes = [];
           if (mode === "op") {
             const base = await alertBaseForRegistration(); source = base.source; baseVersion = base.version;
-            codigos = [...(base.index.get(op) || [])].sort();
+            const group = base.index.get(op);
+            codigos = [...(group || [])].sort();
+            referenceAliases = alertAliasMap(group?.referenceAliases);
+            directCodes = [...(group?.directCodes || [])].sort();
             if (!codigos.length) { notify(`OP ${op} não encontrada ${source === "local" ? "na base carregada neste aparelho" : "na planilha ativa"} ou sem etiquetas válidas.`, "warning"); return; }
           }
           const id = mode === "op" ? bobinaAlertOpDocId(op) : bobinaAlertCodeDocId(target);
-          const item = { id, cloudId: id, cloudSynced: false, tipoBusca: mode, generation: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`, shortCode: target?.shortCode || "", codigoCompleto: target?.codigoCompleto || "", op, peso, observation, codigos, baseVersion, encontrados: [], encontradosDetalhes: {}, createdAt: new Date().toISOString(), createdBy: S.checkerName || "", found: false, removed: false, sortAt: Date.now() };
+          const item = { id, cloudId: id, cloudSynced: false, tipoBusca: mode, generation: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`, shortCode: target?.shortCode || "", codigoCompleto: target?.codigoCompleto || "", op, peso, observation, codigos, baseVersion, referenceAliases, directCodes, aliasRulesVersion: mode === "op" ? ALERT_REFERENCE_RULES_VERSION : 0, aliasBaseVersion: mode === "op" ? baseVersion : "", encontrados: [], encontradosDetalhes: {}, createdAt: new Date().toISOString(), createdBy: S.checkerName || "", found: false, removed: false, sortAt: Date.now() };
           S.alertBobinas = S.alertBobinas || []; S.alertBobinas.unshift(item); save();
           if (codeEl) codeEl.value = ""; if (pesoEl) pesoEl.value = ""; if (opEl) opEl.value = ""; if (obsEl) obsEl.value = "";
           setBobinaAlertMode(mode);
@@ -4716,19 +4873,21 @@ ${"=".repeat(95)}
         items.sort((a, b) => (Number(b.sortAt || 0) - Number(a.sortAt || 0)) || String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
         if (!items.length) { box.innerHTML = '<div class="empty" style="padding:14px">Nenhum alerta cadastrado.</div>'; return; }
         box.innerHTML = items.map((b) => {
-          const isOp = alertKind(b) === "op", currentCodes = Array.isArray(b.codigos) ? b.codigos : [], foundCodes = new Set(b.encontrados || []);
-          const foundCount = currentCodes.filter((code) => foundCodes.has(code)).length;
+          const isOp = alertKind(b) === "op", currentCodes = Array.isArray(b.codigos) ? b.codigos.map(String) : [], foundCodes = new Set((b.encontrados || []).map(String));
+          const foundCount = currentCodes.filter((code) => !!alertFoundCodeForTarget(b, code)).length;
           const allFound = isOp ? currentCodes.length > 0 && foundCount === currentCodes.length : !!b.found;
           const removeId = esc(b.cloudId || b.id).replace(/'/g, "&#39;");
           const syncChip = b.pendingSync || !b.cloudSynced ? '<span class="bobina-alert-chip">aguardando sincronização</span>' : '<span class="bobina-alert-chip">☁️ nuvem</span>';
           const title = isOp ? `OP ${esc(b.op)}` : `Código ${esc(b.codigoCompleto || b.shortCode)}`;
           let detail = "";
           if (isOp) {
-            const allCodes = [...new Set([...currentCodes, ...(b.encontrados || [])])].sort();
+            const oldFound = [...foundCodes].filter((code) => !alertTargetForCode(b, code));
+            const allCodes = [...new Set([...currentCodes, ...oldFound])].sort();
             const rows = allCodes.map((code) => {
-              const found = foundCodes.has(code), info = (b.encontradosDetalhes || {})[code] || {};
+              const foundCode = alertFoundCodeForTarget(b, code) || (foundCodes.has(code) ? code : "");
+              const found = !!foundCode, info = (b.encontradosDetalhes || {})[foundCode] || {};
               const photo = /^https?:\/\//i.test(String(info.foundPhotoUrl || "")) ? `<a href="${esc(info.foundPhotoUrl)}" target="_blank" rel="noopener">📸 Foto</a>` : "";
-              return `<div class="bobina-alert-progress-row"><span>${found ? "✅" : "⏳"}</span><strong>${esc(code)}</strong>${found && info.foundLocation ? `<span>📌 ${esc(info.foundLocation)}</span>` : ""}${found && info.foundBy ? `<span>• ${esc(info.foundBy)}</span>` : ""}${found && info.foundTime ? `<span>• ${esc(info.foundTime)}</span>` : ""}${found && info.foundObservation ? `<span>• Obs.: ${esc(info.foundObservation)}</span>` : ""}${photo}</div>`;
+              return `<div class="bobina-alert-progress-row"><span>${found ? "✅" : "⏳"}</span><strong>${esc(foundCode || code)}</strong>${found && info.foundLocation ? `<span>📌 ${esc(info.foundLocation)}</span>` : ""}${found && info.foundBy ? `<span>• ${esc(info.foundBy)}</span>` : ""}${found && info.foundTime ? `<span>• ${esc(info.foundTime)}</span>` : ""}${found && info.foundObservation ? `<span>• Obs.: ${esc(info.foundObservation)}</span>` : ""}${photo}</div>`;
             }).join("");
             const count = currentCodes.length ? `${foundCount} de ${currentCodes.length} bobina(s) encontradas na base` : "Nenhuma bobina desta OP na base ativa";
             detail = `<div class="bobina-alert-found">${allFound ? "✅ " : ""}${esc(count)}</div>${rows ? `<details><summary class="bobina-alert-hint">Ver bobinas</summary><div class="bobina-alert-progress">${rows}</div></details>` : ""}`;
@@ -4742,7 +4901,10 @@ ${"=".repeat(95)}
         const code = String(fullCode || "").replace(/\D/g, ""), short = alertShortFromFull(code);
         const matches = (S.alertBobinas || []).filter((item) => {
           if (!item || item.removed) return false;
-          if (alertKind(item) === "op") return (item.codigos || []).includes(code) && !(item.encontrados || []).includes(code);
+          if (alertKind(item) === "op") {
+            const target = alertTargetForCode(item, code);
+            return !!target && !alertFoundCodeForTarget(item, target);
+          }
           if (item.found) return false;
           if (item.codigoCompleto) return String(item.codigoCompleto) === code;
           const target = String(item.shortCode || "");
@@ -4757,17 +4919,22 @@ ${"=".repeat(95)}
       function handleBobinaAlertScan(code, time, source = "collector") {
         const matches = matchingBobinaAlerts(code), item = matches[0];
         if (!item) return false;
-        const refs = matches.map((b) => ({ id: b.id || "", cloudId: b.cloudId || b.id || "", tipoBusca: alertKind(b), generation: b.generation || "", shortCode: b.shortCode || alertShortFromFull(code), codigoCompleto: b.codigoCompleto || "", op: b.op || "", peso: b.peso || "", observation: b.observation || "", codigos: alertKind(b) === "op" ? [String(code)] : [] }));
+        const refs = matches.map((b) => {
+          const isOp = alertKind(b) === "op", target = isOp ? alertTargetForCode(b, code) : "";
+          return { id: b.id || "", cloudId: b.cloudId || b.id || "", tipoBusca: alertKind(b), generation: b.generation || "", shortCode: b.shortCode || alertShortFromFull(code), codigoCompleto: b.codigoCompleto || "", op: b.op || "", peso: b.peso || "", observation: b.observation || "", codigos: isOp ? [target || String(code)] : [], referenceAliases: isOp && target && target !== String(code) ? { [String(code)]: target } : {}, directCodes: isOp && (b.directCodes || []).includes(String(code)) ? [String(code)] : [] };
+        });
         const scan = getExtraScan(code);
-        if (scan?.informacoesPendentes) {
+        if (scan?.informacoesPendentes || scan?.categoriaPendente) {
           scan.alertaPendente = { ...refs[0], matches: refs };
           save();
         }
+        const expected = resolveExpectedBarcode(code), expectedCode = expected.code || code;
+        const alreadyExtra = S.extras.includes(code) || (expectedCode !== code && S.extras.includes(expectedCode));
         pendingAlertFound = {
           itemId: item.id, cloudId: item.cloudId || item.id, shortCode: item.shortCode || alertShortFromFull(code),
           fullCode: code, time, source, matches: refs,
-          existsInBase: S.db.includes(code), alreadyChecked: S.checked.has(code), alreadyExtra: S.extras.includes(code),
-          shouldRegisterExtra: !S.db.includes(code) && !S.extras.includes(code),
+          existsInBase: !!expected.code, alreadyChecked: !!expected.code && S.checked.has(expectedCode), alreadyExtra,
+          shouldRegisterExtra: !expected.code && !alreadyExtra,
         };
         showBobinaAlertFlash(item, code);
         return true;
@@ -4802,9 +4969,9 @@ ${"=".repeat(95)}
         document.getElementById("alertFoundFoundObs").value = "";
         document.getElementById("alertFoundLocationError").style.display = "none";
         document.getElementById("alertPhotoSaveError").style.display = "none";
-        const obrigatoria = !!getExtraScan(code)?.informacoesPendentes;
+        const scan = getExtraScan(code), obrigatoria = !!(scan?.informacoesPendentes || scan?.categoriaPendente);
         const cancel = document.getElementById("alertFoundCancelBtn"); cancel.hidden = obrigatoria; cancel.style.display = obrigatoria ? "none" : "";
-        prepareExtraCategory("alert", code, obrigatoria && shouldAskExtraCategoryForCurrentConference());
+        prepareExtraCategory("alert", code, !!scan?.categoriaPendente || requiresManualCategoryForCode(code));
         resetAlertPhotoState();
         document.getElementById("alertFoundModal").classList.add("show");
         focusModalInputIfUntouched("alertFoundModal", "alertFoundLocation", 200);
@@ -4839,13 +5006,14 @@ ${"=".repeat(95)}
       async function confirmAlertFound() {
         if (!pendingAlertFound || naoPrevistaPhotoSaving) return;
         if (photoRotationInProgress("alert")) { notify("Aguarde a foto terminar de girar.", "warning"); return; }
-        const data = pendingAlertFound;
-        const naoPrevistaPendente = !!getExtraScan(data.fullCode)?.informacoesPendentes;
+        const data = pendingAlertFound, extraScan = getExtraScan(data.fullCode);
+        const naoPrevistaPendente = !!extraScan?.informacoesPendentes, categoriaPendente = !!extraScan?.categoriaPendente;
         const loc = document.getElementById("alertFoundLocation").value.trim();
         const foundObs = document.getElementById("alertFoundFoundObs").value.trim();
         if (!loc) { document.getElementById("alertFoundLocationError").style.display = "block"; document.getElementById("alertFoundLocation").focus(); return; }
-        const categoriaKey = naoPrevistaPendente ? (shouldAskExtraCategoryForCurrentConference() ? validateExtraCategory("alert") : automaticExtraCategoryForCurrentConference(data.fullCode)) : "";
-        if (naoPrevistaPendente && !categoriaKey) return;
+        const askCategory = categoriaPendente || requiresManualCategoryForCode(data.fullCode);
+        const categoriaKey = askCategory ? validateExtraCategory("alert") : "";
+        if (askCategory && !categoriaKey) return;
         let photoError = false;
         if (!pendingAlertPhotoEtiqueta) { document.getElementById("alertPhotoErrorEtiqueta").style.display = "block"; photoError = true; }
         if (!pendingAlertPhotoBobina) { document.getElementById("alertPhotoErrorBobina").style.display = "block"; photoError = true; }
@@ -4862,9 +5030,11 @@ ${"=".repeat(95)}
           const alertItems = refs.map((ref) => (S.alertBobinas || []).find((b) => String(b.cloudId || b.id) === String(ref.cloudId || ref.id)) || ref);
           (S.scanned || []).forEach((s) => { if (s && String(s.code) === String(data.fullCode)) { s.location = s.location || loc; s.observation = s.observation || foundObs; s.hasPhoto = s.hasPhoto || !!savedPhoto; s.alertFound = true; } });
           if (naoPrevistaPendente && !completeNaoPrevistaRecord(data.fullCode, { location: loc, observation: foundObs, categoriaKey, hasPhoto: savedPhoto })) { notify("Não foi possível concluir a não prevista. Tente novamente.", "error"); return; }
+          if (!naoPrevistaPendente && extraScan && categoriaKey) { setExtraScanCategory(data.fullCode, categoriaKey); delete extraScan.alertaPendente; }
+          if (!extraScan && data.existsInBase && categoriaKey) { const expected = resolveExpectedBarcode(data.fullCode).code || data.fullCode; setManualCategoryForCode(expected, categoriaKey, { persist: false }); }
           if (data.shouldRegisterExtra && !S.extras.includes(data.fullCode)) {
-            const scanItem = { code: data.fullCode, time: data.time, status: "not-found", location: loc, observation: foundObs, hasPhoto: !!savedPhoto, source: "alert", alertFound: true };
-            S.extras.push(data.fullCode); S.scanned.unshift(scanItem); cloudSyncReading(scanItem);
+            const scanItem = { code: data.fullCode, time: data.time, status: "not-found", location: loc, observation: foundObs, hasPhoto: !!savedPhoto, source: "alert", alertFound: true, ...(categoriaKey ? { categoriaKey, categoria: coilCategoryLabel(categoriaKey), categoriaInformada: true } : {}) };
+            S.extras.push(data.fullCode); S.scanned.unshift(scanItem); if (categoriaKey) setManualCategoryForCode(data.fullCode, categoriaKey, { persist: false }); cloudSyncReading(scanItem);
           }
           save(); renderBobinaAlertList(); updateStats(); updateHistory(); updateDBUI(); updateReport(); camUpdateCounters?.(); camUpdateHistory?.();
           alertItems.forEach((item) => cloudMarkBobinaAlertFound(item, data, { location: loc, observation: foundObs, hasPhoto: !!savedPhoto, photoUrl: upload?.url || "", photoPath: upload?.path || "" }));
@@ -4874,7 +5044,8 @@ ${"=".repeat(95)}
         } finally { if (naoPrevistaPendente) naoPrevistaPhotoSaving = false; }
       }
       function cancelAlertFound() {
-        if (pendingAlertFound && getExtraScan(pendingAlertFound.fullCode)?.informacoesPendentes) { blockForPendingNaoPrevista(); return; }
+        const scan = pendingAlertFound && getExtraScan(pendingAlertFound.fullCode);
+        if (scan?.informacoesPendentes || scan?.categoriaPendente) { blockForPendingNaoPrevista(); return; }
         document.getElementById("alertFoundModal").classList.remove("show"); resetAlertPhotoState(); releaseAlertScanFlow();
       }
 
@@ -5142,8 +5313,9 @@ if (S.collectorMode) {
       function normalizeCollectorCode(raw) {
         const text = String(raw || "").replace(/[\r\n\t]+/g, "").trim();
         if (!text) return "";
+        if (S.db.includes(text) || Object.prototype.hasOwnProperty.call(S.referenceAliases || {}, text)) return text;
         const digits = text.replace(/\D/g, "");
-        if (/^(500|700)\d{8,10}$/.test(digits)) return digits;
+        if (isReadableBarcode(digits)) return digits;
         return text;
       }
       function startCollectorConference() {
@@ -5164,22 +5336,116 @@ if (S.collectorMode) {
         notify("Conferência iniciada no modo coletor.");
       }
       async function startConference() {
-        if (blockForPendingNaoPrevista()) return;
+        if (blockForPendingNaoPrevista() || blockForPendingCategoryChoice()) return;
         if (S.db.length === 0) { notify("Importe os dados primeiro!", "error"); return; }
         if (!ensureCheckerName(() => startConference())) return;
         if (S.collectorMode) startCollectorConference();
         else openCamera();
         cloudSetStatus("ok", S.cloudSessionStartSaved ? "☁️ Conferência registrada" : "☁️ Aguardando primeira leitura");
       }
+      function requestManualCategory(choice) {
+        if (!choice || !choice.code) return false;
+        if (pendingCategoryChoice && document.getElementById("categoryChoiceModal")?.classList.contains("show")) return false;
+        pendingCategoryChoice = { ...choice };
+        const modal = document.getElementById("categoryChoiceModal"), cancel = document.getElementById("categoryChoiceCancel");
+        document.getElementById("categoryChoiceCode").textContent = String(choice.code);
+        document.getElementById("categoryChoiceMessage").textContent = choice.kind === "extra" ? "Não prevista já registrada. Escolha a categoria para continuar:" : "Escolha a categoria desta bobina:";
+        const mandatory = choice.kind === "extra";
+        cancel.hidden = mandatory; cancel.style.display = mandatory ? "none" : "";
+        const collectorInput = document.getElementById("collectorInput");
+        if (collectorInput && document.activeElement === collectorInput) { collectorInput.value = ""; collectorInput.blur(); }
+        clearTimeout(collectorReadTimer); collectorReadTimer = null; clearTimeout(collectorKeyTimer); collectorKeyTimer = null; collectorKeyBuffer = "";
+        modal.classList.add("show");
+        setTimeout(() => { if (modal.classList.contains("show") && !modal.contains(document.activeElement)) { try { document.getElementById("categoryChoicePanel").focus({ preventScroll: true }); } catch (e) {} } }, 30);
+        return true;
+      }
+      function releaseCategorySource(source, manual = false) {
+        if (source === "collector") { collectorProcessing = false; setTimeout(() => { if (collectorCanFocus()) focusCollectorInput(); }, 120); }
+        if (source === "camera") {
+          if (manual && collectorReturnAfterManualCamera) setTimeout(() => closeIntegratedScanner(), 350);
+          else setTimeout(() => { if (!getPendingNaoPrevista() && !pendingAlertFound && !pendingCategoryChoice) camCooldown = false; }, 300);
+        }
+      }
+      function finishExpectedRead(choice, category = "") {
+        const code = String(choice.code || ""), expected = String(choice.expectedCode || code), source = choice.source || "";
+        if (!code || !expected) { releaseCategorySource(source, !!choice.manual); return false; }
+        if (category) setManualCategoryForCode(expected, category, { persist: false });
+        if (!S.checked.has(expected)) {
+          const scanItem = { code, ...(expected !== code ? { logicalCode: expected } : {}), time: choice.time || new Date().toLocaleTimeString("pt-BR"), status: "found", ...(source === "collector" ? { source: "collector" } : {}), ...(choice.manual ? { manual: true } : {}), ...(category ? { categoriaKey: category, categoria: coilCategoryLabel(category), categoriaInformada: true } : {}) };
+          S.checked.add(expected); S.scanned.unshift(scanItem); save(); cloudSyncReading(scanItem);
+        } else save();
+        updateStats(); updateHistory(); updateDBUI(); updateReport();
+        if (source === "collector") {
+          collectorShowBigStatus("green", "✅ LIDA", code, 1400);
+          setCollectorLastRead(`✅ ${code} conferido.`, "ok");
+          updateCollectorOverlayCenter("Lida com sucesso", "Bobina prevista conferida com sucesso.", code);
+        } else if (source === "camera") {
+          camFlash("green"); camShowBigStatus("green", "✅ LIDA", code, 1450);
+          camShowResult("green", `${choice.manual ? "📸 MANUAL" : "✅ CONFERIDO"} — "${code}"`, 1800);
+          camVibrate("found"); camBeep("found"); camUpdateCounters(); camUpdateHistory();
+        }
+        releaseCategorySource(source, !!choice.manual);
+        return true;
+      }
+      function showExtraCategoryOnly(scan, source = "recovery") {
+        if (!scan || scan.categoriaPendente !== true) return false;
+        return requestManualCategory({ kind: "extra", code: String(scan.code), source });
+      }
+      function chooseManualCategory(cat) {
+        const choice = pendingCategoryChoice, category = cat === "peliculas" ? "peliculas" : cat === "extrusao" ? "extrusao" : "";
+        if (!choice || !category) return;
+        if (choice.kind === "extra") {
+          const scan = getExtraScan(choice.code);
+          if (!scan || scan.categoriaPendente !== true) { notify("Esta não prevista não está mais pendente.", "warning"); return; }
+          setExtraScanCategory(choice.code, category);
+          delete scan.alertaPendente; save();
+          pendingCategoryChoice = null; document.getElementById("categoryChoiceModal").classList.remove("show");
+          updateStats(); updateHistory(); updateDBUI(); updateReport();
+          if (choice.source === "collector") setCollectorLastRead(`⚠️ ${choice.code} registrada como não prevista.`, "warn");
+          if (choice.source === "camera") camShowResult("red", `⚠️ "${choice.code}" — não prevista registrada`, 2400);
+          releaseCategorySource(choice.source);
+          if (getPendingNaoPrevista()) reopenPendingNaoPrevista();
+          return;
+        }
+        pendingCategoryChoice = null; document.getElementById("categoryChoiceModal").classList.remove("show");
+        if (choice.kind === "naoAprovada") {
+          if (!pendingNaoAprovada) { releaseCategorySource(choice.source); return; }
+          setManualCategoryForCode(choice.expectedCode, category, { persist: false });
+          completeNaoAprovada(choice.location || "", choice.observation || "");
+          return;
+        }
+        if (choice.kind === "legacy") {
+          setManualCategoryForCode(choice.expectedCode, category);
+          updateStats(); updateHistory(); updateDBUI(); updateReport();
+          notify("Categoria salva para a bobina já conferida.");
+          releaseCategorySource(choice.source, !!choice.manual);
+          return;
+        }
+        finishExpectedRead(choice, category);
+      }
+      function cancelManualCategory() {
+        const choice = pendingCategoryChoice;
+        if (!choice || choice.kind === "extra") return;
+        pendingCategoryChoice = null; document.getElementById("categoryChoiceModal").classList.remove("show");
+        if (choice.kind === "naoAprovada") { notify(`⚠️ ${choice.code} não conferida. Leia novamente se necessário.`, "warning"); releaseNaoAprovadaFlow(); return; }
+        notify(choice.kind === "legacy" ? "Categoria não alterada; a bobina continua conferida." : "Categoria não escolhida. A bobina não foi conferida.", "warning");
+        releaseCategorySource(choice.source, !!choice.manual);
+      }
+      function blockForPendingCategoryChoice() {
+        if (!pendingCategoryChoice) return false;
+        document.getElementById("categoryChoiceModal")?.classList.add("show");
+        notify("Escolha a categoria ou cancele a leitura para continuar.", "warning");
+        return true;
+      }
       function getPendingNaoPrevista() {
-        const scans = (S.scanned || []).filter((item) => item && item.status === "not-found" && item.informacoesPendentes === true);
+        const scans = (S.scanned || []).filter((item) => item && item.status === "not-found" && (item.informacoesPendentes === true || item.categoriaPendente === true));
         return scans.length ? scans[scans.length - 1] : null;
       }
       function registerNaoPrevistaOnRead(code, time, source, { manual = false } = {}) {
         const value = String(code || "");
         if (!value || S.db.includes(value) || S.checked.has(value) || S.extras.includes(value)) return null;
-        const needsInfo = !!naoPrevistaInfoOn;
-        const scan = { code: value, time: time || new Date().toLocaleTimeString("pt-BR"), status: "not-found", location: "", observation: "", hasPhoto: false, hasPhotoEtiqueta: false, hasPhotoBobina: false, source: source || "", manual: !!manual, categoriaKey: "", categoria: "", categoriaInformada: false, informacoesSolicitadas: needsInfo, informacoesPendentes: needsInfo, lidaEmLocal: new Date().toISOString() };
+        const needsInfo = !!naoPrevistaInfoOn, needsCategory = requiresManualCategoryForCode(value);
+        const scan = { code: value, time: time || new Date().toLocaleTimeString("pt-BR"), status: "not-found", location: "", observation: "", hasPhoto: false, hasPhotoEtiqueta: false, hasPhotoBobina: false, source: source || "", manual: !!manual, categoriaKey: "", categoria: "", categoriaInformada: false, categoriaObrigatoria: needsCategory, categoriaPendente: needsCategory && !needsInfo, informacoesSolicitadas: needsInfo, informacoesPendentes: needsInfo, lidaEmLocal: new Date().toISOString() };
         S.extras.push(value); S.scanned.unshift(scan);
         // Primeiro salva o registro; o formulário e as fotos vêm depois.
         save(); cloudSyncReading(scan);
@@ -5191,6 +5457,7 @@ if (S.collectorMode) {
         const scan = getPendingNaoPrevista();
         if (!scan) return false;
         if (pendingAlertFound && String(pendingAlertFound.fullCode) === String(scan.code)) return true;
+        if (pendingCategoryChoice && String(pendingCategoryChoice.code) === String(scan.code) && document.getElementById("categoryChoiceModal")?.classList.contains("show")) return true;
         if (pendingExtraMain && String(pendingExtraMain.code) === String(scan.code) && document.getElementById("locModal")?.classList.contains("show")) return true;
         if (camPendingExtra && String(camPendingExtra.code) === String(scan.code) && document.getElementById("camLocModal")?.classList.contains("show")) return true;
         if (pendingNaoAprovada) return true;
@@ -5201,22 +5468,26 @@ if (S.collectorMode) {
           pendingAlertFound = { itemId: saved.id, cloudId: saved.cloudId, shortCode: saved.shortCode, fullCode: scan.code, time: scan.time, source: "recovery", matches: Array.isArray(saved.matches) ? saved.matches : [saved], existsInBase: false, alreadyChecked: false, alreadyExtra: true, shouldRegisterExtra: false };
           showAlertFoundModal(item, scan.code); return true;
         }
+        if (scan.categoriaPendente === true && scan.informacoesPendentes !== true) { showExtraCategoryOnly(scan, "recovery"); return true; }
         showLocModal(scan.code, scan.time, "recovery");
         return true;
       }
       function blockForPendingNaoPrevista() {
-        if (!getPendingNaoPrevista()) return false;
+        const scan = getPendingNaoPrevista();
+        if (!scan) return false;
         reopenPendingNaoPrevista();
-        notify("Complete a localização e as duas fotos da não prevista para continuar.", "warning");
+        notify(scan.informacoesPendentes ? "Complete a localização e as duas fotos da não prevista para continuar." : "Escolha Películas ou Extrusão para continuar.", "warning");
         return true;
       }
       function completeNaoPrevistaRecord(code, { location, observation, categoriaKey, hasPhoto }) {
         const scan = getExtraScan(code);
         if (!scan || scan.informacoesPendentes !== true || !hasPhoto) return false;
+        if ((scan.categoriaObrigatoria === true || requiresManualCategoryForCode(code)) && !categoriaKey) return false;
         scan.location = location; scan.observation = observation || "";
         scan.hasPhoto = true; scan.hasPhotoEtiqueta = true; scan.hasPhotoBobina = true;
         scan.categoriaKey = categoriaKey || ""; scan.categoria = categoriaKey ? coilCategoryLabel(categoriaKey) : "";
-        scan.categoriaInformada = !!categoriaKey; scan.informacoesPendentes = false;
+        scan.categoriaInformada = !!categoriaKey; scan.informacoesPendentes = false; scan.categoriaPendente = false;
+        if (categoriaKey) setManualCategoryForCode(code, categoriaKey, { persist: false });
         delete scan.alertaPendente;
         scan.informacoesConcluidasEmLocal = new Date().toISOString();
         save(); cloudSyncReading(scan);
@@ -5226,7 +5497,7 @@ if (S.collectorMode) {
       }
       function processCollectorCode(rawCode) {
   // BUG 2 CORRIGIDO: trava anti duplo disparo
-  if (collectorProcessing) return;
+  if (collectorProcessing || pendingCategoryChoice) return;
   if (blockForPendingNaoPrevista()) return;
   collectorProcessing = true;
 
@@ -5239,16 +5510,27 @@ if (S.collectorMode) {
     return;
   }
 
-  // Código fora do padrão do coletor: ignora silenciosamente.
-  // O operador só recebe feedback visual quando a leitura é válida/conferida.
-  if (!/^(500|700)\d{8,10}$/.test(code)) {
+  // Além do padrão 500/700, aceita exatamente códigos presentes na planilha.
+  if (!isReadableBarcode(code)) {
     collectorProcessing = false;
     setTimeout(focusCollectorInput, 80);
     return;
   }
-
-  const wasChecked = S.checked.has(code), wasNaoPrevista = S.extras.includes(code), inBase = S.db.includes(code);
+  const resolved = resolveExpectedBarcode(code);
   recordConferenceReading();
+  if (resolved.ambiguous) {
+    collectorShowBigStatus("yellow", "⚠️ REFERÊNCIA AMBÍGUA", code, 1800);
+    setCollectorLastRead(`⚠️ ${code} corresponde a mais de uma referência. Confira a planilha.`, "warn");
+    updateCollectorOverlayCenter("Referência ambígua", "Confira a planilha antes de conferir.", code);
+    notify("Esta leitura corresponde a mais de uma referência. Confira a planilha.", "warning");
+    collectorProcessing = false;
+    setTimeout(focusCollectorInput, 80);
+    return;
+  }
+  let expectedCode = resolved.code || code;
+  const inBase = !!resolved.code, wasChecked = inBase && S.checked.has(expectedCode);
+  const wasNaoPrevista = S.extras.includes(code) || (expectedCode !== code && S.extras.includes(expectedCode));
+  if (inBase && !wasChecked && !wasNaoPrevista && expectedCode !== code) expectedCode = promoteReferenceBarcode(expectedCode, code);
   const newNaoPrevista = !inBase && !wasChecked && !wasNaoPrevista ? registerNaoPrevistaOnRead(code, time, "collector") : null;
   if (handleBobinaAlertScan(code, time, "collector")) {
     setCollectorLastRead(`🚨 ${code} é uma bobina em alerta.`, "err");
@@ -5257,6 +5539,10 @@ if (S.collectorMode) {
   }
 
   if (wasChecked) {
+    if (requiresManualCategoryForCode(expectedCode) && !manualCategoryForCode(expectedCode)) {
+      requestManualCategory({ kind: "legacy", code, expectedCode, time, source: "collector" });
+      return;
+    }
     collectorShowBigStatus("yellow", "⚠️ JÁ LIDA", code, 1500);
     setCollectorLastRead(`⚠️ ${code} já conferido.`, "warn");
     updateCollectorOverlayCenter("Já lida", "Esta bobina já foi conferida.", code);
@@ -5266,6 +5552,11 @@ if (S.collectorMode) {
   }
 
   if (wasNaoPrevista) {
+    const previous = getExtraScan(code) || getExtraScan(expectedCode);
+    if (previous && requiresManualCategoryForCode(previous.code) && previous.categoriaInformada !== true) {
+      previous.categoriaObrigatoria = true; previous.categoriaPendente = true; save();
+      showExtraCategoryOnly(previous, "collector"); return;
+    }
     collectorShowBigStatus("yellow", "⚠️ JÁ REGISTRADA", code, 1600);
     setCollectorLastRead(`⚠️ ${code} já registrado como não prevista.`, "warn");
     updateCollectorOverlayCenter("Já registrada", "Já registrada como não prevista.", code);
@@ -5275,24 +5566,17 @@ if (S.collectorMode) {
   }
 
   if (inBase) {
-    if (isNaoAprovadaCode(code)) {
+    if (isNaoAprovadaCode(expectedCode)) {
       collectorShowBigStatus("red", "⚠️ NÃO APROVADA", code, 1200);
-      setCollectorLastRead(`⚠️ ${code} é bobina NÃO APROVADA. ${naoAprovadaInfoOn ? "Informe o endereço." : "Será conferida sem pedir dados."}`, "warn");
-      updateCollectorOverlayCenter("Bobina não aprovada", naoAprovadaInfoOn ? "Informe o endereço onde a bobina está." : "Será conferida sem pedir dados.", code);
-      showNaoAprovadaFlow(code, time, "collector");
+      setCollectorLastRead(`⚠️ ${code} é bobina NÃO APROVADA. ${naoAprovadaInfoOn ? "Informe o endereço." : "Não pede endereço."}`, "warn");
+      updateCollectorOverlayCenter("Bobina não aprovada", naoAprovadaInfoOn ? "Informe o endereço onde a bobina está." : "Não pede endereço.", code);
+      showNaoAprovadaFlow(expectedCode, time, "collector", { readCode: code });
       return;
     }
-    const scanItem = { code, time, status: "found", source: "collector" };
-    S.checked.add(code);
-    S.scanned.unshift(scanItem);
-    save();
-    cloudSyncReading(scanItem);
-    updateStats(); updateHistory(); updateDBUI(); updateReport();
-    collectorShowBigStatus("green", "✅ LIDA", code, 1400);
-    setCollectorLastRead(`✅ ${code} conferido.`, "ok");
-    updateCollectorOverlayCenter("Lida com sucesso", "Bobina prevista conferida com sucesso.", code);
-    collectorProcessing = false;
-    setTimeout(focusCollectorInput, 80);
+    const category = manualCategoryForCode(expectedCode);
+    const choice = { kind: "expected", code, expectedCode, time, source: "collector" };
+    if (requiresManualCategoryForCode(expectedCode) && !category) { requestManualCategory(choice); return; }
+    finishExpectedRead(choice, category);
     return;
   }
 
@@ -5302,6 +5586,10 @@ if (S.collectorMode) {
     setCollectorLastRead(`⚠️ ${code} registrada. Informe localização e fotos.`, "warn");
     updateCollectorOverlayCenter("Bobina não prevista", "Informe a localização e tire as duas fotos.", code);
     showLocModal(code, time, "collector");
+  } else if (newNaoPrevista?.categoriaPendente) {
+    setCollectorLastRead(`⚠️ ${code} registrada. Escolha a categoria.`, "warn");
+    updateCollectorOverlayCenter("Bobina não prevista", "Escolha Películas ou Extrusão.", code);
+    showExtraCategoryOnly(newNaoPrevista, "collector");
   } else {
     collectorProcessing = false;
     setCollectorLastRead(`⚠️ ${code} registrada como não prevista.`, "warn");
@@ -5496,101 +5784,37 @@ if (S.collectorMode) {
       function normalizeCategoryText(v) {
         return String(v || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
       }
-      function coilCategoryFromMeta(meta = {}) {
-        const etapaMatch = String(meta.etapa || "").match(/\d+/);
-        const etapa = etapaMatch ? parseInt(etapaMatch[0], 10) : 0;
-        const materialRaw = String(meta.material || "").trim();
-        const material = normalizeCategoryText(materialRaw).replace(/\s+/g, " ").trim();
-        if (!material) return "";
-        const exact = {
-          20: {
-            "1 - PE": "extrusao",
-            "3 - PE": "extrusao",
-            "5 - PE/PA": "extrusao",
-            "9 - PE/PA": "extrusao",
-            "ALTA BARREIRA": "extrusao",
-            "ALTA BARREIRA EASY OPEN + PET METAL + PET": "extrusao",
-            "BOPP + BOPP": "peliculas",
-            "BOPP + BOPP METAL": "peliculas",
-            "BOPP + BOPP PEROLA": "peliculas",
-            "BOPP + PE": "peliculas",
-            "BOPP + PP": "peliculas",
-            "BOPP + PP TERPOLIMERO": "peliculas",
-            "BOPP MATE + BOPP": "peliculas",
-            "BOPP MATE + BOPP METAL + PE": "peliculas",
-            "BOPP MATE + PE": "peliculas",
-            "BOPP MATE + PET METAL + PE": "peliculas",
-            "BOPP PEROLA": "peliculas",
-            "BOPP PLANO + BOPP": "peliculas",
-            "ENCOLHIVEL": "extrusao",
-            "NYLON + PEAD": "extrusao",
-            "PE + AD": "extrusao",
-            "PE + NYLON": "extrusao",
-            "PE + PE": "extrusao",
-            "PEMD": "extrusao",
-            "PET": "peliculas",
-            "PET + ALTA BARREIRA": "peliculas",
-            "PET + ALTA BARREIRA (ANTIFOG)": "peliculas",
-            "PET + ALTA BARREIRA (COOK IN)": "peliculas",
-            "PET + ALTA BARREIRA (EASY OPEN)": "peliculas",
-            "PET + BOPP METAL": "peliculas",
-            "PET + BOPP PEROLA": "peliculas",
-            "PET + NYLON": "peliculas",
-            "PET + PE": "peliculas",
-            "PET + PE PIGMENTADO": "peliculas",
-            "PET + PET METAL + PE": "peliculas",
-            "PET + PET METAL + PP": "peliculas",
-            "PET + PP": "peliculas",
-            "PP + PE": "peliculas",
-            "PP + PP": "peliculas",
-            "PP + PP TERPOLIMERO": "peliculas",
-          },
-          30: {
-            "BOPP + BOPP": "peliculas",
-            "BOPP + BOPP METAL": "peliculas",
-            "BOPP + BOPP PEROLA": "peliculas",
-            "BOPP + PE": "extrusao",
-            "BOPP + PP": "peliculas",
-            "BOPP + PP TERPOLIMERO": "peliculas",
-            "BOPP MATE + BOPP": "peliculas",
-            "BOPP MATE + BOPP PEROLA": "peliculas",
-            "BOPP MATE + PE": "extrusao",
-            "BOPP PLANO + BOPP": "peliculas",
-            "NYLON + PEAD": "extrusao",
-            "PE + AD": "extrusao",
-            "PE + NYLON": "extrusao",
-            "PE + PE": "extrusao",
-            "PET + ALTA BARREIRA": "extrusao",
-            "PET + ALTA BARREIRA (ANTIFOG)": "extrusao",
-            "PET + ALTA BARREIRA (COOK IN)": "extrusao",
-            "PET + ALTA BARREIRA (EASY OPEN)": "extrusao",
-            "PET + BOPP METAL": "peliculas",
-            "PET + BOPP PEROLA": "peliculas",
-            "PET + NYLON": "extrusao",
-            "PET + PE": "extrusao",
-            "PET + PE PIGMENTADO": "extrusao",
-            "PET + PP": "peliculas",
-            "PP + PE": "extrusao",
-            "PP + PP": "peliculas",
-            "PP + PP TERPOLIMERO": "peliculas",
-          },
-        };
-        if (exact[etapa] && exact[etapa][material]) return exact[etapa][material];
-        const parts = material.split("+").map((p) => p.trim()).filter(Boolean);
-        const relevant = etapa === 20 ? (parts[0] || material) : (etapa >= 30 && etapa <= 39) ? (parts.slice(1).join(" + ") || material) : material;
-        if (relevant.includes("BOPP") || relevant.includes("PET") || relevant.includes("PP")) return "peliculas";
-        return "extrusao";
+      // A categoria é informada pelo operador, nunca deduzida do material.
+      function manualCategoriesFromScans(scans = []) {
+        const map = {};
+        (scans || []).forEach((scan) => {
+          if (!scan || scan.categoriaInformada !== true) return;
+          const cat = normalizedCategoryKey(scan.categoriaKey || scan.categoria || "");
+          const code = String(scan.logicalCode || scan.code || "");
+          if (code && cat) map[code] = cat;
+        });
+        return map;
+      }
+      function manualCategoryForCode(code) {
+        const key = String(code || "");
+        return normalizedCategoryKey(S.manualCategories && S.manualCategories[key]);
+      }
+      function setManualCategoryForCode(code, cat, { persist = true } = {}) {
+        const key = String(code || ""), normalized = cat === "peliculas" ? "peliculas" : cat === "extrusao" ? "extrusao" : "";
+        if (!key || !normalized) return false;
+        S.manualCategories = S.manualCategories || {}; S.manualCategories[key] = normalized;
+        S.coilCategories = S.coilCategories || {}; S.coilCategories[key] = normalized;
+        (S.scanned || []).forEach((scan) => {
+          if (scan && (String(scan.logicalCode || scan.code) === key || String(scan.code) === key)) {
+            scan.categoriaKey = normalized; scan.categoria = coilCategoryLabel(normalized); scan.categoriaInformada = true;
+          }
+        });
+        if (persist) save();
+        return true;
       }
       function coilCategoryForCode(code, row = null) {
-        const explicit = normalizeCategoryText(row?.categoriaKey || row?.categoryKey || row?.categoria || row?.category || "");
-        if (explicit.includes("PELIC")) return "peliculas";
-        if (explicit.includes("EXTRUS") || explicit.includes("IMPRESS")) return "extrusao";
-        const key = String(code || "");
-        // Se houver metadados da bobina na conferência atual, recalcula com a regra nova.
-        // O mapa salvo pode ter sido criado por versão anterior da regra.
-        if (S.meta && S.meta[key]) return coilCategoryFromMeta(S.meta[key]);
-        if (S.coilCategories && S.coilCategories[key]) return S.coilCategories[key] === "peliculas" ? "peliculas" : "extrusao";
-        return "";
+        const informed = informedCategoryFromRow(row);
+        return informed || manualCategoryForCode(code);
       }
       function coilCategoryLabel(cat) { return cat === "peliculas" ? "Películas" : "Extrusão"; }
       function coilCategoryFolder(cat) { return cat === "peliculas" ? "peliculas" : "extrusao"; }
@@ -5618,49 +5842,29 @@ if (S.collectorMode) {
         if (!cat) return `fotos/${barcodePhotoFileName(code)}`;
         return `fotos/${coilCategoryFolder(cat)}/${barcodePhotoFileName(code)}`;
       }
-      function buildCoilCategoryMapFromRows(rows, layout) {
-        const map = {};
-        if (!rows || !rows.length || !layout || !layout.idx) return map;
-        const bIdx = layout.idx.BARRAS_ORIGEM, mIdx = layout.idx.MATERIAL, tIdx = layout.idx.TIPO_BOBINA, dIdx = layout.idx.DESCRICAO;
-        if (bIdx < 0) return map;
-        rows.slice(1).forEach((r) => {
-          const code = rowHeaderCode(r, layout);
-          if (!code) return;
-          map[code] = coilCategoryFromMeta({
-            material: mIdx >= 0 ? String(r[mIdx] || "").trim() : "",
-            tipoBobina: tIdx >= 0 ? String(r[tIdx] || "").trim() : "",
-            descricao: dIdx >= 0 ? String(r[dIdx] || "").trim() : "",
-          });
-        });
-        return map;
-      }
-      function refreshCoilCategoriesFromLoadedFile() {
-        if (!S.fileData || !S.fileLayout || !S.fileLayout.idx) return false;
-        S.coilCategories = buildCoilCategoryMapFromRows(S.fileData, S.fileLayout);
-        save();
-        return true;
-      }
+      // Não interpreta a composição: só usa categorias já escolhidas manualmente.
+      function buildCoilCategoryMapFromRows() { return { ...(S.coilCategories || {}), ...(S.manualCategories || {}) }; }
+      function refreshCoilCategoriesFromLoadedFile() { return false; }
       function defaultExtraCategoryForCode(code) {
-        const key = String(code || "");
-        if (S.meta && S.meta[key]) return coilCategoryFromMeta(S.meta[key]);
-        if (S.coilCategories && S.coilCategories[key]) return S.coilCategories[key] === "peliculas" ? "peliculas" : "extrusao";
-        return "";
+        const key = String(code || ""), scan = getExtraScan(key);
+        return manualCategoryForCode(key) || informedCategoryFromRow(scan);
       }
       function conferenceTypeParts() {
         return String(S.confType || "").split(",").map((p) => p.trim()).filter(Boolean);
       }
-      function isOnlyPeliculasConference() {
-        const parts = conferenceTypeParts();
-        return parts.length === 1 && parts[0] === "Bases - Películas";
-      }
       function shouldAskExtraCategoryForCurrentConference() {
-        const tipo = String(S.confType || "");
-        if (isOnlyPeliculasConference()) return false;
-        return tipo.includes("Bases - Todas") || tipo.includes("Bases - Películas") || tipo.includes("Capas");
+        return conferenceTypeParts().some((part) => /^(BASES?|CAPAS?)(?:\s|-|$)/.test(normalizeCategoryText(part).trim()));
       }
-      function automaticExtraCategoryForCurrentConference(code) {
-        if (isOnlyPeliculasConference()) return "peliculas";
-        return defaultExtraCategoryForCode(code) || "extrusao";
+      function requiresManualCategoryForCode(code = "") {
+        if (!shouldAskExtraCategoryForCurrentConference()) return false;
+        const parts = conferenceTypeParts().map((part) => normalizeCategoryText(part).trim());
+        const mixedWithOther = parts.some((part) => /^(REFILADEIRA|C\s*&\s*S)(?:\s|-|$)/.test(part));
+        if (mixedWithOther && code) {
+          const expected = resolveExpectedBarcode(code).code || String(code), meta = S.meta && S.meta[expected];
+          const match = String(meta?.etapa || "").match(/\d+/), etapa = match ? Number(match[0]) : NaN;
+          if (Number.isFinite(etapa) && etapa >= 40) return false;
+        }
+        return true;
       }
       function setExtraCategory(scope, cat) {
         const box = document.getElementById(scope + "ExtraCategoryBox"); if (!box) return;
@@ -5690,10 +5894,9 @@ if (S.collectorMode) {
       function setExtraScanCategory(code, cat) {
         const normalized = cat === "peliculas" ? "peliculas" : "extrusao";
         (S.scanned || []).forEach((s) => {
-          if (s && s.status === "not-found" && String(s.code) === String(code)) { s.categoriaKey = normalized; s.categoria = coilCategoryLabel(normalized); s.categoriaInformada = true; }
+          if (s && s.status === "not-found" && String(s.code) === String(code)) { s.categoriaKey = normalized; s.categoria = coilCategoryLabel(normalized); s.categoriaInformada = true; s.categoriaPendente = false; }
         });
-        S.coilCategories = S.coilCategories || {};
-        S.coilCategories[String(code)] = normalized;
+        setManualCategoryForCode(String(code), normalized, { persist: false });
         save(); updateHistory(); updateReport();
       }
       function extraCategoryMissingCodes() {
@@ -5703,10 +5906,10 @@ if (S.collectorMode) {
         // Em conferência mista, não prevista precisa de confirmação manual.
         return [...new Set(S.extras || [])].filter((code) => {
           const scan = getExtraScan(code);
-          // Quando o administrador desliga as informações, não pedir categoria
-          // depois na exportação ou finalização; pendências permanecem registradas.
-          if (scan && (scan.informacoesSolicitadas === false || scan.informacoesPendentes === true)) return false;
-          return !(scan && scan.categoriaKey);
+          // Mantém a regra antiga para registros OFF anteriores a esta versão.
+          if (scan && (scan.informacoesPendentes === true || scan.categoriaPendente === true)) return false;
+          if (scan && scan.informacoesSolicitadas === false && scan.categoriaObrigatoria !== true) return false;
+          return !(scan && scan.categoriaInformada === true && scan.categoriaKey);
         });
       }
       function setExtraCategoryReviewItem(code, cat, btn = null) {
@@ -5725,7 +5928,7 @@ if (S.collectorMode) {
         modal._afterSave = typeof afterSave === "function" ? afterSave : null;
         modal.innerHTML = `<div class="modal" style="max-height: calc(100dvh - 32px); overflow: auto; max-width: 520px">
           <h2>🧭 Categorizar não previstas</h2>
-          <p>Para separar as fotos corretamente, confirme se cada bobina não prevista é <strong>Películas</strong> ou <strong>Extrusão</strong>. Códigos que existem na planilha já vêm pré-selecionados.</p>
+          <p>Para separar as fotos corretamente, confirme se cada bobina não prevista é <strong>Películas</strong> ou <strong>Extrusão</strong>. A categoria não é deduzida da planilha.</p>
           <div class="extra-category-review-list">
             ${extras.map((code) => {
               const scan = getExtraScan(code) || {};
@@ -5775,15 +5978,15 @@ if (S.collectorMode) {
         [...new Set(S.extras)].forEach((code) => {
           const scan = S.scanned.find((s) => s.code === code && s.status === "not-found");
           const categoriaKey = scan?.categoriaKey || "";
-          items.push({ code, op: "-", peso: "-", status: "extra", manual: !!scan?.manual, time: scan ? scan.time : "-", location: scan?.location || "-", observation: scan?.observation || "", hasPhoto: !!scan?.hasPhoto, categoriaKey, categoria: categoriaKey ? coilCategoryLabel(categoriaKey) : "", categoriaInformada: scan?.categoriaInformada === false ? false : !!scan?.categoriaKey, informacoesSolicitadas: scan?.informacoesSolicitadas, informacoesPendentes: !!scan?.informacoesPendentes });
+          items.push({ code, op: "-", peso: "-", status: "extra", manual: !!scan?.manual, time: scan ? scan.time : "-", location: scan?.location || "-", observation: scan?.observation || "", hasPhoto: !!scan?.hasPhoto, categoriaKey, categoria: categoriaKey ? coilCategoryLabel(categoriaKey) : "", categoriaInformada: scan?.categoriaInformada === false ? false : !!scan?.categoriaKey, categoriaManualMode: requiresManualCategoryForCode(code), informacoesSolicitadas: scan?.informacoesSolicitadas, informacoesPendentes: !!(scan?.informacoesPendentes || scan?.categoriaPendente) });
         });
         S.db.forEach((code) => {
-          const chk = S.checked.has(code), scan = S.scanned.find((s) => s.code === code && s.status === "found");
+          const chk = S.checked.has(code), scan = S.scanned.find((s) => String(s.logicalCode || s.code) === String(code) && s.status === "found");
           const categoriaKey = coilCategoryForCode(code, scan);
           const situacao = coilSituacaoForCode(code) || normalizeSituacaoValue(scan?.situacao);
           const lote = (S.meta && S.meta[code] && S.meta[code].referenciaLote) || "";
           const tipo = (S.meta && S.meta[code] && S.meta[code].tipoBobina) || "";
-          items.push({ code, op: getOP(code), peso: getPeso(code), status: chk ? "checked" : "pending", manual: !!scan?.manual, time: scan ? scan.time : "-", location: scan?.location || "", observation: scan?.observation || "", hasPhoto: !!scan?.hasPhoto, categoriaKey, categoria: categoriaKey ? coilCategoryLabel(categoriaKey) : "", categoriaInformada: !!scan?.categoriaInformada, situacao, lote, tipo });
+          items.push({ code: chk && scan?.code ? String(scan.code) : code, op: getOP(code), peso: getPeso(code), status: chk ? "checked" : "pending", manual: !!scan?.manual, time: scan ? scan.time : "-", location: scan?.location || "", observation: scan?.observation || "", hasPhoto: !!scan?.hasPhoto, categoriaKey, categoria: categoriaKey ? coilCategoryLabel(categoriaKey) : "", categoriaInformada: !!scan?.categoriaInformada || !!manualCategoryForCode(code), categoriaManualMode: requiresManualCategoryForCode(code), situacao, lote, tipo });
         });
         return items;
       }
@@ -6134,9 +6337,9 @@ ${"=".repeat(95)}
         document.getElementById("scannerOverlay").classList.add("show"); document.body.style.overflow = "hidden"; camUpdateCounters(); camUpdateHistory(); camCooldown = false; camEnableVolumeZoom();
         const scanW = Math.min(Math.floor(window.innerWidth * 0.94), 720), scanH = Math.min(Math.floor(window.innerHeight * 0.24), 240);
         const onSuccess = (text) => {
-          if (camCooldown || getPendingNaoPrevista() || pendingAlertFound || document.getElementById("appMenu")?.classList.contains("show")) return;
+          if (camCooldown || getPendingNaoPrevista() || pendingAlertFound || pendingCategoryChoice || document.getElementById("appMenu")?.classList.contains("show")) return;
           camCooldown = true; camProcessScan(String(text).trim());
-          if (!camPendingExtra && !pendingNaoAprovada && !pendingAlertFound && !getPendingNaoPrevista()) setTimeout(() => { if (!getPendingNaoPrevista() && !pendingAlertFound) camCooldown = false; }, CAM_SCAN_DELAY_MS);
+          if (!camPendingExtra && !pendingNaoAprovada && !pendingAlertFound && !pendingCategoryChoice && !getPendingNaoPrevista()) setTimeout(() => { if (!getPendingNaoPrevista() && !pendingAlertFound && !pendingCategoryChoice) camCooldown = false; }, CAM_SCAN_DELAY_MS);
         };
         const onError = () => {};
         async function cleanupScannerInstance() { if (camScanner) { try { await camScanner.stop(); } catch (e) {} try { camScanner.clear(); } catch (e) {} camScanner = null; } }
@@ -6233,36 +6436,57 @@ ${"=".repeat(95)}
         box.className = "s-big-status " + cls; box.innerHTML = `<span class="big-main">${esc(main)}</span>${code ? ` <span class="big-code">${esc(code)}</span>` : ""}`; clearTimeout(box._hideTimer); requestAnimationFrame(() => box.classList.add("show")); box._hideTimer = setTimeout(() => { box.classList.remove("show"); }, ms);
       }
       function camProcessScan(code) {
+        code = String(code || "").trim();
         const time = new Date().toLocaleTimeString("pt-BR"), err = document.getElementById("camErrorOverlay"), warn = document.getElementById("camWarnOverlay");
-        if (!/^(500|700)\d{8,10}$/.test(code)) return;
-        if (pendingNaoAprovada || pendingAlertFound) return;
+        if (!isReadableBarcode(code)) return;
+        if (pendingNaoAprovada || pendingAlertFound || pendingCategoryChoice) return;
         if (blockForPendingNaoPrevista()) return;
-        const wasChecked = S.checked.has(code), wasNaoPrevista = S.extras.includes(code), inBase = S.db.includes(code);
+        const resolved = resolveExpectedBarcode(code);
         recordConferenceReading();
+        if (resolved.ambiguous) {
+          camFlash("yellow"); camShowBigStatus("yellow", "⚠️ REFERÊNCIA AMBÍGUA", code, 1800);
+          camShowResult("yellow", "Esta leitura corresponde a mais de uma referência. Confira a planilha.", 2600);
+          camVibrate("already"); camBeep("warning"); return;
+        }
+        let expectedCode = resolved.code || code;
+        const inBase = !!resolved.code, wasChecked = inBase && S.checked.has(expectedCode);
+        const wasNaoPrevista = S.extras.includes(code) || (expectedCode !== code && S.extras.includes(expectedCode));
+        if (inBase && !wasChecked && !wasNaoPrevista && expectedCode !== code) expectedCode = promoteReferenceBarcode(expectedCode, code);
         const newNaoPrevista = !inBase && !wasChecked && !wasNaoPrevista ? registerNaoPrevistaOnRead(code, time, "camera") : null;
         if (handleBobinaAlertScan(code, time, "camera")) { camFlash("red"); camShowBigStatus("red", "🚨 ALERTA", code, 1700); camShowResult("red", `🚨 ALERTA — bobina procurada "${code}" encontrada`, 2400); camVibrate("notfound"); camBeep("notfound"); return; }
-        if (wasChecked) { camFlash("yellow"); camShowBigStatus("yellow", "⚠️ JÁ LIDA", code, 1500); camShowResult("yellow", `⚠️ "${code}" — já conferido`, 1500); camVibrate("already"); camBeep("warning"); return; }
-        if (wasNaoPrevista) { camFlash("yellow"); camShowBigStatus("yellow", "⚠️ JÁ REGISTRADA", code, 1700); warn.classList.add("show"); setTimeout(() => warn.classList.remove("show"), 2000); camShowResult("yellow", `⚠️ "${code}" — já registrado como não prevista`, 2500); camVibrate("already"); camBeep("warning"); return; }
+        if (wasChecked) {
+          if (requiresManualCategoryForCode(expectedCode) && !manualCategoryForCode(expectedCode)) { camCooldown = true; requestManualCategory({ kind: "legacy", code, expectedCode, time, source: "camera" }); return; }
+          camFlash("yellow"); camShowBigStatus("yellow", "⚠️ JÁ LIDA", code, 1500); camShowResult("yellow", `⚠️ "${code}" — já conferido`, 1500); camVibrate("already"); camBeep("warning"); return;
+        }
+        if (wasNaoPrevista) {
+          const previous = getExtraScan(code) || getExtraScan(expectedCode);
+          if (previous && requiresManualCategoryForCode(previous.code) && previous.categoriaInformada !== true) { previous.categoriaObrigatoria = true; previous.categoriaPendente = true; save(); camCooldown = true; showExtraCategoryOnly(previous, "camera"); return; }
+          camFlash("yellow"); camShowBigStatus("yellow", "⚠️ JÁ REGISTRADA", code, 1700); warn.classList.add("show"); setTimeout(() => warn.classList.remove("show"), 2000); camShowResult("yellow", `⚠️ "${code}" — já registrado como não prevista`, 2500); camVibrate("already"); camBeep("warning"); return;
+        }
         if (inBase) {
-          if (isNaoAprovadaCode(code)) {
-            camFlash("red"); camShowBigStatus("red", "⚠️ NÃO APROVADA", code, 1600); camShowResult("red", `⚠️ NÃO APROVADA — "${code}" — ${naoAprovadaInfoOn ? "informe o endereço" : "será conferida sem pedir dados"}`, 2400); camVibrate("notfound"); camBeep("notfound");
+          if (isNaoAprovadaCode(expectedCode)) {
+            camFlash("red"); camShowBigStatus("red", "⚠️ NÃO APROVADA", code, 1600); camShowResult("red", `⚠️ NÃO APROVADA — "${code}" — ${naoAprovadaInfoOn ? "informe o endereço" : "não pede endereço"}`, 2400); camVibrate("notfound"); camBeep("notfound");
             camCooldown = true;
-            showNaoAprovadaFlow(code, time, "camera");
+            showNaoAprovadaFlow(expectedCode, time, "camera", { readCode: code });
             return;
           }
-          S.checked.add(code); const scanItem = { code, time, status: "found" }; S.scanned.unshift(scanItem); camFlash("green"); camShowBigStatus("green", "✅ LIDA", code, 1450); camShowResult("green", `✅ CONFERIDO — "${code}"`, 1800); camVibrate("found"); camBeep("found"); save(); cloudSyncReading(scanItem); camUpdateCounters(); camUpdateHistory(); updateStats(); updateHistory(); updateDBUI();
+          const category = manualCategoryForCode(expectedCode), choice = { kind: "expected", code, expectedCode, time, source: "camera" };
+          if (requiresManualCategoryForCode(expectedCode) && !category) { camCooldown = true; requestManualCategory(choice); return; }
+          finishExpectedRead(choice, category);
         } else {
           camFlash("red"); camShowBigStatus("red", "⚠️ NÃO PREVISTA", code, 1200); camVibrate("notfound"); camBeep("notfound");
           if (newNaoPrevista?.informacoesPendentes) {
             camPendingExtra = { code, time }; camCooldown = true; camShowLocationModal(code);
+          } else if (newNaoPrevista?.categoriaPendente) {
+            camCooldown = true; showExtraCategoryOnly(newNaoPrevista, "camera");
           } else {
             camShowResult("red", `⚠️ "${code}" — não prevista registrada`, 2400);
-            setTimeout(() => { if (!getPendingNaoPrevista() && !pendingAlertFound) camCooldown = false; }, CAM_SCAN_DELAY_MS);
+            setTimeout(() => { if (!getPendingNaoPrevista() && !pendingAlertFound && !pendingCategoryChoice) camCooldown = false; }, CAM_SCAN_DELAY_MS);
           }
         }
       }
       function camOpenManualModal() { if (blockForPendingNaoPrevista()) return; camCooldown = true; document.getElementById("camManualModal").classList.add("show"); document.getElementById("camManualSearch").value = ""; document.getElementById("camManualBobinas").style.display = "none"; document.getElementById("camManualOps").style.display = "grid"; camRenderManualOps(""); setTimeout(() => document.getElementById("camManualSearch").focus(), 200); }
-      function camCloseManualModal() { document.getElementById("camManualModal").classList.remove("show"); setTimeout(() => { if (!getPendingNaoPrevista() && !pendingAlertFound) camCooldown = false; }, 300); }
+      function camCloseManualModal() { document.getElementById("camManualModal").classList.remove("show"); setTimeout(() => { if (!getPendingNaoPrevista() && !pendingAlertFound && !pendingCategoryChoice) camCooldown = false; }, 300); }
       function camPendingByOp() { const map = {}; S.db.forEach((code) => { if (S.checked.has(code)) return; const op = getOP(code) || "-"; if (!map[op]) map[op] = []; map[op].push(code); }); return map; }
       function camRenderManualOps(q = "") {
         const box = document.getElementById("camManualOps"), map = camPendingByOp(); const ops = Object.keys(map).filter((op) => op.toLowerCase().includes(String(q).toLowerCase())).sort();
@@ -6281,17 +6505,13 @@ ${"=".repeat(95)}
         recordConferenceReading();
         if (isNaoAprovadaCode(code) && !S.checked.has(code)) {
           camCooldown = true;
-          camShowResult("red", `⚠️ NÃO APROVADA — "${code}" — ${naoAprovadaInfoOn ? "informe o endereço" : "será conferida sem pedir dados"}`, 2200);
+          camShowResult("red", `⚠️ NÃO APROVADA — "${code}" — ${naoAprovadaInfoOn ? "informe o endereço" : "não pede endereço"}`, 2200);
           showNaoAprovadaFlow(code, time, "camera", { manual: true });
           return;
         }
-        S.checked.add(code);
-        S.scanned.unshift({ code, time, status: "found", manual: true });
-        camShowResult("green", `📸 MANUAL — "${code}" — encontrada`);
-        save(); cloudSyncReading(S.scanned[0]);
-        camUpdateCounters(); camUpdateHistory(); updateStats(); updateHistory(); updateDBUI(); updateReport();
-        if (collectorReturnAfterManualCamera) setTimeout(() => closeIntegratedScanner(), 350);
-        else setTimeout(() => (camCooldown = false), 300);
+        const category = manualCategoryForCode(code), choice = { kind: "expected", code, expectedCode: code, time, source: "camera", manual: true };
+        if (requiresManualCategoryForCode(code) && !category) { camCooldown = true; requestManualCategory(choice); return; }
+        finishExpectedRead(choice, category);
       }
       function camManualNotExpected() {
         if (blockForPendingNaoPrevista()) return;
@@ -6301,11 +6521,12 @@ ${"=".repeat(95)}
         const scan = registerNaoPrevistaOnRead(code, time, "camera", { manual: true });
         camManualSelectedCode = null;
         if (scan?.informacoesPendentes) { camPendingExtra = { code, time }; camCooldown = true; camShowLocationModal(code, "extra"); }
+        else if (scan?.categoriaPendente) { camPendingExtra = null; camCooldown = true; showExtraCategoryOnly(scan, "camera"); }
         else { camPendingExtra = null; camShowResult("red", `⚠️ "${code}" — não prevista registrada`, 2400); }
       }
       function camShowLocationModal(code, mode = "extra") {
         camManualMode = mode; document.getElementById("camLocModal").classList.add("show"); document.getElementById("camLocCode").textContent = code; document.getElementById("camLocInput").value = ""; document.getElementById("camObsInput").value = ""; document.getElementById("camLocError").style.display = "none"; document.getElementById("camPhotoErrorEtiqueta").style.display = "none"; document.getElementById("camPhotoErrorBobina").style.display = "none"; document.getElementById("camPhotoSaveError").style.display = "none";
-        prepareExtraCategory("cam", code, mode !== "manualFound" && shouldAskExtraCategoryForCurrentConference());
+        prepareExtraCategory("cam", code, requiresManualCategoryForCode(code));
         const cancel = document.getElementById("camLocCancelBtn"); cancel.hidden = mode !== "manualFound"; cancel.style.display = mode === "manualFound" ? "" : "none";
         document.getElementById("camLocHeader").textContent = mode === "manualFound" ? "📸 CONFERÊNCIA MANUAL" : "⚠️ BOBINA NÃO PREVISTA"; document.getElementById("camLocHeader").style.color = mode === "manualFound" ? "#3b82f6" : "#ef4444"; document.getElementById("camLocLabel").textContent = mode === "manualFound" ? "📌 Observação/localização (opcional):" : "📌 Informe a localização:"; document.getElementById("camLocInput").placeholder = mode === "manualFound" ? "Opcional" : "Ex: A2, E17, 240..."; camRemovePhoto("etiqueta"); camRemovePhoto("bobina"); focusModalInputIfUntouched("camLocModal", "camLocInput", 300);
       }
@@ -6313,7 +6534,10 @@ ${"=".repeat(95)}
         if (naoPrevistaPhotoSaving) return;
         if (photoRotationInProgress("cam")) { notify("Aguarde a foto terminar de girar.", "warning"); return; }
         const input = document.getElementById("camLocInput"), loc = input.value.trim(), obs = document.getElementById("camObsInput").value.trim(); let hasError = false; let categoriaKey = "";
-        if (camManualMode !== "manualFound") { categoriaKey = shouldAskExtraCategoryForCurrentConference() ? validateExtraCategory("cam") : automaticExtraCategoryForCurrentConference(camPendingExtra?.code); if (!categoriaKey) hasError = true; }
+        const categoryCode = camManualMode === "manualFound" ? camManualSelectedCode : camPendingExtra?.code;
+        const askCategory = requiresManualCategoryForCode(categoryCode);
+        categoriaKey = askCategory ? validateExtraCategory("cam") : "";
+        if (askCategory && !categoriaKey) hasError = true;
         if (camManualMode !== "manualFound" && !loc) { document.getElementById("camLocError").style.display = "block"; input.focus(); hasError = true; } else document.getElementById("camLocError").style.display = "none";
         if (!camCurrentPhotoEtiqueta) { document.getElementById("camPhotoErrorEtiqueta").style.display = "block"; hasError = true; } else document.getElementById("camPhotoErrorEtiqueta").style.display = "none";
         if (!camCurrentPhotoBobina) { document.getElementById("camPhotoErrorBobina").style.display = "block"; hasError = true; } else document.getElementById("camPhotoErrorBobina").style.display = "none";
@@ -6321,7 +6545,8 @@ ${"=".repeat(95)}
         if (!S.primeiraLeituraEmLocal && !S.horarioLegado && !(S.scanned || []).length) recordConferenceReading();
         if (camManualMode === "manualFound" && camManualSelectedCode) {
           const code = camManualSelectedCode, time = new Date().toLocaleTimeString("pt-BR"), savedPhoto = await savePhotosExtra(code, camCurrentPhotoEtiqueta, camCurrentPhotoBobina);
-          S.checked.add(code); S.scanned.unshift({ code, time, status: "found", manual: true, location: loc, observation: obs, hasPhoto: savedPhoto, hasPhotoEtiqueta: savedPhoto, hasPhotoBobina: savedPhoto });
+          if (categoriaKey) setManualCategoryForCode(code, categoriaKey, { persist: false });
+          S.checked.add(code); S.scanned.unshift({ code, time, status: "found", manual: true, location: loc, observation: obs, hasPhoto: savedPhoto, hasPhotoEtiqueta: savedPhoto, hasPhotoBobina: savedPhoto, ...(categoriaKey ? { categoriaKey, categoria: coilCategoryLabel(categoriaKey), categoriaInformada: true } : {}) });
           if (!savedPhoto) notify("Foto não foi salva. Não vai sair no exportador.", "warning");
           camShowResult("green", `📸 MANUAL — "${code}"`); save(); cloudSyncReading(S.scanned[0]); camUpdateCounters(); camUpdateHistory(); updateStats(); updateHistory(); updateDBUI(); camManualSelectedCode = null;
         } else if (camPendingExtra) {
@@ -6452,9 +6677,9 @@ ${"=".repeat(95)}
         document.getElementById("locObsMain").value = scan?.observation || "";
         document.getElementById("locErrorMain").style.display = "none";
         document.getElementById("locPhotoSaveError").style.display = "none";
-        const askCategory = shouldAskExtraCategoryForCurrentConference();
+        const askCategory = requiresManualCategoryForCode(code);
         document.getElementById("locModalDesc").textContent = askCategory
-          ? "A leitura já foi registrada. Informe o tipo da base, a localização e tire as fotos da etiqueta e da bobina."
+          ? "A leitura já foi registrada. Informe o tipo da bobina, a localização e tire as fotos da etiqueta e da bobina."
           : "A leitura já foi registrada. Informe a localização e tire as fotos da etiqueta e da bobina.";
         prepareExtraCategory("loc", code, askCategory);
         if (askCategory && scan?.categoriaInformada && scan?.categoriaKey) setExtraCategory("loc", scan.categoriaKey);
@@ -6471,8 +6696,9 @@ ${"=".repeat(95)}
         const obs = document.getElementById("locObsMain").value.trim();
         if (!loc) { document.getElementById("locErrorMain").style.display = "block"; document.getElementById("locInputMain").focus(); return; }
         document.getElementById("locErrorMain").style.display = "none";
-        const categoriaKey = shouldAskExtraCategoryForCurrentConference() ? validateExtraCategory("loc") : automaticExtraCategoryForCurrentConference(code);
-        if (!categoriaKey) return;
+        const askCategory = requiresManualCategoryForCode(code);
+        const categoriaKey = askCategory ? validateExtraCategory("loc") : "";
+        if (askCategory && !categoriaKey) return;
         let photoError = false;
         if (!pendingExtraMainPhotoEtiqueta) { document.getElementById("locPhotoErrorEtiqueta").style.display = "block"; photoError = true; }
         if (!pendingExtraMainPhotoBobina) { document.getElementById("locPhotoErrorBobina").style.display = "block"; photoError = true; }
@@ -6511,14 +6737,29 @@ ${"=".repeat(95)}
       function reportIsNaoAprovada(row = {}) { return reportSituacao(row) === "N" || normalizeCategoryText(row.status || "").includes("NAO APROVAD"); }
       function reportSitCell(row = {}) { return reportIsNaoAprovada(row) ? '<span class="sit-n">N</span>' : "—"; }
       function reportSitValue(row = {}) { return reportIsNaoAprovada(row) ? "N" : ""; }
-      function loteRefToLabelCode(ref) {
-        const s = String(ref || "").trim();
-        if (!s) return "";
-        const parts = s.split(".");
-        const lote = String(parts[0] || "").replace(/\D/g, "");
-        const num = parts.slice(1).map((p) => String(p || "").replace(/\D/g, "")).join("");
-        if (!lote || !num) return "";
-        return "700" + lote + num;
+      const AMBIGUOUS_REFERENCE_ALIAS = "__referencia_ambigua__";
+      function referenceLabelCodes(ref) {
+        const digits = String(ref || "").trim().replace(/\D/g, "");
+        return digits ? ["700" + digits, "500" + digits] : [];
+      }
+      // A referência representa uma única bobina; 500 e 700 são formas de lê-la.
+      function loteRefToLabelCode(ref) { return referenceLabelCodes(ref)[0] || ""; }
+      function addReferenceAlias(map, alias, canonical) {
+        if (!alias || !canonical) return;
+        if (!Object.prototype.hasOwnProperty.call(map, alias)) map[alias] = canonical;
+        else if (map[alias] !== canonical) map[alias] = AMBIGUOUS_REFERENCE_ALIAS;
+      }
+      function mergeReferenceAliases(target, source) {
+        Object.entries(source || {}).forEach(([alias, canonical]) => addReferenceAlias(target, alias, canonical));
+        return target;
+      }
+      function aliasesFromConferenceMeta(meta, db) {
+        const map = Object.create(null);
+        (db || []).forEach((code) => {
+          const ref = meta && meta[code] && meta[code].referenciaLote;
+          referenceLabelCodes(ref).forEach((alias) => addReferenceAlias(map, alias, String(code)));
+        });
+        return map;
       }
       function rowHeaderCode(row, layout) {
         if (!layout || !layout.idx) return "";
@@ -6528,15 +6769,32 @@ ${"=".repeat(95)}
         const rlIdx = layout.idx.REFERENCIA_LOTE >= 0 ? layout.idx.REFERENCIA_LOTE : -1;
         return rlIdx >= 0 ? loteRefToLabelCode(row[rlIdx]) : "";
       }
-      function capaSideMaterial(materialRaw) {
-        const s = String(materialRaw || "");
-        const i = s.indexOf("+");
-        return (i >= 0 ? s.slice(i + 1) : s).trim();
+      function resolveExpectedBarcode(readCode) {
+        const code = String(readCode || "").trim(), aliases = S.referenceAliases || {};
+        const alias = aliases[code], exact = S.db.includes(code), meta = S.meta && S.meta[code];
+        // BARRAS_ORIGEM tem prioridade sobre um apelido de referência.
+        if (exact && (!meta || meta.barcodeSource !== "reference" || alias !== AMBIGUOUS_REFERENCE_ALIAS)) return { code };
+        if (alias === AMBIGUOUS_REFERENCE_ALIAS) return { code: "", ambiguous: true };
+        if (exact) return { code };
+        if (alias && S.db.includes(alias)) return { code: alias };
+        return { code: "" };
       }
-      const CAPA_PELICULA_TERMS = ["BOPP", "BOPP METAL", "BOPP PEROLA", "PP", "PP TERPOLIMERO"];
-      function isCapaPeliculaMaterial(materialRaw) {
-        const capa = normalizeCategoryText(capaSideMaterial(materialRaw)).replace(/\s+/g, " ").trim();
-        return CAPA_PELICULA_TERMS.includes(capa);
+      function isReadableBarcode(code) {
+        const value = String(code || "").trim();
+        return !!value && (/^(500|700)\d{8,10}$/.test(value) || S.db.includes(value) || Object.prototype.hasOwnProperty.call(S.referenceAliases || {}, value) || matchingBobinaAlerts(value).length > 0);
+      }
+      function promoteReferenceBarcode(expected, readCode) {
+        const oldCode = String(expected || ""), code = String(readCode || "");
+        const pos = S.db.indexOf(oldCode);
+        if (!oldCode || !code || oldCode === code || pos < 0 || S.db.includes(code) || S.checked.has(oldCode) || S.extras.includes(oldCode) || S.extras.includes(code)) return oldCode;
+        if ((S.scanned || []).some((scan) => scan && String(scan.code) === oldCode)) return oldCode;
+        S.db[pos] = code;
+        if (S.meta && S.meta[oldCode]) { S.meta[code] = S.meta[oldCode]; delete S.meta[oldCode]; }
+        if (S.coilCategories && Object.prototype.hasOwnProperty.call(S.coilCategories, oldCode)) { S.coilCategories[code] = S.coilCategories[oldCode]; delete S.coilCategories[oldCode]; }
+        if (S.manualCategories && Object.prototype.hasOwnProperty.call(S.manualCategories, oldCode)) { S.manualCategories[code] = S.manualCategories[oldCode]; delete S.manualCategories[oldCode]; }
+        Object.keys(S.referenceAliases || {}).forEach((alias) => { if (S.referenceAliases[alias] === oldCode) S.referenceAliases[alias] = code; });
+        save();
+        return code;
       }
       // A chave antiga era uma preferência individual. Esta guarda apenas a última
       // configuração geral confirmada, para que o aparelho também funcione offline.
@@ -6566,7 +6824,7 @@ ${"=".repeat(95)}
         const on = document.getElementById("naoInfoOnBtn"), off = document.getElementById("naoInfoOffBtn"), desc = document.getElementById("naoInfoDescription"), status = document.getElementById("naoInfoSyncStatus");
         if (on) { on.classList.toggle("active-on", naoAprovadaInfoOn); on.setAttribute("aria-pressed", String(naoAprovadaInfoOn)); on.disabled = naoInfoSaving; }
         if (off) { off.classList.toggle("active-off", !naoAprovadaInfoOn); off.setAttribute("aria-pressed", String(!naoAprovadaInfoOn)); off.disabled = naoInfoSaving; }
-        if (desc) desc.textContent = naoAprovadaInfoOn ? "Ligado: pede endereço obrigatório e observação opcional." : "Desligado: mostra o alerta e confere sem pedir dados.";
+        if (desc) desc.textContent = naoAprovadaInfoOn ? "Ligado: pede endereço obrigatório e observação opcional." : "Desligado: não pede endereço. Em Bases e Capas, pede a categoria.";
         if (status) {
           const local = naoInfoHasGlobalCache ? "Usando a última configuração recebida neste aparelho." : "Sem histórico: padrão ligado até receber a configuração geral.";
           let text;
@@ -6779,7 +7037,7 @@ ${"=".repeat(95)}
         const on = document.getElementById("naoPrevInfoOnBtn"), off = document.getElementById("naoPrevInfoOffBtn"), desc = document.getElementById("naoPrevInfoDescription"), status = document.getElementById("naoPrevInfoSyncStatus");
         if (on) { on.classList.toggle("active-on", naoPrevistaInfoOn); on.setAttribute("aria-pressed", String(naoPrevistaInfoOn)); on.disabled = naoPrevInfoSaving; }
         if (off) { off.classList.toggle("active-off", !naoPrevistaInfoOn); off.setAttribute("aria-pressed", String(!naoPrevistaInfoOn)); off.disabled = naoPrevInfoSaving; }
-        if (desc) desc.textContent = naoPrevistaInfoOn ? "Ligado: exige localização e as duas fotos." : "Desligado: registra a não prevista sem pedir informações.";
+        if (desc) desc.textContent = naoPrevistaInfoOn ? "Ligado: exige localização e as duas fotos; em Bases e Capas, pede a categoria." : "Desligado: registra imediatamente e, em Bases e Capas, pede somente a categoria.";
         if (status) {
           const local = naoPrevInfoHasGlobalCache ? "Usando a última configuração recebida neste aparelho." : "Sem histórico: padrão ligado até receber a configuração geral.";
           let text;
@@ -6889,18 +7147,18 @@ ${"=".repeat(95)}
         if (document.visibilityState === "visible" && !naoPrevInfoUnsubscribe && navigator.onLine !== false) cloudStartNaoPrevistaInfoWatcher();
       });
       function showNaoAprovadaFlow(code, time, source, opts = {}) {
-        const info = { code, time, source: source || "", manual: !!opts.manual, pedirInformacoes: naoAprovadaInfoOn };
+        const info = { code, readCode: String(opts.readCode || code), time, source: source || "", manual: !!opts.manual, pedirInformacoes: naoAprovadaInfoOn };
         pendingNaoAprovada = info;
         const flash = document.getElementById("naoAprovadaFlash");
         const codeEl = document.getElementById("naoAprovadaFlashCode");
-        if (codeEl) codeEl.textContent = code;
+        if (codeEl) codeEl.textContent = info.readCode;
         if (flash) flash.classList.add("show");
         try { if (navigator.vibrate) navigator.vibrate([350, 140, 350]); } catch (e) {}
         setTimeout(() => {
           if (flash) flash.classList.remove("show");
           if (pendingNaoAprovada !== info) return;
-          if (info.pedirInformacoes) showNaoAprovadaModal(code);
-          else completeNaoAprovada("", "");
+          if (info.pedirInformacoes) showNaoAprovadaModal(info.readCode);
+          else beginNaoAprovadaCompletion("", "");
         }, 2000);
       }
       function showNaoAprovadaModal(code) {
@@ -6917,26 +7175,39 @@ ${"=".repeat(95)}
         if (source === "collector") { collectorProcessing = false; setTimeout(() => { if (collectorCanFocus()) focusCollectorInput(); }, 150); }
         if (source === "camera") { setTimeout(() => { camCooldown = false; }, 700); }
       }
+      function beginNaoAprovadaCompletion(loc, obs) {
+        const info = pendingNaoAprovada;
+        if (!info) return;
+        const category = manualCategoryForCode(info.code);
+        if (requiresManualCategoryForCode(info.code) && !category) {
+          document.getElementById("naoAprovadaModal").classList.remove("show");
+          requestManualCategory({ kind: "naoAprovada", code: info.readCode || info.code, expectedCode: info.code, source: info.source, manual: info.manual, location: loc, observation: obs });
+          return;
+        }
+        completeNaoAprovada(loc, obs);
+      }
       function completeNaoAprovada(loc, obs) {
         if (!pendingNaoAprovada) return;
         const info = pendingNaoAprovada;
         if (!S.checked.has(info.code)) {
-          const scanItem = { code: info.code, time: info.time, status: "found", location: loc, observation: obs, situacao: "N", manual: !!info.manual };
+          const readCode = info.readCode || info.code, category = manualCategoryForCode(info.code);
+          const scanItem = { code: readCode, ...(readCode !== info.code ? { logicalCode: info.code } : {}), time: info.time, status: "found", location: loc, observation: obs, situacao: "N", manual: !!info.manual, ...(category ? { categoriaKey: category, categoria: coilCategoryLabel(category), categoriaInformada: true } : {}) };
           if (info.source) scanItem.source = info.source;
           S.checked.add(info.code); S.scanned.unshift(scanItem);
           save(); cloudSyncReading(scanItem);
           updateStats(); updateHistory(); updateDBUI(); updateReport();
         }
+        const displayedCode = info.readCode || info.code;
         if (info.source === "collector") {
-          collectorShowBigStatus("green", "✅ LIDA", info.code, 1400);
-          setCollectorLastRead(`✅ ${info.code} conferido (N)${loc ? " com endereço." : "."}`, "ok");
-          updateCollectorOverlayCenter("Lida com sucesso", loc ? "Bobina não aprovada conferida com endereço." : "Bobina não aprovada conferida.", info.code);
+          collectorShowBigStatus("green", "✅ LIDA", displayedCode, 1400);
+          setCollectorLastRead(`✅ ${displayedCode} conferido (N)${loc ? " com endereço." : "."}`, "ok");
+          updateCollectorOverlayCenter("Lida com sucesso", loc ? "Bobina não aprovada conferida com endereço." : "Bobina não aprovada conferida.", displayedCode);
         } else if (info.source === "camera") {
           camUpdateCounters(); camUpdateHistory();
-          camShowResult("green", `✅ CONFERIDO (N) — "${info.code}"${loc ? " — 📌 " + loc : ""}`, 2200);
+          camShowResult("green", `✅ CONFERIDO (N) — "${displayedCode}"${loc ? " — 📌 " + loc : ""}`, 2200);
         }
         document.getElementById("naoAprovadaModal").classList.remove("show");
-        notify(`✅ ${info.code} conferida como não aprovada.`);
+        notify(`✅ ${displayedCode} conferida como não aprovada.`);
         const returnToCollector = info.source === "camera" && info.manual && collectorReturnAfterManualCamera;
         releaseNaoAprovadaFlow();
         if (returnToCollector) setTimeout(() => closeIntegratedScanner(), 350);
@@ -6946,10 +7217,10 @@ ${"=".repeat(95)}
         const locInput = document.getElementById("naoAprovadaLocInput"), loc = locInput ? locInput.value.trim() : "";
         const obsEl = document.getElementById("naoAprovadaObsInput"), obs = obsEl ? obsEl.value.trim() : "";
         if (!loc) { const err = document.getElementById("naoAprovadaLocError"); if (err) err.style.display = "block"; if (locInput) locInput.focus(); return; }
-        completeNaoAprovada(loc, obs);
+        beginNaoAprovadaCompletion(loc, obs);
       }
       function cancelNaoAprovada() {
-        const code = (pendingNaoAprovada && pendingNaoAprovada.code) || "";
+        const code = (pendingNaoAprovada && (pendingNaoAprovada.readCode || pendingNaoAprovada.code)) || "";
         document.getElementById("naoAprovadaModal").classList.remove("show");
         notify(`⚠️ ${code} não conferida. Leia novamente se necessário.`, "warning");
         releaseNaoAprovadaFlow();
